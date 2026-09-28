@@ -83,6 +83,7 @@ export async function POST(
           date: parsed.date,
           amount: parsed.amount,
           method: parsed.method,
+          currencyCode: found.currencyCode,
           reference: parsed.reference || null,
           bankAccountId: parsed.bankAccountId || null,
           createdBy: ctx.userId,

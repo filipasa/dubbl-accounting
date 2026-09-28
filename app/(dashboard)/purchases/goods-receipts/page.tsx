@@ -275,7 +275,7 @@ export default function GoodsReceiptsPage() {
                       <p className="text-[11px] text-muted-foreground">PO-0042</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium">$1,200.00</span>
+                  <span className="font-mono text-sm font-medium">{formatMoney(120000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 bg-emerald-50/30 dark:bg-emerald-950/10">
                   <div className="flex items-center gap-3">
@@ -287,7 +287,7 @@ export default function GoodsReceiptsPage() {
                       <p className="text-[11px] text-muted-foreground">GRN-0001</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+$1,200.00</span>
+                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+{formatMoney(120000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5">
                   <div className="flex items-center gap-3">

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown, Lock } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { setDefaultCurrency } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,6 +128,10 @@ export default function SettingsPage() {
           setOrg(o);
           setPeppolId(o.peppolId || "");
           setPeppolScheme(o.peppolScheme || "");
+          if (o.defaultCurrency) {
+            localStorage.setItem("activeOrgCurrency", o.defaultCurrency);
+            setDefaultCurrency(o.defaultCurrency);
+          }
           setForm({
             name: o.name,
             country: o.country ?? "",
@@ -200,6 +205,10 @@ export default function SettingsPage() {
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      if (form.defaultCurrency) {
+        localStorage.setItem("activeOrgCurrency", form.defaultCurrency);
+        setDefaultCurrency(form.defaultCurrency);
+      }
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");

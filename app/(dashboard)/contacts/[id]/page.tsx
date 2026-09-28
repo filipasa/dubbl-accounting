@@ -89,6 +89,16 @@ export default function ContactDetailsPage() {
     if (!orgId) return;
 
     const creditLimitValue = formCreditLimit;
+    const addressLine = ((form.get("addressLine") as string) || "").trim();
+    const city = ((form.get("city") as string) || "").trim();
+    const postalCode = ((form.get("postalCode") as string) || "").trim();
+    const addresses = (addressLine || city || postalCode) ? {
+      billing: {
+        ...(addressLine ? { line1: addressLine } : {}),
+        ...(city ? { city } : {}),
+        ...(postalCode ? { postalCode } : {}),
+      },
+    } : null;
 
     try {
       const res = await fetch(`/api/v1/contacts/${id}`, {
@@ -105,6 +115,7 @@ export default function ContactDetailsPage() {
           type: formType,
           paymentTermsDays:
             parseInt(form.get("paymentTermsDays") as string) || 30,
+          addresses,
           creditLimit: creditLimitValue
             ? decimalToCents(creditLimitValue)
             : null,
@@ -196,6 +207,39 @@ export default function ContactDetailsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs">Tax number / VAT</Label>
                 <Input name="taxNumber" defaultValue={contact.taxNumber || ""} placeholder="e.g. US12-3456789" />
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        <div className="h-px bg-border" />
+
+        <Section title="Address" description="Billing address for invoices and quotes.">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Address line</Label>
+              <Input
+                name="addressLine"
+                defaultValue={contact.addresses?.billing?.line1 || ""}
+                placeholder="Street address or line 1"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">City</Label>
+                <Input
+                  name="city"
+                  defaultValue={contact.addresses?.billing?.city || ""}
+                  placeholder="City or town"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Postcode</Label>
+                <Input
+                  name="postalCode"
+                  defaultValue={contact.addresses?.billing?.postalCode || ""}
+                  placeholder="Postcode / ZIP"
+                />
               </div>
             </div>
           </div>

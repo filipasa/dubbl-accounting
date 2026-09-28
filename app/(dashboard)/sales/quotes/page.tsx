@@ -22,6 +22,7 @@ interface Quote {
   expiryDate: string;
   status: string;
   total: number;
+  currencyCode?: string;
   contact: { name: string } | null;
 }
 
@@ -86,7 +87,7 @@ const columns: Column<Quote>[] = [
     className: "w-28 text-right",
     render: (r) => (
       <span className="font-mono text-sm tabular-nums">
-        {formatMoney(r.total)}
+        {formatMoney(r.total, r.currencyCode || "GBP")}
       </span>
     ),
   },
@@ -98,12 +99,24 @@ export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [orgCurrency, setOrgCurrency] = useState("GBP");
 
   useDocumentTitle("Sales · Quotes");
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
+
+    fetch("/api/v1/organization", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.organization?.defaultCurrency) {
+          setOrgCurrency(data.organization.defaultCurrency);
+        }
+      })
+      .catch(() => {});
 
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
@@ -184,16 +197,16 @@ export default function QuotesPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Website redesign</span>
-                    <span className="font-mono text-muted-foreground">$2,400.00</span>
+                    <span className="font-mono text-muted-foreground">{formatMoney(240000)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">SEO audit</span>
-                    <span className="font-mono text-muted-foreground">$800.00</span>
+                    <span className="font-mono text-muted-foreground">{formatMoney(80000)}</span>
                   </div>
                   <div className="h-px bg-border my-1" />
                   <div className="flex justify-between text-xs font-medium">
                     <span>Total</span>
-                    <span className="font-mono">$3,200.00</span>
+                    <span className="font-mono">{formatMoney(320000)}</span>
                   </div>
                 </div>
               </div>
@@ -235,8 +248,8 @@ export default function QuotesPage() {
       <Section title="Overview" description="Quotes summary and pending amounts across all proposals.">
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard title="Sent" value={formatMoney(sent)} icon={FileText} />
-            <StatCard title="Accepted" value={formatMoney(accepted)} icon={FileText} changeType="positive" />
+            <StatCard title="Sent" value={formatMoney(sent, orgCurrency)} icon={FileText} />
+            <StatCard title="Accepted" value={formatMoney(accepted, orgCurrency)} icon={FileText} changeType="positive" />
             <StatCard title="Total Quotes" value={quotes.length.toString()} icon={FileText} />
           </div>
           <div className="flex justify-end flex-wrap">

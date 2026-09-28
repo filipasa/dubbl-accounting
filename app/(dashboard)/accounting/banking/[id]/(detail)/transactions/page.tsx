@@ -54,6 +54,8 @@ export default function BankTransactionsPage() {
   const [txDateFrom, setTxDateFrom] = useState("");
   const [txDateTo, setTxDateTo] = useState("");
   const [txSort, setTxSort] = useState("date:desc");
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Batch selection (list view): pick several to-do lines and categorize them at once.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -86,10 +88,18 @@ export default function BankTransactionsPage() {
     return result;
   }, [transactions, statusFilter, debouncedTxSearch, txDateFrom, txDateTo, txSort]);
 
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredTx.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const displayedTx = useMemo(() => {
+    if (pageSize === -1) return filteredTx;
+    const start = (safePage - 1) * pageSize;
+    return filteredTx.slice(start, start + pageSize);
+  }, [filteredTx, safePage, pageSize]);
+
   // Only unreconciled ("To do") lines can be batch-categorized.
   const selectableTx = useMemo(
-    () => filteredTx.filter((tx) => tx.status === "unreconciled"),
-    [filteredTx]
+    () => displayedTx.filter((tx) => tx.status === "unreconciled"),
+    [displayedTx]
   );
   const allVisibleSelected =
     selectableTx.length > 0 && selectableTx.every((tx) => selectedIds.has(tx.id));
@@ -98,7 +108,8 @@ export default function BankTransactionsPage() {
   useEffect(() => {
     setSelectedIds(new Set());
     setBatchAccountId("");
-  }, [statusFilter, debouncedTxSearch, txDateFrom, txDateTo, viewMode]);
+    setCurrentPage(1);
+  }, [statusFilter, debouncedTxSearch, txDateFrom, txDateTo, viewMode, txSort, pageSize]);
 
   function toggleSelect(id: string, checked: boolean) {
     setSelectedIds((prev) => {
@@ -273,23 +284,63 @@ export default function BankTransactionsPage() {
         )}
       </div>
 
-      {/* Results summary */}
-      <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
-        {selectableTx.length > 0 && (
-          <Checkbox
-            checked={allVisibleSelected}
-            onCheckedChange={(c) => toggleSelectAll(c === true)}
-            aria-label="Select all to-do transactions"
-          />
-        )}
-        <span className="font-medium text-foreground tabular-nums">{filteredTx.length}</span> transactions
-        {statusFilter !== "all" && (
-          <>
-            <span className="text-border">·</span>
-            <span>
-              {statusFilter === "unreconciled" ? "To do" : statusFilter === "reconciled" ? "Done" : "Ignored"}
-            </span>
-          </>
+      {/* Results summary & page size selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-muted-foreground">
+        <div className="flex items-center gap-3">
+          {selectableTx.length > 0 && (
+            <Checkbox
+              checked={allVisibleSelected}
+              onCheckedChange={(c) => toggleSelectAll(c === true)}
+              aria-label="Select all to-do transactions"
+            />
+          )}
+          <span>
+            {pageSize === -1 || filteredTx.length <= pageSize ? (
+              <>
+                <span className="font-medium text-foreground tabular-nums">{filteredTx.length}</span> transactions
+              </>
+            ) : (
+              <>
+                Showing{" "}
+                <span className="font-medium text-foreground tabular-nums">
+                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredTx.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-foreground tabular-nums">{filteredTx.length}</span> transactions
+              </>
+            )}
+          </span>
+          {statusFilter !== "all" && (
+            <>
+              <span className="text-border">·</span>
+              <span>
+                {statusFilter === "unreconciled" ? "To do" : statusFilter === "reconciled" ? "Done" : "Ignored"}
+              </span>
+            </>
+          )}
+        </div>
+
+        {filteredTx.length > 25 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">Show:</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                setPageSize(Number(v));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="h-7 w-24 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="100">100 / page</SelectItem>
+                <SelectItem value="-1">All ({filteredTx.length})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
 
@@ -330,34 +381,65 @@ export default function BankTransactionsPage() {
           </p>
         </div>
       ) : (
-        <motion.div
-          key={`${statusFilter}-${debouncedTxSearch}-${txDateFrom}-${txDateTo}-${txSort}`}
-          initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-lg border"
-        >
-          {filteredTx.map((tx, i) => (
-            <TransactionRow
-              key={tx.id}
-              tx={tx}
-              cur={cur}
-              isLast={i === filteredTx.length - 1}
-              onReconcile={handleReconcile}
-              onExclude={handleExclude}
-              onMatchBill={handleOpenMatch}
-              onCreateExpense={handleOpenExpense}
-              onCategorize={handleOpenCategorize}
-              onMatchInvoice={handleOpenMatchInvoice}
-              onMatch={handleOpenMatchUnified}
-              onTransfer={handleOpenTransfer}
-              onSplit={handleOpenSplit}
-              onUndo={handleUndo}
-              selected={selectedIds.has(tx.id)}
-              onSelectChange={toggleSelect}
-            />
-          ))}
-        </motion.div>
+        <>
+          <motion.div
+            key={`${statusFilter}-${debouncedTxSearch}-${txDateFrom}-${txDateTo}-${txSort}-${safePage}-${pageSize}`}
+            initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-lg border"
+          >
+            {displayedTx.map((tx, i) => (
+              <TransactionRow
+                key={tx.id}
+                tx={tx}
+                cur={cur}
+                isLast={i === displayedTx.length - 1}
+                onReconcile={handleReconcile}
+                onExclude={handleExclude}
+                onMatchBill={handleOpenMatch}
+                onCreateExpense={handleOpenExpense}
+                onCategorize={handleOpenCategorize}
+                onMatchInvoice={handleOpenMatchInvoice}
+                onMatch={handleOpenMatchUnified}
+                onTransfer={handleOpenTransfer}
+                onSplit={handleOpenSplit}
+                onUndo={handleUndo}
+                selected={selectedIds.has(tx.id)}
+                onSelectChange={toggleSelect}
+              />
+            ))}
+          </motion.div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
+              <div>
+                Page <span className="font-medium text-foreground">{safePage}</span> of{" "}
+                <span className="font-medium text-foreground">{totalPages}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
       </div>
       )}

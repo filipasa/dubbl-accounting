@@ -16,6 +16,7 @@ import { requireRole } from "@/lib/api/require-role";
 import { getNextNumber } from "@/lib/api/numbering";
 import { preloadTaxRates, calcTax } from "@/lib/api/tax-calculator";
 import { resolvePrice } from "@/lib/api/pricing";
+import { decimalToMinorUnits } from "@/lib/money";
 import { wrapTool } from "@/lib/mcp/errors";
 import type { AuthContext } from "@/lib/api/auth-context";
 
@@ -359,8 +360,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
       currencyCode: z
         .string()
         .optional()
-        .default("USD")
-        .describe("Currency code (defaults to USD)"),
+        .describe("Currency code (defaults to organization default currency, e.g. GBP)"),
       priceListId: z
         .string()
         .optional()
@@ -494,6 +494,12 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
         const taxTotal = processedLines.reduce((sum, l) => sum + l.taxAmount, 0);
         const total = subtotal + taxTotal;
 
+        const org = await db.query.organization.findFirst({
+          where: eq(organization.id, ctx.organizationId),
+          columns: { defaultCurrency: true },
+        });
+        const currencyCode = params.currencyCode || org?.defaultCurrency || "GBP";
+
         const [created] = await db
           .insert(quote)
           .values({
@@ -507,7 +513,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             subtotal,
             taxTotal,
             total,
-            currencyCode: params.currencyCode,
+            currencyCode,
             createdBy: ctx.userId,
           })
           .returning();
@@ -525,7 +531,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
 
   server.tool(
     "update_quote",
-    "Update a draft sales quote/estimate's header fields (e.g. issueDate, expiryDate, reference, notes, currencyCode, contactId). Only DRAFT quotes can be edited. This mirrors the REST PATCH: it patches the supplied header fields directly and does NOT recalculate line items or totals — to change lines, recreate the quote. Returns the updated quote.",
+    "Update a draft sales quote/estimate's header fields and optional line items. Only DRAFT quotes can be edited. When lines are supplied, existing lines are replaced and taxes and totals are fully recalculated. Returns the updated quote.",
     {
       quoteId: z.string().describe("The UUID of the quote to update"),
       contactId: z.string().optional().describe("Customer contact UUID"),
@@ -534,6 +540,19 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
       reference: z.string().nullable().optional().describe("External reference"),
       notes: z.string().nullable().optional().describe("Notes"),
       currencyCode: z.string().optional().describe("Currency code"),
+      lines: z
+        .array(
+          z.object({
+            description: z.string().describe("Line description"),
+            quantity: z.number().default(1).describe("Quantity"),
+            unitPrice: z.number().default(0).describe("Decimal unit price"),
+            accountId: z.string().nullable().optional(),
+            taxRateId: z.string().nullable().optional(),
+            discountPercent: z.number().int().min(0).max(10000).default(0),
+          })
+        )
+        .optional()
+        .describe("Replacement lines. When provided, replaces all lines and recalculates totals."),
     },
     (params) =>
       wrapTool(ctx, async () => {
@@ -551,15 +570,59 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
           throw new Error("Only draft quotes can be edited");
         }
 
-        const { quoteId, ...fields } = params;
-        const patch: Record<string, unknown> = {};
+        const { quoteId, lines: replacementLines, ...fields } = params;
+        const patch: Record<string, unknown> = { updatedAt: new Date() };
         for (const [key, value] of Object.entries(fields)) {
           if (value !== undefined) patch[key] = value;
         }
 
+        const targetCurrency = params.currencyCode || existing.currencyCode;
+
+        if (replacementLines) {
+          const taxRateIds = replacementLines
+            .map((l) => l.taxRateId)
+            .filter(Boolean) as string[];
+          const ratesMap = await preloadTaxRates(taxRateIds);
+
+          let subtotal = 0;
+          const processedLines = replacementLines.map((l, i) => {
+            const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, targetCurrency);
+            const discountAmount = l.discountPercent
+              ? Math.round((grossAmount * l.discountPercent) / 10000)
+              : 0;
+            const amount = grossAmount - discountAmount;
+            subtotal += amount;
+            const taxRateId = l.taxRateId || null;
+            const taxAmount = taxRateId
+              ? calcTax(amount, ratesMap.get(taxRateId) ?? 0)
+              : 0;
+            return {
+              quoteId,
+              description: l.description,
+              quantity: Math.round(l.quantity * 100),
+              unitPrice: decimalToMinorUnits(l.unitPrice, targetCurrency),
+              accountId: l.accountId || null,
+              taxRateId,
+              discountPercent: l.discountPercent,
+              taxAmount,
+              amount,
+              sortOrder: i,
+            };
+          });
+
+          const taxTotal = processedLines.reduce((sum, l) => sum + l.taxAmount, 0);
+          const total = subtotal + taxTotal;
+          patch.subtotal = subtotal;
+          patch.taxTotal = taxTotal;
+          patch.total = total;
+
+          await db.delete(quoteLine).where(eq(quoteLine.quoteId, quoteId));
+          await db.insert(quoteLine).values(processedLines);
+        }
+
         const [updated] = await db
           .update(quote)
-          .set({ ...patch, updatedAt: new Date() })
+          .set(patch)
           .where(eq(quote.id, quoteId))
           .returning();
 

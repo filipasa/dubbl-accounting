@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, getDefaultCurrency } from "@/lib/money";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { cn } from "@/lib/utils";
 import {
   AreaChart,
@@ -137,10 +138,26 @@ export default function PnlComparisonPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    tickFormatter={(v) => {
+                      const sign = v < 0 ? "-" : "";
+                      const abs = Math.abs(v);
+                      const sym = getCurrencySymbol(getDefaultCurrency());
+                      if (abs >= 1000) return `${sign}${sym}${(abs / 1000).toFixed(0)}k`;
+                      return `${sign}${sym}${abs}`;
+                    }}
+                  />
                   <Tooltip
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                    formatter={(value) => [`$${Number(value).toFixed(2)}`]}
+                    formatter={(value) => {
+                      const val = Number(value) || 0;
+                      const sign = val < 0 ? "-" : "";
+                      const abs = Math.abs(val);
+                      const sym = getCurrencySymbol(getDefaultCurrency());
+                      return [`${sign}${sym}${abs.toFixed(2)}`];
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" fill="url(#revenueGrad)" strokeWidth={2} />

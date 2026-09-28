@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { payment, paymentAllocation, invoice, bill } from "@/lib/db/schema";
+import { payment, paymentAllocation, invoice, bill, organization } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -180,7 +180,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const currencyCode = providedCurrency ?? docCurrency ?? "USD";
+    const org = await db.query.organization.findFirst({
+      where: eq(organization.id, ctx.organizationId),
+      columns: { defaultCurrency: true },
+    });
+    const currencyCode = providedCurrency ?? docCurrency ?? org?.defaultCurrency ?? "GBP";
 
     // Generate payment number
     const paymentNumber = await getNextNumber(ctx.organizationId, "payment", "payment_number", "PAY");

@@ -403,9 +403,9 @@ export default function FixedAssetsPage() {
           {/* Preview stat cards (empty) */}
           <div className="w-full max-w-lg grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-40">
             {[
-              { label: "Total cost", value: "$0.00" },
-              { label: "Current value", value: "$0.00" },
-              { label: "Value used up", value: "$0.00" },
+              { label: "Total cost", value: formatMoney(0) },
+              { label: "Current value", value: formatMoney(0) },
+              { label: "Value used up", value: formatMoney(0) },
             ].map(({ label, value }) => (
               <div
                 key={label}

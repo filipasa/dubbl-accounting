@@ -69,6 +69,17 @@ export interface ContactDetail {
   defaultExpenseAccount: { id: string; code: string; name: string } | null;
   defaultTaxRate: { id: string; name: string; rate: number } | null;
   people: ContactPerson[];
+  addresses?: {
+    billing?: {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
+    shipping?: Record<string, string | undefined>;
+  } | null;
   notes: string | null;
   createdAt: string;
 }

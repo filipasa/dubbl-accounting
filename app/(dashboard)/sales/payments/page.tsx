@@ -252,7 +252,7 @@ export default function PaymentsPage() {
         <StatCard title="Payments" value={filtered.length.toString()} icon={Banknote} />
         <StatCard
           title="Avg Payment"
-          value={filtered.length > 0 ? formatMoney(Math.round(totalAmount / filtered.length)) : "$0.00"}
+          value={filtered.length > 0 ? formatMoney(Math.round(totalAmount / filtered.length)) : formatMoney(0)}
           icon={Banknote}
         />
       </div>

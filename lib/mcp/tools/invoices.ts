@@ -981,4 +981,108 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
         return { invoice: updated, request: requestResult };
       })
   );
+
+  server.tool(
+    "update_invoice",
+    "Update a draft sales invoice's header fields and optional line items. Only DRAFT invoices can be edited. When lines are supplied, existing lines are replaced and taxes and totals are fully recalculated. Returns the updated invoice.",
+    {
+      invoiceId: z.string().describe("The UUID of the invoice to update"),
+      contactId: z.string().optional().describe("Customer contact UUID"),
+      issueDate: z.string().optional().describe("Issue date (YYYY-MM-DD)"),
+      dueDate: z.string().optional().describe("Due date (YYYY-MM-DD)"),
+      reference: z.string().nullable().optional().describe("External reference"),
+      notes: z.string().nullable().optional().describe("Notes"),
+      currencyCode: z.string().optional().describe("Currency code"),
+      invoiceType: z.enum(["standard", "deposit", "retainer"]).optional(),
+      depositPercent: z.number().nullable().optional(),
+      lines: z
+        .array(
+          z.object({
+            description: z.string().describe("Line description"),
+            quantity: z.number().default(1).describe("Quantity"),
+            unitPrice: z.number().default(0).describe("Decimal unit price"),
+            accountId: z.string().nullable().optional(),
+            taxRateId: z.string().nullable().optional(),
+            discountPercent: z.number().int().min(0).max(10000).default(0),
+          })
+        )
+        .optional()
+        .describe("Replacement lines. When provided, replaces all lines and recalculates totals."),
+    },
+    (params) =>
+      wrapTool(ctx, async () => {
+        requireRole(ctx, "manage:invoices");
+
+        const existing = await db.query.invoice.findFirst({
+          where: and(
+            eq(invoice.id, params.invoiceId),
+            eq(invoice.organizationId, ctx.organizationId),
+            notDeleted(invoice.deletedAt)
+          ),
+        });
+        if (!existing) throw new Error("Invoice not found");
+        if (existing.status !== "draft") {
+          throw new Error("Only draft invoices can be edited");
+        }
+
+        const { invoiceId, lines: replacementLines, ...fields } = params;
+        const patch: Record<string, unknown> = { updatedAt: new Date() };
+        for (const [key, value] of Object.entries(fields)) {
+          if (value !== undefined) patch[key] = value;
+        }
+
+        const targetCurrency = params.currencyCode || existing.currencyCode;
+
+        if (replacementLines) {
+          const taxRateIds = replacementLines
+            .map((l) => l.taxRateId)
+            .filter(Boolean) as string[];
+          const ratesMap = await preloadTaxRates(taxRateIds);
+
+          let subtotal = 0;
+          const processedLines = replacementLines.map((l, i) => {
+            const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, targetCurrency);
+            const discountAmount = l.discountPercent
+              ? Math.round((grossAmount * l.discountPercent) / 10000)
+              : 0;
+            const amount = grossAmount - discountAmount;
+            subtotal += amount;
+            const taxRateId = l.taxRateId || null;
+            const taxAmount = taxRateId
+              ? calcTax(amount, ratesMap.get(taxRateId) ?? 0)
+              : 0;
+            return {
+              invoiceId,
+              description: l.description,
+              quantity: Math.round(l.quantity * 100),
+              unitPrice: decimalToMinorUnits(l.unitPrice, targetCurrency),
+              accountId: l.accountId || null,
+              taxRateId,
+              discountPercent: l.discountPercent,
+              taxAmount,
+              amount,
+              sortOrder: i,
+            };
+          });
+
+          const taxTotal = processedLines.reduce((sum, l) => sum + l.taxAmount, 0);
+          const total = subtotal + taxTotal;
+          patch.subtotal = subtotal;
+          patch.taxTotal = taxTotal;
+          patch.total = total;
+          patch.amountDue = total - existing.amountPaid;
+
+          await db.delete(invoiceLine).where(eq(invoiceLine.invoiceId, invoiceId));
+          await db.insert(invoiceLine).values(processedLines);
+        }
+
+        const [updated] = await db
+          .update(invoice)
+          .set(patch)
+          .where(eq(invoice.id, invoiceId))
+          .returning();
+
+        return { invoice: updated };
+      })
+  );
 }

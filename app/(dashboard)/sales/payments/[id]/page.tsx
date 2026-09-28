@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -241,7 +242,7 @@ export default function PaymentDetailPage() {
                 <div className="space-y-2">
                   <Label>Amount</Label>
                   <CurrencyInput
-                    prefix="$"
+                    prefix={getCurrencySymbol(cur)}
                     value={applyAmount}
                     onChange={setApplyAmount}
                     placeholder={minorUnitsToDecimal(unallocated, cur)}

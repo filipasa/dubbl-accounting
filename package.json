@@ -25,6 +25,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@modelcontextprotocol/sdk": "1.27.1",
+    "@neon/config": "^1.8.2",
+    "@neon/env": "^1.4.7",
     "@paper-design/shaders-react": "^0.0.71",
     "@react-email/components": "^1.0.9",
     "@react-email/render": "^2.0.4",

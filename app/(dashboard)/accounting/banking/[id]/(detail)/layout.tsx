@@ -157,6 +157,7 @@ export default function BankAccountDetailLayout({ children }: { children: React.
 
   // Other own bank accounts (transfer targets)
   const [bankAccounts, setBankAccounts] = useState<BankAccountSummary[]>([]);
+  const [serverSummary, setServerSummary] = useState<BankAccountContextValue["summary"] | null>(null);
 
   useEntityTitle(account?.accountName ?? undefined);
 
@@ -169,12 +170,15 @@ export default function BankAccountDetailLayout({ children }: { children: React.
 
     Promise.all([
       fetch(`/api/v1/bank-accounts/${id}`, { headers }).then((r) => r.json()),
-      fetch(`/api/v1/bank-accounts/${id}/transactions`, { headers }).then((r) => r.json()),
+      fetch(`/api/v1/bank-accounts/${id}/transactions?limit=all`, { headers }).then((r) => r.json()),
       fetch(`/api/v1/bank-accounts/${id}/imports`, { headers }).then((r) => r.json()),
     ])
       .then(([accountData, txData, importData]) => {
         setAccount(accountData.bankAccount || null);
         setTransactions(txData.data || []);
+        if (txData.summary) {
+          setServerSummary(txData.summary);
+        }
         setImports(importData.imports || []);
       })
       .finally(() => setLoading(false));
@@ -213,6 +217,7 @@ export default function BankAccountDetailLayout({ children }: { children: React.
   }, [orgId]);
 
   const summary = useMemo(() => {
+    if (serverSummary) return serverSummary;
     const unreconciled = transactions.filter((tx) => tx.status === "unreconciled").length;
     const reconciled = transactions.filter((tx) => tx.status === "reconciled").length;
     const excluded = transactions.filter((tx) => tx.status === "excluded").length;
@@ -223,7 +228,7 @@ export default function BankAccountDetailLayout({ children }: { children: React.
       .filter((tx) => tx.amount < 0 && tx.status !== "excluded")
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
     return { unreconciled, reconciled, excluded, credits, debits, total: transactions.length };
-  }, [transactions]);
+  }, [serverSummary, transactions]);
 
   // Transaction actions
   async function handleReconcile(txId: string) {

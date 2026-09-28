@@ -246,7 +246,7 @@ export default function LoansPage() {
                       <p className="text-[11px] text-muted-foreground">Equipment loan</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium">$10,000.00</span>
+                  <span className="font-mono text-sm font-medium">{formatMoney(1000000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 bg-emerald-50/30 dark:bg-emerald-950/10">
                   <div className="flex items-center gap-3">
@@ -258,14 +258,14 @@ export default function LoansPage() {
                       <p className="text-[11px] text-muted-foreground">Part loan, part interest</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">-$880.00</span>
+                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">-{formatMoney(88000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="size-7" />
                     <p className="text-sm font-semibold">Paid off over time</p>
                   </div>
-                  <span className="font-mono text-sm font-bold">$0.00</span>
+                  <span className="font-mono text-sm font-bold">{formatMoney(0)}</span>
                 </div>
               </div>
             </div>

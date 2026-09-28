@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
 
 interface BudgetProgressBarProps {
   budgeted: number;
@@ -30,8 +31,8 @@ export function BudgetProgressBar({ budgeted, actual, label }: BudgetProgressBar
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground tabular-nums font-mono">
-        <span>Actual: ${(actual / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-        <span>Budget: ${(budgeted / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <span>Actual: {formatMoney(actual)}</span>
+        <span>Budget: {formatMoney(budgeted)}</span>
       </div>
     </div>
   );

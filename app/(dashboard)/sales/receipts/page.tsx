@@ -272,7 +272,7 @@ export default function SalesReceiptsPage() {
                       <p className="text-[11px] text-muted-foreground">SR-0001</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium">$45.00</span>
+                  <span className="font-mono text-sm font-medium">{formatMoney(4500)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 bg-emerald-50/30 dark:bg-emerald-950/10">
                   <div className="flex items-center gap-3">
@@ -284,14 +284,14 @@ export default function SalesReceiptsPage() {
                       <p className="text-[11px] text-muted-foreground">Cash drawer</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+$45.00</span>
+                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+{formatMoney(4500)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="size-7" />
                     <p className="text-sm font-semibold">Nothing owed</p>
                   </div>
-                  <span className="font-mono text-sm font-bold">$0.00</span>
+                  <span className="font-mono text-sm font-bold">{formatMoney(0)}</span>
                 </div>
               </div>
             </div>

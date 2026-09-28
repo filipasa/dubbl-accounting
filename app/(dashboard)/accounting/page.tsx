@@ -301,7 +301,7 @@ export default function TransactionsPage() {
           {/* Preview stat cards (empty) */}
           <div className="w-full max-w-lg grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-40">
             {[
-              { label: "Total in your books", value: "$0.00" },
+              { label: "Total in your books", value: formatMoney(0) },
               { label: "In your books", value: "0" },
               { label: "Drafts", value: "0" },
             ].map(({ label, value }) => (

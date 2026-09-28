@@ -517,9 +517,9 @@ export default function InvoicesPage() {
           {/* Preview stat cards (empty) */}
           <div className="w-full max-w-lg grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-40">
             {[
-              { label: "Outstanding", value: "$0.00" },
-              { label: "Overdue", value: "$0.00" },
-              { label: "Paid this month", value: "$0.00" },
+              { label: "Outstanding", value: formatMoney(0) },
+              { label: "Overdue", value: formatMoney(0) },
+              { label: "Paid this month", value: formatMoney(0) },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-lg border border-dashed p-3 text-center">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>

@@ -15,7 +15,27 @@ export async function GET(
     const { id } = await params;
     const ctx = await getAuthContext(request);
     const url = new URL(request.url);
-    const { page, limit, offset } = parsePagination(url);
+    const limitParam = url.searchParams.get("limit");
+    const isAll = limitParam === "all";
+
+    let limit: number | undefined;
+    let offset: number | undefined;
+    let page = 1;
+
+    if (isAll) {
+      limit = undefined;
+      offset = undefined;
+    } else if (limitParam) {
+      const parsed = parseInt(limitParam);
+      limit = isNaN(parsed) ? 50 : Math.min(10000, Math.max(1, parsed));
+      page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+      offset = (page - 1) * limit;
+    } else {
+      // Default: if no limit is specified, return all so banking doesn't silently truncate
+      limit = undefined;
+      offset = undefined;
+    }
+
     const status = url.searchParams.get("status");
 
     // Verify bank account belongs to organization
@@ -65,9 +85,35 @@ export async function GET(
       .from(bankTransaction)
       .where(and(...conditions));
 
-    return NextResponse.json(
-      paginatedResponse(transactions, Number(countResult?.count || 0), page, limit)
-    );
+    const [summaryResult] = await db
+      .select({
+        total: sql<number>`count(*)`.mapWith(Number),
+        unreconciled: sql<number>`count(*) filter (where ${bankTransaction.status} = 'unreconciled')`.mapWith(Number),
+        reconciled: sql<number>`count(*) filter (where ${bankTransaction.status} = 'reconciled')`.mapWith(Number),
+        excluded: sql<number>`count(*) filter (where ${bankTransaction.status} = 'excluded')`.mapWith(Number),
+        credits: sql<number>`coalesce(sum(${bankTransaction.amount}) filter (where ${bankTransaction.amount} > 0 and ${bankTransaction.status} != 'excluded'), 0)`.mapWith(Number),
+        debits: sql<number>`coalesce(sum(abs(${bankTransaction.amount})) filter (where ${bankTransaction.amount} < 0 and ${bankTransaction.status} != 'excluded'), 0)`.mapWith(Number),
+      })
+      .from(bankTransaction)
+      .where(eq(bankTransaction.bankAccountId, id));
+
+    return NextResponse.json({
+      data: transactions,
+      pagination: {
+        page,
+        limit: limit ?? transactions.length,
+        total: Number(countResult?.count || 0),
+        totalPages: limit ? Math.ceil(Number(countResult?.count || 0) / limit) : 1,
+      },
+      summary: summaryResult || {
+        total: 0,
+        unreconciled: 0,
+        reconciled: 0,
+        excluded: 0,
+        credits: 0,
+        debits: 0,
+      },
+    });
   } catch (err) {
     return handleError(err);
   }

@@ -208,6 +208,10 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
         .boolean()
         .optional()
         .describe("Whether the vendor is subject to 24% backup withholding (default false)"),
+      addressLine: z.string().optional().describe("Street address line 1 (e.g. '45 Romney Road')"),
+      city: z.string().optional().describe("City or town (e.g. 'Hayes')"),
+      postalCode: z.string().optional().describe("Postal code / postcode / ZIP (e.g. 'UB4 8PU')"),
+      addresses: z.any().optional().describe("Address object, e.g. { billing: { line1, city, postalCode } }"),
     },
     (params) =>
       wrapTool(ctx, async () => {
@@ -215,6 +219,13 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
 
         await checkResourceLimit(ctx.organizationId, contact, contact.organizationId, "contacts", contact.deletedAt);
         await checkMultiCurrency(ctx.organizationId, params.currencyCode ?? "USD");
+
+        const billingAddress = (params.addressLine || params.city || params.postalCode) ? {
+          ...(params.addressLine ? { line1: params.addressLine } : {}),
+          ...(params.city ? { city: params.city } : {}),
+          ...(params.postalCode ? { postalCode: params.postalCode } : {}),
+        } : undefined;
+        const addresses = params.addresses ?? (billingAddress ? { billing: billingAddress } : null);
 
         const [created] = await db
           .insert(contact)
@@ -226,6 +237,7 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
             taxNumber: params.taxNumber ?? null,
             type: params.type,
             paymentTermsDays: params.paymentTermsDays,
+            addresses,
             notes: params.notes ?? null,
             currencyCode: params.currencyCode,
             ...(params.is1099Vendor !== undefined && { is1099Vendor: params.is1099Vendor }),
@@ -260,6 +272,10 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
         .describe("New payment terms in days"),
       notes: z.string().optional().describe("New notes"),
       currencyCode: currencyCodeSchema.optional().describe("New currency code"),
+      addressLine: z.string().optional().describe("New street address line 1"),
+      city: z.string().optional().describe("New city or town"),
+      postalCode: z.string().optional().describe("New postal code / postcode / ZIP"),
+      addresses: z.any().optional().describe("New address object"),
       is1099Vendor: z
         .boolean()
         .optional()
@@ -295,10 +311,25 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
 
         if (!existing) throw new Error("Contact not found");
 
-        const { contactId, ...updates } = params;
-        const cleanUpdates = Object.fromEntries(
+        const { contactId, addressLine, city, postalCode, addresses: directAddresses, ...updates } = params;
+        const cleanUpdates: Record<string, unknown> = Object.fromEntries(
           Object.entries(updates).filter(([, v]) => v !== undefined)
         );
+
+        if (directAddresses !== undefined) {
+          cleanUpdates.addresses = directAddresses;
+        } else if (addressLine !== undefined || city !== undefined || postalCode !== undefined) {
+          const existingBilling = (existing.addresses as Record<string, any>)?.billing || {};
+          cleanUpdates.addresses = {
+            ...((existing.addresses as Record<string, any>) || {}),
+            billing: {
+              ...existingBilling,
+              ...(addressLine !== undefined ? { line1: addressLine } : {}),
+              ...(city !== undefined ? { city } : {}),
+              ...(postalCode !== undefined ? { postalCode } : {}),
+            },
+          };
+        }
 
         const [updated] = await db
           .update(contact)

@@ -27,6 +27,7 @@ import { formatMoney } from "@/lib/money";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useConfirm } from "@/lib/hooks/use-confirm";
+import { formatContactAddress } from "@/lib/documents/address";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +47,7 @@ interface Contact {
   isTaxExempt: boolean;
   is1099Vendor: boolean;
   currencyCode: string | null;
+  addresses?: any;
   createdAt: string;
   owesYou?: number; // customer outstanding (cents)
   youOwe?: number; // supplier outstanding (cents)
@@ -70,14 +72,20 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
       key: "name",
       header: "Name",
       sortKey: "name",
-      render: (r) => (
-        <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{r.name}</p>
-          {r.email && (
-            <p className="text-xs text-muted-foreground truncate">{r.email}</p>
-          )}
-        </div>
-      ),
+      render: (r) => {
+        const addr = formatContactAddress(r.addresses);
+        return (
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{r.name}</p>
+            {r.email && (
+              <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+            )}
+            {addr && (
+              <p className="text-[11px] text-muted-foreground/80 truncate" title={addr}>{addr}</p>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "type",

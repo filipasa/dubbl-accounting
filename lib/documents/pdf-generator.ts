@@ -24,10 +24,12 @@ interface OrgInfo {
 
 interface LineItem {
   description: string;
+  shortDescription?: string | null;
   quantity: number;
   unitPrice: number;
   taxAmount: number;
   amount: number;
+  imageUrl?: string | null;
 }
 
 interface InvoiceData {
@@ -200,14 +202,23 @@ export function generateDocumentHtml(
     ? replaceTemplatePlaceholders(template.footerHtml, templateVars)
     : "";
 
+  const hasAnyImage = doc.lines.some((l) => !!l.imageUrl);
   const linesHtml = doc.lines
     .map(
       (line) => `
     <tr>
-      <td style="padding:6px 0;font-size:13px;">${escapeHtml(line.description)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${(line.quantity / 100).toFixed(2)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${formatMoney(line.amount, doc.currencyCode)}</td>
+      <td style="padding:6px 0;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:1px;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
+          <div>
+            <div style="font-weight:500;">${escapeHtml(line.description)}</div>
+            ${line.shortDescription ? `<div style="font-size:11px;color:#6b7280;white-space:pre-line;margin-top:2px;">${escapeHtml(line.shortDescription)}</div>` : ""}
+          </div>
+        </div>
+      </td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, doc.currencyCode)}</td>
     </tr>`
     )
     .join("");
@@ -445,14 +456,23 @@ export function generateInvoiceHtml(
     ? replaceTemplatePlaceholders(template.footerHtml, templateVars)
     : "";
 
+  const hasAnyImage = invoice.lines.some((l) => !!l.imageUrl);
   const linesHtml = invoice.lines
     .map(
       (line) => `
     <tr>
-      <td style="padding:6px 0;font-size:13px;">${escapeHtml(line.description)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${(line.quantity / 100).toFixed(2)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${formatMoney(line.unitPrice, invoice.currencyCode)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;">${formatMoney(line.amount, invoice.currencyCode)}</td>
+      <td style="padding:6px 0;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:1px;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
+          <div>
+            <div style="font-weight:500;">${escapeHtml(line.description)}</div>
+            ${line.shortDescription ? `<div style="font-size:11px;color:#6b7280;white-space:pre-line;margin-top:2px;">${escapeHtml(line.shortDescription)}</div>` : ""}
+          </div>
+        </div>
+      </td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, invoice.currencyCode)}</td>
+      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, invoice.currencyCode)}</td>
     </tr>`
     )
     .join("");

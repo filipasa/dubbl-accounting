@@ -21,6 +21,7 @@ import {
   checkApprovalRequired,
   createApprovalRequest,
 } from "@/lib/approvals/engine";
+import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 
 const lineSchema = z.object({
   description: z.string().min(1),
@@ -39,6 +40,8 @@ const lineSchema = z.object({
   warehouseId: z.string().nullable().optional(),
   // Per-line price list override; falls back to the document-level priceListId.
   priceListId: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  shortDescription: z.string().nullable().optional(),
 });
 
 const createSchema = z.object({
@@ -243,6 +246,8 @@ export async function POST(request: Request) {
         projectId: l.projectId || null,
         inventoryItemId: l.inventoryItemId || null,
         warehouseId: l.warehouseId || null,
+        imageUrl: l.imageUrl || null,
+        shortDescription: l.shortDescription || null,
         sortOrder: i,
       };
     });
@@ -260,15 +265,15 @@ export async function POST(request: Request) {
       projectedOutstanding: number;
       exceededBy: number;
     } | null = null;
+    let customerContact: any = null;
     {
-      const contactRecord = await db.query.contact.findFirst({
+      customerContact = await db.query.contact.findFirst({
         where: and(
           eq(contact.id, parsed.contactId),
           eq(contact.organizationId, ctx.organizationId)
         ),
-        columns: { creditLimit: true },
       });
-      const creditLimit = contactRecord?.creditLimit ?? null;
+      const creditLimit = customerContact?.creditLimit ?? null;
       if (creditLimit != null) {
         const [dueRow] = await db
           .select({
@@ -319,6 +324,9 @@ export async function POST(request: Request) {
       }
     }
 
+    const recipientSnapshot = customerContact ? buildRecipientSnapshot(customerContact) : null;
+    const senderSnapshot = await buildSenderSnapshot(ctx.organizationId);
+
     const [created] = await db
       .insert(invoice)
       .values({
@@ -337,6 +345,8 @@ export async function POST(request: Request) {
         currencyCode,
         invoiceType: parsed.invoiceType,
         depositPercent: parsed.depositPercent ?? null,
+        senderSnapshot,
+        recipientSnapshot,
         // Created as the schema default ('draft'); when submitForApproval is set
         // we move it to 'pending_approval' below, but only after confirming an
         // active approval workflow exists and an approval_request is created.

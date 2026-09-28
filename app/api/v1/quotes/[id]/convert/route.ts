@@ -8,6 +8,7 @@ import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { getNextNumber } from "@/lib/api/numbering";
+import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 import { z } from "zod";
 
 // Progress / milestone billing.
@@ -106,6 +107,8 @@ export async function POST(
       projectId: string | null;
       inventoryItemId: string | null;
       warehouseId: string | null;
+      imageUrl: string | null;
+      shortDescription: string | null;
       sortOrder: number;
     };
 
@@ -147,6 +150,8 @@ export async function POST(
           projectId: null,
           inventoryItemId: null,
           warehouseId: null,
+          imageUrl: ql.imageUrl,
+          shortDescription: ql.shortDescription,
           sortOrder: i,
         };
       });
@@ -170,6 +175,8 @@ export async function POST(
           projectId: null,
           inventoryItemId: null,
           warehouseId: null,
+          imageUrl: ql.imageUrl,
+          shortDescription: ql.shortDescription,
           sortOrder: i,
         };
       });
@@ -190,6 +197,8 @@ export async function POST(
           projectId: null,
           inventoryItemId: null,
           warehouseId: null,
+          imageUrl: ql.imageUrl,
+          shortDescription: ql.shortDescription,
           sortOrder: i,
         }));
       } else {
@@ -208,6 +217,8 @@ export async function POST(
           projectId: null,
           inventoryItemId: null,
           warehouseId: null,
+          imageUrl: ql.imageUrl,
+          shortDescription: ql.shortDescription,
           sortOrder: i,
         }));
       }
@@ -245,7 +256,6 @@ export async function POST(
     const today = new Date().toISOString().split("T")[0];
     const contactRecord = await db.query.contact.findFirst({
       where: eq(contact.id, found.contactId),
-      columns: { paymentTermsDays: true },
     });
     let termsDays = contactRecord?.paymentTermsDays;
     if (termsDays == null) {
@@ -258,6 +268,9 @@ export async function POST(
     const dueDateObj = new Date(today + "T00:00:00Z");
     dueDateObj.setUTCDate(dueDateObj.getUTCDate() + (termsDays || 30));
     const dueDate = dueDateObj.toISOString().split("T")[0];
+
+    const recipientSnapshot = contactRecord ? buildRecipientSnapshot(contactRecord) : null;
+    const senderSnapshot = await buildSenderSnapshot(ctx.organizationId);
 
     const newBilledTotal = alreadyBilled + invoiceTotal;
     // Treat within-one-cent of full as fully billed (rounding tolerance).
@@ -280,6 +293,8 @@ export async function POST(
           amountPaid: 0,
           amountDue: invoiceTotal,
           currencyCode: found.currencyCode,
+          senderSnapshot,
+          recipientSnapshot,
           createdBy: ctx.userId,
         })
         .returning();
@@ -298,6 +313,8 @@ export async function POST(
             taxAmount: l.taxAmount,
             amount: l.amount,
             costCenterId: l.costCenterId,
+            imageUrl: l.imageUrl,
+            shortDescription: l.shortDescription,
             sortOrder: l.sortOrder,
           }))
         );

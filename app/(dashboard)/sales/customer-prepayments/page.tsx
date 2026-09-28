@@ -298,7 +298,7 @@ export default function CustomerPrepaymentsPage() {
                       <p className="text-[11px] text-muted-foreground">Credit on account</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+$500.00</span>
+                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">+{formatMoney(50000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 bg-blue-50/30 dark:bg-blue-950/10">
                   <div className="flex items-center gap-3">
@@ -310,14 +310,14 @@ export default function CustomerPrepaymentsPage() {
                       <p className="text-[11px] text-muted-foreground">INV-0042</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium">-$300.00</span>
+                  <span className="font-mono text-sm font-medium">-{formatMoney(30000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="size-7" />
                     <p className="text-sm font-semibold">Credit left over</p>
                   </div>
-                  <span className="font-mono text-sm font-bold">$200.00</span>
+                  <span className="font-mono text-sm font-bold">{formatMoney(20000)}</span>
                 </div>
               </div>
             </div>

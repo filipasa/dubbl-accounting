@@ -83,6 +83,8 @@ export async function GET(
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
         amount: l.amount,
+        imageUrl: l.imageUrl || null,
+        shortDescription: l.shortDescription || null,
       })),
       subtotal: inv.subtotal,
       taxTotal: inv.taxTotal,

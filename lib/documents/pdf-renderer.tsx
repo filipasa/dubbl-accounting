@@ -1,4 +1,7 @@
 import React from "react";
+import path from "path";
+import fs from "fs";
+import { execSync } from "child_process";
 import {
   Document,
   Page,
@@ -9,6 +12,7 @@ import {
   Svg,
   Path,
   Link,
+  Image,
 } from "@react-pdf/renderer";
 
 export interface OrgInfo {
@@ -31,11 +35,13 @@ export interface ContactInfo {
 
 export interface PdfLineItem {
   description: string;
+  shortDescription?: string | null;
   quantity: number;
   unitPrice: number;
   discountPercent?: number;
   taxAmount: number;
   amount: number;
+  imageUrl?: string | null;
 }
 
 export interface PdfInvoiceData {
@@ -97,6 +103,40 @@ function replacePlaceholders(text: string, vars: Record<string, string>): string
   return text.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
 }
 
+function resolvePdfImage(url?: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    const localPath = path.join(process.cwd(), "public", url);
+    if (!fs.existsSync(localPath)) return null;
+
+    const ext = path.extname(localPath).toLowerCase();
+    // @react-pdf/renderer natively supports PNG and JPEG.
+    if (ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
+      return localPath;
+    }
+
+    // Convert non-PNG/JPEG to PNG
+    const pngPath = localPath.replace(/\.[^.]+$/, ".png");
+    if (fs.existsSync(pngPath)) {
+      return pngPath;
+    }
+
+    try {
+      execSync(`sips -s format png "${localPath}" --out "${pngPath}"`, { stdio: "ignore" });
+      if (fs.existsSync(pngPath)) {
+        return pngPath;
+      }
+    } catch {
+      // Fallback
+    }
+    return localPath;
+  }
+  return null;
+}
+
 // Colors
 const dark = "#111827";
 const gray = "#6b7280";
@@ -124,10 +164,26 @@ const s = StyleSheet.create({
   dueSummary: { fontSize: 14, fontFamily: "Helvetica-Bold", color: dark, marginBottom: 20 },
   // Table
   table: { marginBottom: 0 },
-  tableHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: dark, paddingBottom: 6, marginBottom: 4 },
+  tableHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: dark, paddingBottom: 6 },
   th: { fontSize: 8, color: gray },
-  tableRow: { flexDirection: "row", paddingVertical: 4 },
+  tableRow: { flexDirection: "row", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: lightGray },
   cellDesc: { flex: 3 },
+  lineImageWrapper: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    overflow: "hidden",
+    marginRight: 8,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lineImageSpacer: {
+    width: 22,
+    height: 22,
+    marginRight: 8,
+  },
+  lineImage: { width: 22, height: 22, objectFit: "cover" },
   cellQty: { flex: 0.6, textAlign: "right" },
   cellPrice: { flex: 1.2, textAlign: "right" },
   cellDiscount: { flex: 0.8, textAlign: "right" },
@@ -179,6 +235,7 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
   const amountDue = inv.amountDue ?? inv.total;
   const amountPaid = inv.amountPaid ?? 0;
   const hasDiscount = inv.lines.some((l) => l.discountPercent && l.discountPercent > 0);
+  const hasAnyLineImage = inv.lines.some((l) => !!resolvePdfImage(l.imageUrl));
 
   // The second-date row and the headline/footer summary are invoice-shaped by
   // default ("Date due" / "{amount} due {date}"). Other document types override
@@ -272,19 +329,38 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
             {hasDiscount && <Text style={[s.th, s.cellDiscount]}>Discount</Text>}
             <Text style={[s.th, s.cellAmount]}>Amount</Text>
           </View>
-          {inv.lines.map((line, i) => (
-            <View key={i} style={s.tableRow}>
-              <Text style={[s.cellDesc, { fontSize: 10 }]}>{line.description}</Text>
-              <Text style={[s.cellQty, { color: dark }]}>{(line.quantity / 100).toFixed(2)}</Text>
-              <Text style={[s.cellPrice, { color: dark }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
-              {hasDiscount && (
-                <Text style={[s.cellDiscount, { color: dark }]}>
-                  {line.discountPercent ? `${(line.discountPercent / 100).toFixed(2)}%` : "-"}
-                </Text>
-              )}
-              <Text style={[s.cellAmount, { color: dark }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
-            </View>
-          ))}
+          {inv.lines.map((line, i) => {
+            const resolvedImg = resolvePdfImage(line.imageUrl);
+            return (
+              <View key={i} style={s.tableRow}>
+                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "flex-start" }]}>
+                  {resolvedImg ? (
+                    <View style={s.lineImageWrapper}>
+                      <Image src={resolvedImg} style={s.lineImage} />
+                    </View>
+                  ) : hasAnyLineImage ? (
+                    <View style={s.lineImageSpacer} />
+                  ) : null}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 9.5, color: dark, fontFamily: "Helvetica-Bold" }}>{line.description}</Text>
+                    {line.shortDescription && (
+                      <Text style={{ fontSize: 8, color: gray, marginTop: 1.5, lineHeight: 1.3 }}>
+                        {line.shortDescription}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Text style={[s.cellQty, { color: dark }]}>{(line.quantity / 100).toFixed(2)}</Text>
+                <Text style={[s.cellPrice, { color: dark }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
+                {hasDiscount && (
+                  <Text style={[s.cellDiscount, { color: dark }]}>
+                    {line.discountPercent ? `${(line.discountPercent / 100).toFixed(2)}%` : "-"}
+                  </Text>
+                )}
+                <Text style={[s.cellAmount, { color: dark }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Totals */}

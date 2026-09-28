@@ -18,6 +18,31 @@ export function decimalToCents(value: string | number, decimals = 2): number {
   return Math.round(num * Math.pow(10, decimals));
 }
 
+let globalDefaultCurrency = "GBP";
+
+/** Set or update the active organization's default currency in runtime memory and storage */
+export function setDefaultCurrency(currency: string) {
+  if (currency && typeof currency === "string") {
+    globalDefaultCurrency = currency.toUpperCase();
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("activeOrgCurrency", globalDefaultCurrency);
+      } catch {}
+    }
+  }
+}
+
+/** Get the active organization's default currency (client storage or memory fallback) */
+export function getDefaultCurrency(): string {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("activeOrgCurrency");
+      if (stored) return stored.toUpperCase();
+    } catch {}
+  }
+  return globalDefaultCurrency;
+}
+
 /**
  * Currency-aware conversions: scale by the currency's REAL minor units, so a
  * 0-decimal currency (JPY/KRW) and a 3-decimal one (KWD/BHD/OMR) round-trip
@@ -28,30 +53,32 @@ export function decimalToCents(value: string | number, decimals = 2): number {
  */
 export function decimalToMinorUnits(
   value: string | number,
-  currency = "USD"
+  currency?: string
 ): number {
-  return decimalToCents(value, getCurrencyMinorUnits(currency));
+  return decimalToCents(value, getCurrencyMinorUnits(currency || getDefaultCurrency()));
 }
 
-export function minorUnitsToDecimal(units: number, currency = "USD"): string {
-  return centsToDecimal(units, getCurrencyMinorUnits(currency));
+export function minorUnitsToDecimal(units: number, currency?: string): string {
+  return centsToDecimal(units, getCurrencyMinorUnits(currency || getDefaultCurrency()));
 }
 
 /**
  * Format an integer minor-unit amount as a currency string.
  * Scales and sets fraction digits by the currency's real minor units, so
- * 1250 → "$12.50" (USD), 1250 → "¥1,250" (JPY), 1250 → "KWD 1.250" (KWD).
+ * 1250 → "£12.50" (GBP), 1250 → "$12.50" (USD), 1250 → "¥1,250" (JPY).
+ * Defaults to the active organization's currency (GBP for UK organizations).
  */
 export function formatMoney(
   cents: number,
-  currency = "USD",
+  currency?: string,
   locale = "en-US"
 ): string {
-  const minorUnits = getCurrencyMinorUnits(currency);
-  const amount = cents / Math.pow(10, minorUnits);
+  const resolvedCurrency = currency || getDefaultCurrency();
+  const minorUnits = getCurrencyMinorUnits(resolvedCurrency);
+  const amount = (cents || 0) / Math.pow(10, minorUnits);
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency,
+    currency: resolvedCurrency,
     minimumFractionDigits: minorUnits,
     maximumFractionDigits: minorUnits,
   }).format(amount);

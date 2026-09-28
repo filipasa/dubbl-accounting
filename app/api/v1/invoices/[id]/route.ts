@@ -10,6 +10,7 @@ import { notDeleted, softDelete } from "@/lib/db/soft-delete";
 import { toBaseAmounts } from "@/lib/currency/base-amount";
 import { decimalToMinorUnits } from "@/lib/money";
 import { preloadTaxRates, calcTax } from "@/lib/api/tax-calculator";
+import { currencyCodeSchema } from "@/lib/currency/zod";
 import { z } from "zod";
 
 const lineSchema = z.object({
@@ -24,13 +25,19 @@ const lineSchema = z.object({
   // When set, sending this invoice relieves inventory and posts COGS for the item.
   inventoryItemId: z.string().nullable().optional(),
   warehouseId: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  shortDescription: z.string().nullable().optional(),
 });
 
 const updateSchema = z.object({
+  contactId: z.string().optional(),
   issueDate: z.string().optional(),
   dueDate: z.string().optional(),
   reference: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  currencyCode: currencyCodeSchema.optional(),
+  invoiceType: z.enum(["standard", "deposit", "retainer"]).optional(),
+  depositPercent: z.number().nullable().optional(),
   // When provided, fully replaces the invoice's line set and recomputes totals.
   lines: z.array(lineSchema).min(1).optional(),
 });
@@ -129,10 +136,16 @@ export async function PATCH(
     // Build the invoice-field patch (only set keys the caller actually sent so we
     // don't clobber existing values with undefined).
     const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (parsed.contactId !== undefined) patch.contactId = parsed.contactId;
     if (parsed.issueDate !== undefined) patch.issueDate = parsed.issueDate;
     if (parsed.dueDate !== undefined) patch.dueDate = parsed.dueDate;
     if (parsed.reference !== undefined) patch.reference = parsed.reference || null;
     if (parsed.notes !== undefined) patch.notes = parsed.notes || null;
+    if (parsed.currencyCode !== undefined) patch.currencyCode = parsed.currencyCode;
+    if (parsed.invoiceType !== undefined) patch.invoiceType = parsed.invoiceType;
+    if (parsed.depositPercent !== undefined) patch.depositPercent = parsed.depositPercent;
+
+    const targetCurrency = parsed.currencyCode || existing.currencyCode;
 
     // When lines are supplied, replace the whole line set, persisting the
     // inventory/job-costing dimensions, and recompute the invoice totals.
@@ -144,7 +157,7 @@ export async function PATCH(
 
       let subtotal = 0;
       const processedLines = parsed.lines.map((l, i) => {
-        const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, existing.currencyCode);
+        const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, targetCurrency);
         const discountAmount = l.discountPercent
           ? Math.round((grossAmount * l.discountPercent) / 10000)
           : 0;
@@ -158,7 +171,7 @@ export async function PATCH(
           invoiceId: id,
           description: l.description,
           quantity: Math.round(l.quantity * 100),
-          unitPrice: decimalToMinorUnits(l.unitPrice, existing.currencyCode),
+          unitPrice: decimalToMinorUnits(l.unitPrice, targetCurrency),
           accountId: l.accountId || null,
           taxRateId,
           discountPercent: l.discountPercent,
@@ -168,6 +181,8 @@ export async function PATCH(
           projectId: l.projectId || null,
           inventoryItemId: l.inventoryItemId || null,
           warehouseId: l.warehouseId || null,
+          imageUrl: l.imageUrl || null,
+          shortDescription: l.shortDescription || null,
           sortOrder: i,
         };
       });

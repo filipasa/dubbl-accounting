@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { quote, quoteLine, inventoryItem } from "@/lib/db/schema";
+import { quote, quoteLine, inventoryItem, organization } from "@/lib/db/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -30,6 +30,8 @@ const lineSchema = z.object({
   inventoryItemId: z.string().nullable().optional(),
   // Per-line price list override; falls back to the document-level priceListId.
   priceListId: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  shortDescription: z.string().nullable().optional(),
 });
 
 const createSchema = z.object({
@@ -38,7 +40,7 @@ const createSchema = z.object({
   expiryDate: z.string().min(1),
   reference: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  currencyCode: currencyCodeSchema.default("USD"),
+  currencyCode: currencyCodeSchema.optional(),
   // Default price list applied to inventory-item lines that don't carry their own.
   priceListId: z.string().nullable().optional(),
   lines: z.array(lineSchema).min(1),
@@ -161,12 +163,20 @@ export async function POST(request: Request) {
         discountPercent: l.discountPercent,
         taxAmount,
         amount,
+        imageUrl: l.imageUrl || null,
+        shortDescription: l.shortDescription || null,
         sortOrder: i,
       };
     });
 
     const taxTotal = processedLines.reduce((sum, l) => sum + l.taxAmount, 0);
     const total = subtotal + taxTotal;
+
+    const org = await db.query.organization.findFirst({
+      where: eq(organization.id, ctx.organizationId),
+      columns: { defaultCurrency: true },
+    });
+    const currencyCode = parsed.currencyCode || org?.defaultCurrency || "GBP";
 
     const [created] = await db
       .insert(quote)
@@ -181,7 +191,7 @@ export async function POST(request: Request) {
         subtotal,
         taxTotal,
         total,
-        currencyCode: parsed.currencyCode,
+        currencyCode,
         createdBy: ctx.userId,
       })
       .returning();

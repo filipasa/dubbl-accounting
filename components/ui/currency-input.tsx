@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
+import { getDefaultCurrency } from "@/lib/money";
 
 interface CurrencyInputProps {
   value: string | number;
@@ -28,6 +30,12 @@ export function CurrencyInput({
 }: CurrencyInputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  // If prefix is not specified, or was passed as "$", resolve to the active organization's currency symbol (e.g. £ for GBP)
+  const resolvedPrefix =
+    prefix && prefix !== "$"
+      ? prefix
+      : getCurrencySymbol(getDefaultCurrency());
+
   return (
     <div
       className={cn(
@@ -39,12 +47,12 @@ export function CurrencyInput({
       )}
       onClick={() => inputRef.current?.focus()}
     >
-      {prefix && (
+      {resolvedPrefix && (
         <span className={cn(
           "select-none text-muted-foreground pl-2.5 font-mono",
           size === "sm" ? "text-xs" : "text-sm",
         )}>
-          {prefix}
+          {resolvedPrefix}
         </span>
       )}
       {name && <input type="hidden" name={name} value={value} />}

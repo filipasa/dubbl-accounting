@@ -8,7 +8,8 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, getDefaultCurrency } from "@/lib/money";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { cn } from "@/lib/utils";
 import {
   AreaChart,
@@ -143,10 +144,26 @@ export default function ExpenseAnalyticsPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                    <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      className="text-muted-foreground"
+                      tickFormatter={(v) => {
+                        const sign = v < 0 ? "-" : "";
+                        const abs = Math.abs(v);
+                        const sym = getCurrencySymbol(getDefaultCurrency());
+                        if (abs >= 1000) return `${sign}${sym}${(abs / 1000).toFixed(0)}k`;
+                        return `${sign}${sym}${abs}`;
+                      }}
+                    />
                     <Tooltip
                       contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                      formatter={(value) => [`$${Number(value).toFixed(2)}`]}
+                      formatter={(value) => {
+                        const val = Number(value) || 0;
+                        const sign = val < 0 ? "-" : "";
+                        const abs = Math.abs(val);
+                        const sym = getCurrencySymbol(getDefaultCurrency());
+                        return [`${sign}${sym}${abs.toFixed(2)}`];
+                      }}
                     />
                     <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#ef4444" fill="url(#expGrad)" strokeWidth={2} />
                   </AreaChart>

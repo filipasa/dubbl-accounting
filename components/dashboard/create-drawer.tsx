@@ -188,6 +188,17 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
 
+    const addressLine = ((form.get("addressLine") as string) || "").trim();
+    const city = ((form.get("city") as string) || "").trim();
+    const postalCode = ((form.get("postalCode") as string) || "").trim();
+    const addresses = (addressLine || city || postalCode) ? {
+      billing: {
+        ...(addressLine ? { line1: addressLine } : {}),
+        ...(city ? { city } : {}),
+        ...(postalCode ? { postalCode } : {}),
+      },
+    } : null;
+
     try {
       const res = await fetch("/api/v1/contacts", {
         method: "POST",
@@ -199,6 +210,7 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
           taxNumber: form.get("taxNumber") || null,
           type: form.get("type") || "customer",
           paymentTermsDays: parseInt(form.get("paymentTermsDays") as string) || 30,
+          addresses,
           notes: form.get("notes") || null,
         }),
       });
@@ -245,6 +257,26 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
                 <div className="space-y-2">
                   <Label htmlFor="drawer-contact-phone">Phone</Label>
                   <Input id="drawer-contact-phone" name="phone" placeholder="+1 (555) 000-0000" />
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-4">
+              <SectionLabel>Address</SectionLabel>
+              <div className="space-y-2">
+                <Label htmlFor="drawer-contact-address">Address Line</Label>
+                <Input id="drawer-contact-address" name="addressLine" placeholder="Street address or line 1" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="drawer-contact-city">City</Label>
+                  <Input id="drawer-contact-city" name="city" placeholder="City or town" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="drawer-contact-postcode">Postcode</Label>
+                  <Input id="drawer-contact-postcode" name="postalCode" placeholder="Postcode / ZIP" />
                 </div>
               </div>
             </div>
@@ -576,6 +608,8 @@ function InvoiceDrawer({ open, onClose }: { open: boolean; onClose: () => void }
             unitPrice: parseFloat(l.unitPrice) || 0,
             accountId: l.accountId || null,
             taxRateId: l.taxRateId || null,
+            imageUrl: l.imageUrl || null,
+            shortDescription: l.shortDescription || null,
           })),
         }),
       });
@@ -695,7 +729,7 @@ function InvoiceDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
             <div className="space-y-4">
               <SectionLabel>Line Items</SectionLabel>
-              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
+              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" defaultToStandardRate={true} />
             </div>
 
             <div className="h-px bg-border" />
@@ -1184,6 +1218,8 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
             unitPrice: parseFloat(l.unitPrice) || 0,
             accountId: l.accountId || null,
             taxRateId: l.taxRateId || null,
+            imageUrl: l.imageUrl || null,
+            shortDescription: l.shortDescription || null,
           })),
         }),
       });
@@ -1244,7 +1280,7 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 
             <div className="space-y-4">
               <SectionLabel>Line Items</SectionLabel>
-              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
+              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" defaultToStandardRate={true} />
             </div>
 
             <div className="h-px bg-border" />

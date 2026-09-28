@@ -12,7 +12,8 @@ import {
   Legend,
 } from "recharts";
 import { TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, getDefaultCurrency } from "@/lib/money";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { cn } from "@/lib/utils";
 
 interface ForecastWeek {
@@ -25,6 +26,7 @@ interface ForecastWeek {
 }
 
 interface ForecastData {
+  currency?: string;
   forecastPeriod: { start: string; end: string; weeks: number };
   totalInflows: number;
   totalOutflows: number;
@@ -38,37 +40,53 @@ const periods = [
   { label: "90 days", weeks: 13 },
 ];
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { dataKey: string; value: number }[]; label?: string }) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  currencySymbol,
+}: {
+  active?: boolean;
+  payload?: { dataKey: string; value: number }[];
+  label?: string;
+  currencySymbol?: string;
+}) {
   if (!active || !payload?.length) return null;
+  const sym = currencySymbol || getCurrencySymbol(getDefaultCurrency());
   return (
     <div className="rounded-lg border bg-card p-3 shadow-md">
       <p className="text-xs font-medium mb-1.5">{label}</p>
-      {payload.map((entry) => (
-        <div
-          key={entry.dataKey}
-          className="flex items-center justify-between gap-4 text-xs"
-        >
-          <span className="text-muted-foreground capitalize">
-            {entry.dataKey}
-          </span>
-          <span
-            className={cn(
-              "font-mono tabular-nums font-medium",
-              entry.dataKey === "inflows"
-                ? "text-emerald-600"
-                : entry.dataKey === "outflows"
-                ? "text-red-600"
-                : ""
-            )}
+      {payload.map((entry) => {
+        const val = entry.value ?? 0;
+        const isNeg = val < 0;
+        const absVal = Math.abs(val);
+        return (
+          <div
+            key={entry.dataKey}
+            className="flex items-center justify-between gap-4 text-xs"
           >
-            $
-            {entry.value.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-        </div>
-      ))}
+            <span className="text-muted-foreground capitalize">
+              {entry.dataKey}
+            </span>
+            <span
+              className={cn(
+                "font-mono tabular-nums font-medium",
+                entry.dataKey === "inflows"
+                  ? "text-emerald-600"
+                  : entry.dataKey === "outflows"
+                  ? "text-red-600"
+                  : ""
+              )}
+            >
+              {isNeg ? "-" : ""}{sym}
+              {absVal.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -100,6 +118,8 @@ export function CashFlowWidget() {
     })();
     return () => { active = false; controller.abort(); };
   }, [weeks]);
+
+  const sym = getCurrencySymbol(forecast?.currency || getDefaultCurrency());
 
   const chartData =
     forecast?.weeks?.map((w) => ({
@@ -194,11 +214,16 @@ export function CashFlowWidget() {
                 <YAxis
                   tick={{ fontSize: 11 }}
                   className="text-muted-foreground"
-                  tickFormatter={(v) =>
-                    `$${(v / 1000).toFixed(0)}k`
-                  }
+                  tickFormatter={(v) => {
+                    const sign = v < 0 ? "-" : "";
+                    const abs = Math.abs(v);
+                    if (abs >= 1000) {
+                      return `${sign}${sym}${(abs / 1000).toFixed(0)}k`;
+                    }
+                    return `${sign}${sym}${abs}`;
+                  }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currencySymbol={sym} />} />
                 <Legend
                   iconSize={8}
                   wrapperStyle={{ fontSize: "11px" }}
@@ -233,13 +258,13 @@ export function CashFlowWidget() {
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Expected In</p>
               <p className="text-sm font-bold font-mono tabular-nums text-emerald-600">
-                {formatMoney(forecast.totalInflows)}
+                {formatMoney(forecast.totalInflows, forecast.currency)}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Expected Out</p>
               <p className="text-sm font-bold font-mono tabular-nums text-red-600">
-                {formatMoney(forecast.totalOutflows)}
+                {formatMoney(forecast.totalOutflows, forecast.currency)}
               </p>
             </div>
             <div className="text-center">
@@ -252,7 +277,7 @@ export function CashFlowWidget() {
                     : "text-red-600"
                 )}
               >
-                {formatMoney(forecast.netForecast)}
+                {formatMoney(forecast.netForecast, forecast.currency)}
               </p>
             </div>
           </div>

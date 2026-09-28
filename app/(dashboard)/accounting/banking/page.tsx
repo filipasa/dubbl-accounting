@@ -198,7 +198,7 @@ export default function BankingPage() {
           {/* Preview stats */}
           <div className="w-full max-w-md grid grid-cols-2 gap-3 opacity-30">
             {[
-              { label: "Total Balance", value: "$0.00" },
+              { label: "Total Balance", value: formatMoney(0) },
               { label: "Accounts", value: "0" },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-xl border border-dashed p-4 text-center">

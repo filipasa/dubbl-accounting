@@ -29,6 +29,7 @@ import {
 } from "@/lib/data/business-types";
 import { INDUSTRIES, type Industry } from "@/lib/data/industries";
 import { REFERRAL_SOURCES, type ReferralSource } from "@/lib/data/referral-sources";
+import { setDefaultCurrency } from "@/lib/money";
 
 const STEPS = [
   { label: "Organization", icon: Building2 },
@@ -46,6 +47,7 @@ interface OrgData {
   countryCode: string | null;
   businessType: string | null;
   industrySector: string | null;
+  defaultCurrency?: string | null;
 }
 
 export function OnboardingWizard() {
@@ -100,6 +102,10 @@ export function OnboardingWizard() {
               if (org.countryCode) setCountryCode(org.countryCode);
               if (org.businessType) setBusinessType(org.businessType);
               if (org.industrySector) setIndustry(org.industrySector);
+              if (org.defaultCurrency) {
+                localStorage.setItem("activeOrgCurrency", org.defaultCurrency);
+                setDefaultCurrency(org.defaultCurrency);
+              }
             }
           })
           .catch(() => {})
@@ -205,6 +211,10 @@ export function OnboardingWizard() {
         const data = await res.json();
         throw new Error(data.error || "Failed to update organization");
       }
+
+      const curr = selectedCountry?.defaultCurrency ?? "GBP";
+      localStorage.setItem("activeOrgCurrency", curr);
+      setDefaultCurrency(curr);
 
       window.location.href = "/dashboard";
     } catch (err) {

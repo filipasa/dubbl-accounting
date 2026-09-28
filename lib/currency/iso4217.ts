@@ -133,3 +133,24 @@ export function getCurrencyMinorUnits(code: string): number {
     return 2;
   }
 }
+
+/**
+ * Returns the short display symbol for a currency (e.g. £ for GBP, $ for USD, € for EUR).
+ */
+export function getCurrencySymbol(code: string): string {
+  if (!code) return "£";
+  const upper = code.toUpperCase();
+  if (upper === "GBP") return "£";
+  if (upper === "EUR") return "€";
+  if (upper === "USD") return "$";
+  try {
+    const nf = new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: upper,
+      currencyDisplay: "narrowSymbol",
+    });
+    return nf.formatToParts(0).find((p) => p.type === "currency")?.value ?? upper;
+  } catch {
+    return upper;
+  }
+}

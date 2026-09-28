@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Send, DollarSign, Ban, Copy, Clock, Mail, Banknote, Download, AlertTriangle, X, Pencil, Loader2, FileX, Percent, Wallet, ThumbsUp, Bell } from "lucide-react";
+import { ArrowLeft, Send, DollarSign, Ban, Copy, Clock, Mail, Banknote, Download, AlertTriangle, X, Pencil, Loader2, FileX, Percent, Wallet, ThumbsUp, Bell, FileText } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,11 +29,15 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatMoney, minorUnitsToDecimal } from "@/lib/money";
+import { ContactPicker } from "@/components/dashboard/contact-picker";
+import { LineItemsEditor, type LineItem } from "@/components/dashboard/line-items-editor";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { DualAmount } from "@/components/ui/dual-amount";
 import { RateNote, type RateInfo } from "@/components/ui/rate-note";
 import { useConfirm } from "@/lib/hooks/use-confirm";
@@ -42,6 +46,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
 import { EmailHistory } from "@/components/dashboard/email-history";
 import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
+import { formatContactAddress } from "@/lib/documents/address";
 import Link from "next/link";
 
 interface InvoiceDetail {
@@ -62,7 +67,7 @@ interface InvoiceDetail {
   reference: string | null;
   notes: string | null;
   contactId: string;
-  contact: { name: string; email: string | null } | null;
+  contact: { name: string; email: string | null; addresses?: any } | null;
   lines: {
     id: string;
     description: string;
@@ -70,6 +75,8 @@ interface InvoiceDetail {
     unitPrice: number;
     amount: number;
     taxAmount: number;
+    imageUrl?: string | null;
+    shortDescription?: string | null;
     account: { code: string; name: string; id: string } | null;
     taxRate: { id: string; name: string; rate: number } | null;
   }[];
@@ -194,6 +201,7 @@ export default function InvoiceDetailPage() {
   const [payLoading, setPayLoading] = useState(false);
   const [payBankAccountId, setPayBankAccountId] = useState<string>("");
   const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [complianceWarnings, setComplianceWarnings] = useState<{ field: string; message: string; severity: "error" | "warning" }[]>([]);
   const [complianceDismissed, setComplianceDismissed] = useState(false);
@@ -454,7 +462,7 @@ export default function InvoiceDetailPage() {
     setSenderTaxId(senderSnapshot?.taxId || "");
     setSenderReg(senderSnapshot?.registrationNumber || "");
     setRecipientName(recipientSnapshot?.name || inv?.contact?.name || "");
-    setRecipientAddress(recipientSnapshot?.address || "");
+    setRecipientAddress(recipientSnapshot?.address || formatContactAddress(inv?.contact?.addresses) || "");
     setRecipientEmail(recipientSnapshot?.email || inv?.contact?.email || "");
     setRecipientTaxNumber(recipientSnapshot?.taxNumber || "");
     setSnapshotSheetOpen(true);
@@ -659,6 +667,7 @@ export default function InvoiceDetailPage() {
     ? Math.min(100, Math.round((inv.amountPaid / inv.total) * 100))
     : inv.amountPaid > 0 ? 100 : 0;
   const sc = statusConfig[inv.status] || statusConfig.draft;
+  const hasAnyLineImage = inv.lines.some((l) => !!l.imageUrl);
 
   return (
     <ContentReveal>
@@ -739,6 +748,16 @@ export default function InvoiceDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setEditOpen(true)}
+                title="Edit this draft invoice"
+              >
+                <Pencil className="mr-2 size-4" />Edit
+              </Button>
+            )}
+            {inv.status === "draft" && (
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSubmitForApproval}
                 loading={submitting}
                 title="Send this invoice to be reviewed before it goes out to the customer"
@@ -766,7 +785,7 @@ export default function InvoiceDetailPage() {
                     <div className="space-y-2">
                       <Label>Amount</Label>
                       <CurrencyInput
-                        prefix="$"
+                        prefix={getCurrencySymbol(inv.currencyCode)}
                         value={payAmount}
                         onChange={setPayAmount}
                         placeholder={minorUnitsToDecimal(inv.amountDue, inv.currencyCode)}
@@ -843,7 +862,7 @@ export default function InvoiceDetailPage() {
                     <div className="space-y-2">
                       <Label>Custom amount (optional)</Label>
                       <CurrencyInput
-                        prefix="$"
+                        prefix={getCurrencySymbol(inv.currencyCode)}
                         value={interestAmount}
                         onChange={setInterestAmount}
                         placeholder="Use my interest rate"
@@ -966,10 +985,28 @@ export default function InvoiceDetailPage() {
                 {inv.lines.map((line, i) => (
                   <tr key={line.id} className={i < inv.lines.length - 1 ? "border-b border-dashed" : ""}>
                     <td className="px-6 py-3">
-                      <p>{line.description}</p>
-                      {line.account && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{line.account.code} · {line.account.name}</p>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {line.imageUrl ? (
+                          <img
+                            src={line.imageUrl}
+                            alt=""
+                            className="size-9 rounded-full object-cover border shrink-0 bg-muted"
+                          />
+                        ) : hasAnyLineImage ? (
+                          <div className="size-9 shrink-0" />
+                        ) : null}
+                        <div>
+                          <p className="font-medium text-foreground">{line.description}</p>
+                          {line.shortDescription && (
+                            <p className="text-xs text-muted-foreground whitespace-pre-line mt-0.5">
+                              {line.shortDescription}
+                            </p>
+                          )}
+                          {line.account && (
+                            <p className="text-xs text-muted-foreground/70 mt-0.5">{line.account.code} · {line.account.name}</p>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums">{(line.quantity / 100).toFixed(0)}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(line.unitPrice, inv.currencyCode)}</td>
@@ -1190,7 +1227,11 @@ export default function InvoiceDetailPage() {
               <div>
                 <p className="text-[11px] text-muted-foreground mb-1">Bill to</p>
                 <p className="text-sm font-medium">{recipientSnapshot?.name || inv.contact?.name || "-"}</p>
-                {(recipientSnapshot?.address) && <p className="text-xs text-muted-foreground">{recipientSnapshot.address}</p>}
+                {(recipientSnapshot?.address || formatContactAddress(inv.contact?.addresses)) && (
+                  <p className="text-xs text-muted-foreground">
+                    {recipientSnapshot?.address || formatContactAddress(inv.contact?.addresses)}
+                  </p>
+                )}
                 {(recipientSnapshot?.email || inv.contact?.email) && <p className="text-xs text-muted-foreground">{recipientSnapshot?.email || inv.contact?.email}</p>}
                 {recipientSnapshot?.taxNumber && <p className="text-xs text-muted-foreground">Tax: {recipientSnapshot.taxNumber}</p>}
               </div>
@@ -1312,8 +1353,261 @@ export default function InvoiceDetailPage() {
           onSent={handleSendComplete}
         />
 
+        <EditInvoiceSheet
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          inv={inv}
+          onSaved={refetchInvoice}
+        />
+
         {confirmDialog}
       </div>
     </ContentReveal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edit Invoice Drawer
+// ---------------------------------------------------------------------------
+
+function EditInvoiceSheet({
+  open,
+  onClose,
+  inv,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  inv: InvoiceDetail;
+  onSaved: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [contactId, setContactId] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isDepositRetainer, setIsDepositRetainer] = useState(false);
+  const [invoiceType, setInvoiceType] = useState<"deposit" | "retainer">("deposit");
+  const [depositPercent, setDepositPercent] = useState("");
+  const [lines, setLines] = useState<LineItem[]>([]);
+
+  useEffect(() => {
+    if (open && inv) {
+      setContactId(inv.contactId);
+      setIssueDate(inv.issueDate);
+      setDueDate(inv.dueDate);
+      setReference(inv.reference || "");
+      setNotes(inv.notes || "");
+      const isDep = inv.invoiceType === "deposit" || inv.invoiceType === "retainer";
+      setIsDepositRetainer(isDep);
+      setInvoiceType(inv.invoiceType === "retainer" ? "retainer" : "deposit");
+      setDepositPercent(
+        inv.depositPercent ? (inv.depositPercent / 100).toString() : ""
+      );
+      setLines(
+        inv.lines && inv.lines.length > 0
+          ? inv.lines.map((l) => ({
+              description: l.description,
+              quantity: String(l.quantity / 100),
+              unitPrice: minorUnitsToDecimal(l.unitPrice, inv.currencyCode),
+              accountId: l.account?.id || (l as any).accountId || "",
+              taxRateId: l.taxRate?.id || (l as any).taxRateId || "",
+              imageUrl: (l as any).imageUrl || null,
+              shortDescription: (l as any).shortDescription || "",
+            }))
+          : [{ description: "", shortDescription: "", quantity: "1", unitPrice: "", accountId: "", taxRateId: "", imageUrl: null }]
+      );
+    }
+  }, [open, inv]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!contactId) {
+      toast.error("Please select a customer");
+      return;
+    }
+    if (lines.length === 0 || lines.some((l) => !l.description.trim() || !l.unitPrice)) {
+      toast.error("All lines need a description and price");
+      return;
+    }
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    if (!orgId) return;
+
+    setSaving(true);
+    const pct = parseFloat(depositPercent);
+    const depositBasisPoints =
+      isDepositRetainer && depositPercent.trim() !== "" && !Number.isNaN(pct)
+        ? Math.round(pct * 100)
+        : null;
+
+    try {
+      const res = await fetch(`/api/v1/invoices/${inv.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-organization-id": orgId,
+        },
+        body: JSON.stringify({
+          contactId,
+          issueDate,
+          dueDate,
+          reference: reference || null,
+          notes: notes || null,
+          invoiceType: isDepositRetainer ? invoiceType : "standard",
+          depositPercent: isDepositRetainer ? depositBasisPoints : null,
+          lines: lines.map((l) => ({
+            description: l.description,
+            quantity: parseFloat(l.quantity) || 1,
+            unitPrice: parseFloat(l.unitPrice) || 0,
+            accountId: l.accountId || null,
+            taxRateId: l.taxRateId || null,
+            imageUrl: l.imageUrl || null,
+            shortDescription: l.shortDescription || null,
+          })),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update invoice");
+      }
+
+      toast.success("Invoice updated");
+      onClose();
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update invoice");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col">
+        <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+              <FileText className="size-5" />
+            </div>
+            <div>
+              <SheetTitle className="text-lg">Edit Invoice {inv.invoiceNumber}</SheetTitle>
+              <SheetDescription>Update invoice details, line items, or customer.</SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-6 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Invoice Details
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Customer *</Label>
+                  <ContactPicker value={contactId} onChange={setContactId} type="customer" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference</Label>
+                  <Input
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="PO number, etc."
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Issue Date</Label>
+                  <DatePicker value={issueDate} onChange={setIssueDate} placeholder="Issue date" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" />
+                </div>
+              </div>
+              <label className="flex items-start gap-3 rounded-lg border bg-muted/30 px-3 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isDepositRetainer}
+                  onChange={(e) => setIsDepositRetainer(e.target.checked)}
+                  className="mt-0.5 size-4 accent-emerald-600"
+                />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium">This is a deposit / retainer invoice</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Bill the customer up front for a deposit or an ongoing retainer rather than for work already done.
+                  </span>
+                </span>
+              </label>
+              {isDepositRetainer && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Invoice type</Label>
+                    <Select value={invoiceType} onValueChange={(v) => setInvoiceType(v as "deposit" | "retainer")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deposit">Deposit</SelectItem>
+                        <SelectItem value="retainer">Retainer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-invoice-deposit-pct">Deposit % (optional)</Label>
+                    <Input
+                      id="edit-invoice-deposit-pct"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={depositPercent}
+                      onChange={(e) => setDepositPercent(e.target.value)}
+                      placeholder="e.g. 25"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Line Items
+              </p>
+              <LineItemsEditor
+                lines={lines}
+                onChange={setLines}
+                accountTypeFilter={["revenue"]}
+                taxContext="sales"
+                defaultToStandardRate={false}
+              />
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Payment terms, delivery instructions, bank details..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t bg-background/80 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-sm">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }

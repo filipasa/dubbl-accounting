@@ -5,6 +5,7 @@ import {
   bill,
   recurringTemplate,
   recurringTemplateLine,
+  organization,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, notInArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
@@ -181,7 +182,13 @@ export async function GET(request: Request) {
     const totalInflows = entries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0);
     const totalOutflows = entries.filter((e) => e.amount < 0).reduce((s, e) => s + Math.abs(e.amount), 0);
 
+    const org = await db.query.organization.findFirst({
+      where: eq(organization.id, ctx.organizationId),
+      columns: { defaultCurrency: true },
+    });
+
     return NextResponse.json({
+      currency: org?.defaultCurrency ?? "GBP",
       forecastPeriod: { start: today, end: endDateStr, weeks: weeksAhead },
       totalInflows,
       totalOutflows,

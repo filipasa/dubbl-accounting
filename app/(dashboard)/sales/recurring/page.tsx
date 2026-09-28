@@ -394,7 +394,7 @@ export default function RecurringInvoicesPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">Amount</p>
-                      <p className="font-medium font-mono mt-0.5">$299.00</p>
+                      <p className="font-medium font-mono mt-0.5">{formatMoney(29900)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Next invoice</p>

@@ -73,6 +73,7 @@ interface Entry {
   voidedAt: string | null;
   voidReason: string | null;
   createdAt: string;
+  currencyCode?: string | null;
   lines: Line[];
 }
 
@@ -521,7 +522,7 @@ export default function EntryDetailPage() {
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-red-600 dark:text-red-400"
                   )}>
-                    {isBalanced ? "$0.00" : formatMoney(Math.round(Math.abs(totalDebit - totalCredit) * 100))}
+                    {isBalanced ? formatMoney(0, entry?.currencyCode || undefined) : formatMoney(Math.round(Math.abs(totalDebit - totalCredit) * 100), entry?.currencyCode || undefined)}
                   </span>
                 </div>
               </div>

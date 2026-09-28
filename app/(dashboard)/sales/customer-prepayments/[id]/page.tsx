@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -198,7 +199,7 @@ export default function CustomerPrepaymentDetailPage() {
                 <div className="space-y-2">
                   <Label>Amount</Label>
                   <CurrencyInput
-                    prefix="$"
+                    prefix={getCurrencySymbol(cc.currencyCode)}
                     value={applyAmount}
                     onChange={setApplyAmount}
                     placeholder={minorUnitsToDecimal(cc.amountRemaining, cc.currencyCode)}

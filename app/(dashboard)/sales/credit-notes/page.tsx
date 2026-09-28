@@ -304,7 +304,7 @@ export default function CreditNotesPage() {
                       <p className="text-[11px] text-muted-foreground">INV-0042</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium">$1,200.00</span>
+                  <span className="font-mono text-sm font-medium">{formatMoney(120000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5 bg-teal-50/30 dark:bg-teal-950/10">
                   <div className="flex items-center gap-3">
@@ -316,14 +316,14 @@ export default function CreditNotesPage() {
                       <p className="text-[11px] text-muted-foreground">CN-0001</p>
                     </div>
                   </div>
-                  <span className="font-mono text-sm font-medium text-teal-600 dark:text-teal-400">-$200.00</span>
+                  <span className="font-mono text-sm font-medium text-teal-600 dark:text-teal-400">-{formatMoney(20000)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <div className="size-7" />
                     <p className="text-sm font-semibold">New balance</p>
                   </div>
-                  <span className="font-mono text-sm font-bold">$1,000.00</span>
+                  <span className="font-mono text-sm font-bold">{formatMoney(100000)}</span>
                 </div>
               </div>
             </div>

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, getDefaultCurrency } from "@/lib/money";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { cn } from "@/lib/utils";
 import {
   AreaChart,
@@ -39,6 +40,7 @@ export default function CashFlowForecastPage() {
   const [totalInflows, setTotalInflows] = useState(0);
   const [totalOutflows, setTotalOutflows] = useState(0);
   const [netForecast, setNetForecast] = useState(0);
+  const [currency, setCurrency] = useState<string | undefined>();
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -56,6 +58,7 @@ export default function CashFlowForecastPage() {
         setTotalInflows(data.totalInflows || 0);
         setTotalOutflows(data.totalOutflows || 0);
         setNetForecast(data.netForecast || 0);
+        if (data.currency) setCurrency(data.currency);
       })
       .finally(() => {
         if (!cancelled) {
@@ -65,6 +68,8 @@ export default function CashFlowForecastPage() {
       });
     return () => { cancelled = true; };
   }, [weeksAhead]);
+
+  const sym = getCurrencySymbol(currency || getDefaultCurrency());
 
   const chartData = weeks.map((w) => ({
     name: w.weekOf,
@@ -117,7 +122,7 @@ export default function CashFlowForecastPage() {
         <StatCard
           title="Expected change in cash"
           value={formatMoney(netForecast)}
-          icon={DollarSign}
+          icon={Wallet}
           changeType={netForecast >= 0 ? "positive" : "negative"}
         />
       </div>
@@ -147,10 +152,24 @@ export default function CashFlowForecastPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                    <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      className="text-muted-foreground"
+                      tickFormatter={(v) => {
+                        const sign = v < 0 ? "-" : "";
+                        const abs = Math.abs(v);
+                        if (abs >= 1000) return `${sign}${sym}${(abs / 1000).toFixed(0)}k`;
+                        return `${sign}${sym}${abs}`;
+                      }}
+                    />
                     <Tooltip
                       contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                      formatter={(value) => [`$${Number(value).toFixed(2)}`]}
+                      formatter={(value) => {
+                        const val = Number(value) || 0;
+                        const sign = val < 0 ? "-" : "";
+                        const abs = Math.abs(val);
+                        return [`${sign}${sym}${abs.toFixed(2)}`];
+                      }}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />

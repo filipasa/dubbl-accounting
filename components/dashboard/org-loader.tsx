@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/shared/logo";
+import { setDefaultCurrency } from "@/lib/money";
 
 export function OrgLoader({ children }: { children: React.ReactNode }) {
   const FADE_DURATION_MS = 400;
@@ -37,6 +38,10 @@ export function OrgLoader({ children }: { children: React.ReactNode }) {
           // Persist resolved org for OAuth users who don't have it set yet
           if (!orgId && org.id) {
             localStorage.setItem("activeOrgId", org.id);
+          }
+          if (org.defaultCurrency) {
+            localStorage.setItem("activeOrgCurrency", org.defaultCurrency);
+            setDefaultCurrency(org.defaultCurrency);
           }
           if (org.country === null) {
             window.location.href = "/onboarding";

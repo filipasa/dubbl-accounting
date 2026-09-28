@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { setDefaultCurrency } from "@/lib/money";
 
 interface Org {
   id: string;
@@ -41,7 +42,12 @@ export function OrgSwitcher() {
             const found = data.organizations.find(
               (o: Org) => o.id === stored
             );
-            setActiveOrg(found || data.organizations[0]);
+            const active = found || data.organizations[0];
+            setActiveOrg(active);
+            if (active.defaultCurrency) {
+              localStorage.setItem("activeOrgCurrency", active.defaultCurrency);
+              setDefaultCurrency(active.defaultCurrency);
+            }
           }
         }
       })
@@ -51,6 +57,10 @@ export function OrgSwitcher() {
   function switchOrg(org: Org) {
     setActiveOrg(org);
     localStorage.setItem("activeOrgId", org.id);
+    if (org.defaultCurrency) {
+      localStorage.setItem("activeOrgCurrency", org.defaultCurrency);
+      setDefaultCurrency(org.defaultCurrency);
+    }
     window.location.reload();
   }
 

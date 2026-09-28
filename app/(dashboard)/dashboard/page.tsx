@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
-  DollarSign,
+  Wallet,
   TrendingUp,
   TrendingDown,
   ArrowDownLeft,
@@ -649,7 +649,7 @@ export default function DashboardPage() {
               <StatCard
                 title="Net Income"
                 value={formatMoney(pnl.netIncome)}
-                icon={DollarSign}
+                icon={Wallet}
                 changeType={pnl.netIncome >= 0 ? "positive" : "negative"}
                 sparklineData={sparklines.netIncome.length > 1 ? sparklines.netIncome : undefined}
               />

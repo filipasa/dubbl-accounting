@@ -133,6 +133,8 @@ export const invoiceLine = pgTable("invoice_line", {
   // When set, selling this line relieves inventory and posts COGS for the item.
   inventoryItemId: uuid("inventory_item_id").references(() => inventoryItem.id),
   warehouseId: uuid("warehouse_id").references(() => warehouse.id),
+  imageUrl: text("image_url"),
+  shortDescription: text("short_description"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
@@ -183,6 +185,8 @@ export const quoteLine = pgTable("quote_line", {
   taxAmount: integer("tax_amount").notNull().default(0),
   amount: integer("amount").notNull().default(0),
   costCenterId: uuid("cost_center_id").references(() => costCenter.id),
+  imageUrl: text("image_url"),
+  shortDescription: text("short_description"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
