@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { Clock3, LayoutList, Search, Table2, X } from "lucide-react";
+import { Clock3, LayoutList, Search, Table2, X, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AccountPicker } from "@/components/dashboard/account-picker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { formatMoney } from "@/lib/money";
 import {
   Select,
   SelectContent,
@@ -61,6 +70,62 @@ export default function BankTransactionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchAccountId, setBatchAccountId] = useState("");
   const [batchSaving, setBatchSaving] = useState(false);
+
+  // Stripe payout auto-matching
+  const [stripeMatches, setStripeMatches] = useState<
+    Array<{
+      importedTransactionId: string;
+      importedDescription: string;
+      importedDate: string;
+      importedAmount: number;
+      stripeTransactionId: string;
+      stripeJournalEntryId: string;
+      stripeExternalTransactionId: string | null;
+      stripeDate: string;
+      confidence: number;
+    }>
+  >([]);
+  const [matchingStripe, setMatchingStripe] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!orgId || !account.id) return;
+    fetch(`/api/v1/bank-accounts/${account.id}/match-stripe-payouts`, {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.matches)) {
+          setStripeMatches(data.matches);
+          setSelectedMatchIds(new Set(data.matches.map((m: { importedTransactionId: string }) => m.importedTransactionId)));
+        } else {
+          setStripeMatches([]);
+        }
+      })
+      .catch(() => {});
+  }, [orgId, account.id, transactions]);
+
+  async function handleExecuteStripeMatch(idsToMatch?: string[]) {
+    if (!orgId || !account.id || matchingStripe) return;
+    setMatchingStripe(true);
+    try {
+      const res = await fetch(`/api/v1/bank-accounts/${account.id}/match-stripe-payouts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify(idsToMatch ? { transactionIds: idsToMatch } : {}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to match Stripe payouts");
+      const data = await res.json();
+      toast.success(data.message || `Matched ${data.matched} Stripe payouts`);
+      setReviewDialogOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to match Stripe payouts");
+    } finally {
+      setMatchingStripe(false);
+    }
+  }
 
   const txSearchPending = txSearch !== debouncedTxSearch;
 
@@ -216,6 +281,43 @@ export default function BankTransactionsPage() {
         />
       ) : (
       <div className="space-y-4">
+      {/* Stripe Payout Matches Banner */}
+      {stripeMatches.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-indigo-50/40 to-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-indigo-900/60 dark:from-indigo-950/40 dark:via-indigo-950/20 dark:to-background">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+              <Sparkles className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {stripeMatches.length} statement transaction{stripeMatches.length === 1 ? "" : "s"} match Stripe payouts in your books
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Stripe sync already recorded these payouts. Link them to the bank statement lines to avoid duplicate entries.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/50"
+              onClick={() => setReviewDialogOpen(true)}
+            >
+              Review matches
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+              onClick={() => handleExecuteStripeMatch()}
+              disabled={matchingStripe}
+            >
+              {matchingStripe ? "Matching..." : `Match all ${stripeMatches.length}`}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Status tabs + search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
@@ -443,6 +545,110 @@ export default function BankTransactionsPage() {
       )}
       </div>
       )}
+
+      {/* Review Stripe Matches Dialog */}
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-indigo-600" />
+              Stripe Payout Matches ({stripeMatches.length})
+            </DialogTitle>
+            <DialogDescription>
+              We found bank statement lines matching payout journal entries pre-recorded by your Stripe integration. Matching links the statement lines and removes duplicate placeholder records.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground py-1 border-b">
+            <span>{selectedMatchIds.size} of {stripeMatches.length} selected</span>
+            <div className="space-x-2">
+              <button
+                type="button"
+                className="text-indigo-600 hover:underline font-medium"
+                onClick={() => setSelectedMatchIds(new Set(stripeMatches.map((m) => m.importedTransactionId)))}
+              >
+                Select all
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                className="text-muted-foreground hover:underline"
+                onClick={() => setSelectedMatchIds(new Set())}
+              >
+                Deselect all
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y pr-1 max-h-[50vh]">
+            {stripeMatches.map((m) => {
+              const checked = selectedMatchIds.has(m.importedTransactionId);
+              return (
+                <div
+                  key={m.importedTransactionId}
+                  className={cn(
+                    "flex items-center gap-3 py-2.5 px-2 rounded-lg transition-colors cursor-pointer hover:bg-muted/50",
+                    checked && "bg-indigo-50/40 dark:bg-indigo-950/20"
+                  )}
+                  onClick={() => {
+                    const next = new Set(selectedMatchIds);
+                    if (checked) next.delete(m.importedTransactionId);
+                    else next.add(m.importedTransactionId);
+                    setSelectedMatchIds(next);
+                  }}
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(c) => {
+                      const next = new Set(selectedMatchIds);
+                      if (c === true) next.add(m.importedTransactionId);
+                      else next.delete(m.importedTransactionId);
+                      setSelectedMatchIds(next);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground">Bank Statement Line</span>
+                      <p className="font-medium truncate text-foreground">{m.importedDescription}</p>
+                      <p className="text-muted-foreground">{m.importedDate}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-400">Stripe Books Entry</span>
+                      <p className="font-medium truncate text-foreground">
+                        {m.stripeExternalTransactionId || "Stripe Payout"}
+                      </p>
+                      <p className="text-muted-foreground">{m.stripeDate}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      +{formatMoney(m.importedAmount, cur)}
+                    </p>
+                    <span className="inline-block text-[10px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                      {m.confidence}% match
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between gap-2 pt-2 border-t">
+            <Button variant="ghost" size="sm" onClick={() => setReviewDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              disabled={selectedMatchIds.size === 0 || matchingStripe}
+              onClick={() => handleExecuteStripeMatch([...selectedMatchIds])}
+            >
+              {matchingStripe ? "Matching..." : `Match ${selectedMatchIds.size} Selected`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

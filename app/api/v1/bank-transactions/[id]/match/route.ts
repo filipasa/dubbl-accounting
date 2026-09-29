@@ -11,7 +11,7 @@ import {
   journalLine,
   auditLog,
 } from "@/lib/db/schema";
-import { eq, and, inArray, isNull, ne, gte, lte, sql } from "drizzle-orm";
+import { eq, and, inArray, isNull, isNotNull, ne, gte, lte, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound } from "@/lib/api/response";
@@ -30,8 +30,8 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 
 interface ExistingCandidate {
-  type: "existing_payment" | "existing_journal" | "transfer";
-  id: string; // payment.id / journalEntry.id / opposite bankTransaction.id
+  type: "existing_payment" | "existing_journal" | "transfer" | "stripe_payout";
+  id: string; // payment.id / journalEntry.id / opposite bankTransaction.id / stripe bankTransaction.id
   journalEntryId: string | null; // the JE to link (already posted)
   date: string;
   description: string;
@@ -108,7 +108,10 @@ function scoreExisting(
   // Payee / description similarity.
   const txText = normalize(`${tx.payee || ""} ${tx.description}`);
   const candText = normalize(cand.description);
-  if (txText && candText) {
+  if (cand.type === "stripe_payout" || (txText.includes("stripe") && candText.includes("stripe"))) {
+    score += 25;
+    reasons.push("Stripe payout match");
+  } else if (txText && candText) {
     if (txText === candText) {
       score += 15;
       reasons.push("Exact description match");
@@ -393,6 +396,40 @@ export async function GET(
       });
     }
 
+    // --- (d) Existing Stripe payout transactions in the SAME bank account ---
+    // When Stripe sync already created a bankTransaction (sourceType='stripe')
+    // and its journal entry, and then the user uploads a bank statement with the
+    // physical bank line (sourceType='statement_import'), surface them as candidates.
+    if (!isOutgoing) {
+      const stripePayoutRows = await db.query.bankTransaction.findMany({
+        where: and(
+          eq(bankTransaction.bankAccountId, account.id),
+          eq(bankTransaction.sourceType, "stripe"),
+          isNotNull(bankTransaction.journalEntryId),
+          gte(bankTransaction.date, startStr),
+          lte(bankTransaction.date, endStr)
+        ),
+        limit: 50,
+      });
+
+      for (const p of stripePayoutRows) {
+        if (p.id === transaction.id) continue;
+        existingCandidates.push({
+          type: "stripe_payout",
+          id: p.id,
+          journalEntryId: p.journalEntryId,
+          date: p.date,
+          description: p.description,
+          amount: p.amount,
+          reference: p.externalTransactionId,
+          meta: {
+            stripeBankTransactionId: p.id,
+            payoutId: p.externalTransactionId,
+          },
+        });
+      }
+    }
+
     // Score & rank the existing/transfer candidates; keep a reasonable cut.
     const existingMatches = existingCandidates
       .map((cand) => {
@@ -446,12 +483,13 @@ export async function GET(
 const matchSchema = z
   .object({
     matchType: z
-      .enum(["invoice", "bill", "existing_payment", "existing_journal"])
+      .enum(["invoice", "bill", "existing_payment", "existing_journal", "stripe_payout"])
       .optional(),
     billId: z.string().min(1).optional(),
     invoiceId: z.string().min(1).optional(),
     paymentId: z.string().min(1).optional(),
     journalEntryId: z.string().min(1).optional(),
+    stripeBankTransactionId: z.string().min(1).optional(),
     amount: z.number().int().min(1).optional(), // cents — required for invoice/bill
     date: z.string().min(1).optional(),
     method: z
@@ -464,8 +502,9 @@ const matchSchema = z
       d.billId ||
       d.invoiceId ||
       d.paymentId ||
-      d.journalEntryId,
-    { message: "A matchType or one of billId/invoiceId/paymentId/journalEntryId is required" }
+      d.journalEntryId ||
+      d.stripeBankTransactionId,
+    { message: "A matchType or one of billId/invoiceId/paymentId/journalEntryId/stripeBankTransactionId is required" }
   );
 
 export async function POST(
@@ -508,9 +547,11 @@ export async function POST(
           ? "bill"
           : parsed.paymentId
             ? "existing_payment"
-            : parsed.journalEntryId
-              ? "existing_journal"
-              : undefined);
+            : parsed.stripeBankTransactionId
+              ? "stripe_payout"
+              : parsed.journalEntryId
+                ? "existing_journal"
+                : undefined);
 
     // ----------------------------------------------------------------------
     // Link to an EXISTING payment — it already carries its own journal entry,
@@ -590,7 +631,8 @@ export async function POST(
         );
       }
 
-      // Don't allow linking a journal that's already reconciled to another line.
+      // Don't allow linking a journal that's already reconciled to another line,
+      // UNLESS that other line is a synthetic stripe payout row in the same account!
       const already = await db.query.bankTransaction.findFirst({
         where: and(
           eq(bankTransaction.journalEntryId, found.id),
@@ -598,6 +640,43 @@ export async function POST(
         ),
       });
       if (already) {
+        if (already.sourceType === "stripe" && already.bankAccountId === account.id) {
+          // Synthetic stripe row — merge it cleanly!
+          await db.transaction(async (tx) => {
+            await tx
+              .update(bankTransaction)
+              .set({
+                status: "reconciled",
+                journalEntryId: found.id,
+                externalTransactionId: already.externalTransactionId,
+              })
+              .where(eq(bankTransaction.id, id));
+
+            await tx
+              .delete(bankTransaction)
+              .where(eq(bankTransaction.id, already.id));
+          });
+
+          await db.insert(auditLog).values({
+            organizationId: ctx.organizationId,
+            userId: ctx.userId,
+            action: "matched_stripe_payout",
+            entityType: "bank_transaction",
+            entityId: id,
+            changes: {
+              journalEntryId: found.id,
+              mergedStripeTransactionId: already.id,
+              payoutId: already.externalTransactionId,
+            },
+          });
+
+          return NextResponse.json({
+            matchType: "existing_journal",
+            journalEntryId: found.id,
+            payoutId: already.externalTransactionId,
+          });
+        }
+
         return NextResponse.json(
           { error: "Journal entry is already matched to another bank transaction" },
           { status: 400 }
@@ -621,6 +700,66 @@ export async function POST(
       return NextResponse.json({
         matchType: "existing_journal",
         journalEntryId: found.id,
+      });
+    }
+
+    // ----------------------------------------------------------------------
+    // Link to an existing STRIPE PAYOUT transaction in the same bank account.
+    // ----------------------------------------------------------------------
+    if (matchType === "stripe_payout") {
+      const stripeTxId = parsed.stripeBankTransactionId;
+      if (!stripeTxId) {
+        return NextResponse.json({ error: "stripeBankTransactionId is required" }, { status: 400 });
+      }
+
+      const stripeTx = await db.query.bankTransaction.findFirst({
+        where: and(
+          eq(bankTransaction.id, stripeTxId),
+          eq(bankTransaction.bankAccountId, account.id),
+          eq(bankTransaction.sourceType, "stripe")
+        ),
+      });
+
+      if (!stripeTx) {
+        return notFound("Stripe payout transaction");
+      }
+
+      if (!stripeTx.journalEntryId) {
+        return NextResponse.json({ error: "Stripe payout has no journal entry" }, { status: 400 });
+      }
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(bankTransaction)
+          .set({
+            status: "reconciled",
+            journalEntryId: stripeTx.journalEntryId,
+            externalTransactionId: stripeTx.externalTransactionId,
+          })
+          .where(eq(bankTransaction.id, id));
+
+        await tx
+          .delete(bankTransaction)
+          .where(eq(bankTransaction.id, stripeTx.id));
+      });
+
+      await db.insert(auditLog).values({
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+        action: "matched_stripe_payout",
+        entityType: "bank_transaction",
+        entityId: id,
+        changes: {
+          journalEntryId: stripeTx.journalEntryId,
+          mergedStripeTransactionId: stripeTx.id,
+          payoutId: stripeTx.externalTransactionId,
+        },
+      });
+
+      return NextResponse.json({
+        matchType: "stripe_payout",
+        journalEntryId: stripeTx.journalEntryId,
+        payoutId: stripeTx.externalTransactionId,
       });
     }
 

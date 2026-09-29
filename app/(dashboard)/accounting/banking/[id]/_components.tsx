@@ -202,7 +202,7 @@ export interface SuggestedMatch {
 export interface ExistingMatch {
   transactionId: string;
   candidate: {
-    type: "existing_payment" | "existing_journal" | "transfer";
+    type: "existing_payment" | "existing_journal" | "transfer" | "stripe_payout";
     id: string;
     journalEntryId: string | null;
     date: string;
@@ -1887,6 +1887,10 @@ const EXISTING_TYPE_META: Record<
     label: "Transfer",
     className: "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300",
   },
+  stripe_payout: {
+    label: "Stripe payout in your books",
+    className: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
+  },
 };
 
 export function MatchSheet({
@@ -1951,6 +1955,12 @@ export function MatchSheet({
         const c = selection.match.candidate;
         if (c.type === "existing_payment") {
           body = { matchType: "existing_payment", paymentId: c.id };
+        } else if (c.type === "stripe_payout") {
+          body = {
+            matchType: "stripe_payout",
+            stripeBankTransactionId: c.id,
+            journalEntryId: c.journalEntryId,
+          };
         } else {
           // existing_journal and transfer leg both link an already-posted JE.
           body = { matchType: "existing_journal", journalEntryId: c.journalEntryId };
