@@ -16,6 +16,18 @@ const checkoutSchema = z.object({
   interval: z.enum(["monthly", "annual"]).default("monthly"),
 });
 
+function getAppUrl(request: Request): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return "http://localhost:3000";
+}
+
 export async function POST(request: Request) {
   if (!_stripeClient) {
     return NextResponse.json({ error: "Billing not configured" }, { status: 404 });
@@ -48,18 +60,29 @@ export async function POST(request: Request) {
         metadata: { organizationId: ctx.organizationId },
       });
       customerId = customer.id;
+
+      if (sub) {
+        await db
+          .update(subscription)
+          .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+          .where(eq(subscription.id, sub.id));
+      }
     }
 
+    const appUrl = getAppUrl(request);
+
     if (type === "storage") {
-      return handleStorageCheckout(sub, customerId, ctx.organizationId, plan, interval);
+      return await handleStorageCheckout(sub, customerId, ctx.organizationId, plan, interval, appUrl);
     } else {
-      return handleSeatCheckout(sub, customerId, ctx.organizationId, plan, interval);
+      return await handleSeatCheckout(sub, customerId, ctx.organizationId, plan, interval, appUrl);
     }
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Billing checkout error:", err);
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const message = err?.message || "Internal error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -68,7 +91,8 @@ async function handleSeatCheckout(
   customerId: string,
   organizationId: string,
   plan: string,
-  interval: string
+  interval: string,
+  appUrl: string
 ) {
   if (plan !== "pro") {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -119,8 +143,6 @@ async function handleSeatCheckout(
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-
   // New subscription - create checkout session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
@@ -140,7 +162,8 @@ async function handleStorageCheckout(
   customerId: string,
   organizationId: string,
   plan: string,
-  interval: string
+  interval: string,
+  appUrl: string
 ) {
   const storagePriceMap: Record<string, Record<string, string | undefined>> = {
     starter: {
@@ -202,8 +225,8 @@ async function handleStorageCheckout(
     mode: "subscription",
     automatic_tax: { enabled: true },
     line_items: [{ price: storagePriceId, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
+    success_url: `${appUrl}/settings/billing?success=true`,
+    cancel_url: `${appUrl}/settings/billing`,
     metadata: { organizationId, type: "storage", storagePlan: plan, interval },
   });
 

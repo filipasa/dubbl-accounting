@@ -84,7 +84,16 @@ export default function BillingPage() {
         },
         body: JSON.stringify({ type, plan, interval }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok) {
+        throw new Error(data.error || `Checkout failed (${res.status})`);
+      }
       if (data.url) window.location.href = data.url;
       else if (data.updated) {
         toast.success("Plan updated successfully");
@@ -106,10 +115,19 @@ export default function BillingPage() {
         method: "POST",
         headers: { "x-organization-id": orgId },
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text || `Server error (${res.status})`);
+      }
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to open billing portal (${res.status})`);
+      }
       if (data.url) window.location.href = data.url;
-    } catch {
-      toast.error("Failed to open billing portal");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to open billing portal");
       setPortalLoading(false);
     }
   }
