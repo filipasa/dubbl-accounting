@@ -76,7 +76,7 @@ export async function runInitialSync(integrationId: string) {
 
     // 3. Sync paid payouts from last N days
     for await (const payout of stripeClient.payouts.list(
-      { limit: 100, created: { gte: since }, status: "paid" },
+      { limit: 100, created: { gte: since }, status: "paid", expand: ["data.destination"] },
       stripeAccountOpts
     )) {
       try {

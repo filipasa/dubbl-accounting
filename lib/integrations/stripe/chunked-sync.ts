@@ -175,6 +175,7 @@ export async function syncStripeChunk(params: SyncChunkParams): Promise<SyncChun
       const listParams: Stripe.PayoutListParams = {
         limit,
         status: "paid",
+        expand: ["data.destination"],
         ...(created ? { created } : {}),
         ...(cursor ? { starting_after: cursor } : {}),
       };

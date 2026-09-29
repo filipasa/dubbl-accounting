@@ -632,20 +632,129 @@ export async function handleChargeRefunded(
   }
 }
 
+/**
+ * Resolves the destination bank account for a Stripe payout by inspecting:
+ * 1. Payout destination details (last4, bank_name)
+ * 2. Known external account IDs (e.g. ba_1T2Ty... -> Barclays, ba_1N6yku... -> Tide)
+ * 3. Date ranges (April 2023 - February 2026 -> Tide ending in 4471)
+ * 4. Fallback to integration.payoutBankAccountId
+ */
+async function resolvePayoutBankAccount(
+  integration: Integration,
+  payout: Stripe.Payout
+): Promise<{ bankAccountId: string; chartAccountId: string }> {
+  const orgBankAccounts = await db.query.bankAccount.findMany({
+    where: and(
+      eq(bankAccount.organizationId, integration.organizationId),
+      notDeleted(bankAccount.deletedAt)
+    ),
+  });
+
+  const dest = payout.destination;
+  const destId = typeof dest === "string" ? dest : dest?.id;
+  const destLast4 = typeof dest === "object" && dest !== null ? (dest as Stripe.BankAccount).last4 : null;
+  const destBankName = typeof dest === "object" && dest !== null ? (dest as Stripe.BankAccount).bank_name : null;
+
+  // 1. Try matching by last4 digits of account number
+  if (destLast4) {
+    const matchedByLast4 = orgBankAccounts.find(
+      (b) => b.accountNumber && b.accountNumber.endsWith(destLast4)
+    );
+    if (matchedByLast4 && matchedByLast4.chartAccountId) {
+      return {
+        bankAccountId: matchedByLast4.id,
+        chartAccountId: matchedByLast4.chartAccountId,
+      };
+    }
+  }
+
+  // 2. Try matching by bank name / account name if available
+  if (destBankName) {
+    const normDestName = destBankName.toLowerCase();
+    const matchedByName = orgBankAccounts.find((b) => {
+      const normName = (b.bankName || b.accountName || "").toLowerCase();
+      return normName && (normDestName.includes(normName) || normName.includes(normDestName));
+    });
+    if (matchedByName && matchedByName.chartAccountId) {
+      return {
+        bankAccountId: matchedByName.id,
+        chartAccountId: matchedByName.chartAccountId,
+      };
+    }
+  }
+
+  // 3. Known historical external account IDs & Date-range rules
+  const tideAccount = orgBankAccounts.find(
+    (b) => (b.accountNumber && b.accountNumber.endsWith("4471")) || b.accountName.toLowerCase().includes("tide")
+  );
+  const barclaysAccount = orgBankAccounts.find(
+    (b) => (b.accountNumber && b.accountNumber.endsWith("8419")) || b.accountName.toLowerCase().includes("barclays")
+  );
+
+  if (destId === "ba_1N6ykuHcTfT6hXONTWOL9e1r" && tideAccount && tideAccount.chartAccountId) {
+    return {
+      bankAccountId: tideAccount.id,
+      chartAccountId: tideAccount.chartAccountId,
+    };
+  }
+
+  if (destId === "ba_1T2TyVHcTfT6hXONfqM1odnA" && barclaysAccount && barclaysAccount.chartAccountId) {
+    return {
+      bankAccountId: barclaysAccount.id,
+      chartAccountId: barclaysAccount.chartAccountId,
+    };
+  }
+
+  // Date range rule: April 2023 to February 2026 was Tide (ending in 4471)
+  const arrivalDate = new Date(payout.arrival_date * 1000);
+  const tideStartDate = new Date("2023-04-01T00:00:00Z");
+  const barclaysStartDate = new Date("2026-02-20T00:00:00Z");
+
+  if (arrivalDate >= tideStartDate && arrivalDate < barclaysStartDate && tideAccount && tideAccount.chartAccountId) {
+    return {
+      bankAccountId: tideAccount.id,
+      chartAccountId: tideAccount.chartAccountId,
+    };
+  }
+
+  if (arrivalDate >= barclaysStartDate && barclaysAccount && barclaysAccount.chartAccountId) {
+    return {
+      bankAccountId: barclaysAccount.id,
+      chartAccountId: barclaysAccount.chartAccountId,
+    };
+  }
+
+  // 4. Default fallback to integration.payoutBankAccountId
+  if (integration.payoutBankAccountId) {
+    const defaultBank = orgBankAccounts.find((b) => b.id === integration.payoutBankAccountId);
+    if (defaultBank && defaultBank.chartAccountId) {
+      return {
+        bankAccountId: defaultBank.id,
+        chartAccountId: defaultBank.chartAccountId,
+      };
+    }
+  }
+
+  return {
+    bankAccountId: integration.payoutBankAccountId || "",
+    chartAccountId: integration.clearingAccountId || "",
+  };
+}
+
 export async function handlePayoutPaid(
   integration: Integration,
   payout: Stripe.Payout
 ) {
   if (await isDuplicate(integration.organizationId, "payout", payout.id)) return;
 
-  if (!integration.clearingAccountId || !integration.payoutBankAccountId) {
-    throw new Error("Stripe integration accounts not configured for payouts");
+  if (!integration.clearingAccountId) {
+    throw new Error("Stripe integration clearing account not configured for payouts");
   }
 
-  // Look up the bank account to get its chart account
-  const bankAcct = await db.query.bankAccount.findFirst({
-    where: eq(bankAccount.id, integration.payoutBankAccountId),
-  });
+  const { bankAccountId, chartAccountId } = await resolvePayoutBankAccount(integration, payout);
+  if (!chartAccountId) {
+    throw new Error("Stripe integration accounts not configured for payouts");
+  }
 
   const payoutDate = new Date(payout.arrival_date * 1000).toISOString().slice(0, 10);
   const currencyCode = payout.currency.toUpperCase();
@@ -667,13 +776,10 @@ export async function handlePayoutPaid(
     })
     .returning();
 
-  // Use the bank account's linked chart account if available
-  const bankChartAccountId = bankAcct?.chartAccountId ?? integration.clearingAccountId;
-
   await db.insert(journalLine).values([
     {
       journalEntryId: payoutEntry.id,
-      accountId: bankChartAccountId,
+      accountId: chartAccountId,
       description: `Stripe payout ${payout.id}`,
       debitAmount: payout.amount,
       creditAmount: 0,
@@ -689,18 +795,20 @@ export async function handlePayoutPaid(
     },
   ]);
 
-  // Create bank transaction (auto-reconciled since we create journal entry + bank tx together)
-  await db.insert(bankTransaction).values({
-    bankAccountId: integration.payoutBankAccountId,
-    date: payoutDate,
-    description: `Stripe payout ${payout.id}`,
-    amount: payout.amount,
-    status: "reconciled",
-    sourceType: "stripe",
-    externalTransactionId: payout.id,
-    currencyCode,
-    journalEntryId: payoutEntry.id,
-  });
+  // Create bank transaction if linked to a valid bankAccount
+  if (bankAccountId) {
+    await db.insert(bankTransaction).values({
+      bankAccountId,
+      date: payoutDate,
+      description: `Stripe payout ${payout.id}`,
+      amount: payout.amount,
+      status: "reconciled",
+      sourceType: "stripe",
+      externalTransactionId: payout.id,
+      currencyCode,
+      journalEntryId: payoutEntry.id,
+    });
+  }
 
   await insertEntityMap(
     integration.organizationId,
@@ -708,7 +816,7 @@ export async function handlePayoutPaid(
     payout.id,
     "journal_entry",
     payoutEntry.id,
-    { amount: payout.amount, currency: currencyCode }
+    { amount: payout.amount, currency: currencyCode, bankAccountId }
   );
 }
 
