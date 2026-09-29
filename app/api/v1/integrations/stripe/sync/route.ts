@@ -8,6 +8,8 @@ import { eq, and } from "drizzle-orm";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { runInitialSync } from "@/lib/integrations/stripe/initial-sync";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const ctx = await getAuthContext(request);
@@ -29,12 +31,10 @@ export async function POST(request: Request) {
 
     if (!integration) return notFound("Stripe integration");
 
-    // Fire-and-forget sync
-    runInitialSync(integration.id).catch((err) => {
-      console.error("Manual Stripe sync failed:", err);
-    });
+    // Await sync so Vercel serverless function does not terminate early
+    await runInitialSync(integration.id);
 
-    return NextResponse.json({ success: true, message: "Sync started" });
+    return NextResponse.json({ success: true, message: "Sync completed" });
   } catch (err) {
     return handleError(err);
   }

@@ -169,8 +169,8 @@ export default function StripeIntegrationPage() {
         body: JSON.stringify({ integrationId }),
       });
       if (res.ok) {
-        toast.success("Sync started");
-        setTimeout(fetchStatus, 3000);
+        toast.success("Sync completed");
+        fetchStatus();
       } else {
         toast.error("Failed to start sync");
       }

@@ -57,14 +57,17 @@ async function insertEntityMap(
   dubblEntityId: string,
   metadata?: Record<string, unknown>
 ) {
-  await db.insert(stripeEntityMap).values({
-    organizationId,
-    stripeEntityType,
-    stripeEntityId,
-    dubblEntityType,
-    dubblEntityId,
-    metadata: metadata ?? null,
-  });
+  await db
+    .insert(stripeEntityMap)
+    .values({
+      organizationId,
+      stripeEntityType,
+      stripeEntityId,
+      dubblEntityType,
+      dubblEntityId,
+      metadata: metadata ?? null,
+    })
+    .onConflictDoNothing();
 }
 
 async function resolveContact(
