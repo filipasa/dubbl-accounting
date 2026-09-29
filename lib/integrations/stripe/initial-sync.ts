@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { stripeIntegration, stripeSyncLog } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 import { ensureIntegrationAccountsMapped } from "./accounts";
 import {
   handleChargeSucceeded,
@@ -12,13 +13,17 @@ import {
 } from "./sync";
 
 export async function runInitialSync(integrationId: string) {
-  if (!stripe) throw new Error("Stripe is not configured");
-
   const integration = await db.query.stripeIntegration.findFirst({
     where: eq(stripeIntegration.id, integrationId),
   });
 
   if (!integration) throw new Error("Integration not found");
+
+  const stripeClient = integration.accessToken
+    ? new Stripe(integration.accessToken, { typescript: true })
+    : stripe;
+
+  if (!stripeClient) throw new Error("Stripe is not configured");
 
   // Connect the default account mappings automatically if they're missing (an
   // older integration, or one a user cleared) so syncing never dead-ends.
@@ -26,12 +31,13 @@ export async function runInitialSync(integrationId: string) {
 
   const days = integration.initialSyncDays;
   const since = Math.floor(Date.now() / 1000) - days * 86400;
+  const stripeAccountOpts = integration.accessToken ? undefined : { stripeAccount: integration.stripeAccountId };
 
   try {
-    // 1. Sync customers (all, no date filter)
-    for await (const customer of stripe.customers.list(
-      { limit: 100 },
-      { stripeAccount: integration.stripeAccountId }
+    // 1. Sync recent customers created in last N days
+    for await (const customer of stripeClient.customers.list(
+      { limit: 100, created: { gte: since } },
+      stripeAccountOpts
     )) {
       try {
         await handleCustomerCreated(integration, customer);
@@ -48,9 +54,9 @@ export async function runInitialSync(integrationId: string) {
     }
 
     // 2. Sync charges from last N days
-    for await (const charge of stripe.charges.list(
+    for await (const charge of stripeClient.charges.list(
       { limit: 100, created: { gte: since } },
-      { stripeAccount: integration.stripeAccountId }
+      stripeAccountOpts
     )) {
       try {
         if (charge.status === "succeeded") {
@@ -69,9 +75,9 @@ export async function runInitialSync(integrationId: string) {
     }
 
     // 3. Sync paid payouts from last N days
-    for await (const payout of stripe.payouts.list(
+    for await (const payout of stripeClient.payouts.list(
       { limit: 100, created: { gte: since }, status: "paid" },
-      { stripeAccount: integration.stripeAccountId }
+      stripeAccountOpts
     )) {
       try {
         await handlePayoutPaid(integration, payout);
@@ -88,9 +94,9 @@ export async function runInitialSync(integrationId: string) {
     }
 
     // 4. Sync transfers from last N days
-    for await (const transfer of stripe.transfers.list(
+    for await (const transfer of stripeClient.transfers.list(
       { limit: 100, created: { gte: since } },
-      { stripeAccount: integration.stripeAccountId }
+      stripeAccountOpts
     )) {
       try {
         await handleTransferCreated(integration, transfer);
@@ -107,9 +113,9 @@ export async function runInitialSync(integrationId: string) {
     }
 
     // 5. Sync credit notes
-    for await (const cn of stripe.creditNotes.list(
-      { limit: 100 },
-      { stripeAccount: integration.stripeAccountId }
+    for await (const cn of stripeClient.creditNotes.list(
+      { limit: 100, created: { gte: since } },
+      stripeAccountOpts
     )) {
       try {
         await handleStripeCreditNoteCreated(integration, cn);
