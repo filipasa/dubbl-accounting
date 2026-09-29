@@ -146,6 +146,11 @@ async function handleSeatCheckout(
   // New subscription - create checkout session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
+    customer_update: {
+      address: "auto",
+      name: "auto",
+    },
+    billing_address_collection: "auto",
     mode: "subscription",
     automatic_tax: { enabled: true },
     line_items: [{ price: priceId, quantity: 1 }],
@@ -222,6 +227,11 @@ async function handleStorageCheckout(
   // New storage subscription - create checkout session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
+    customer_update: {
+      address: "auto",
+      name: "auto",
+    },
+    billing_address_collection: "auto",
     mode: "subscription",
     automatic_tax: { enabled: true },
     line_items: [{ price: storagePriceId, quantity: 1 }],
