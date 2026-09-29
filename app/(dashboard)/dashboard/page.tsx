@@ -26,6 +26,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import {
   DashboardPeriodSelect,
   getPeriodRange,
+  formatFriendlyDate,
   type DashboardPeriodKey,
   type PeriodRange,
 } from "@/components/dashboard/dashboard-period-select";
@@ -318,7 +319,21 @@ export default function DashboardPage() {
     let activeRange = getPeriodRange("ytd");
     try {
       const saved = localStorage.getItem("dubbl_dashboard_period") as DashboardPeriodKey | null;
-      if (saved) {
+      if (saved === "custom") {
+        const savedStart = localStorage.getItem("dubbl_dashboard_custom_start");
+        const savedEnd = localStorage.getItem("dubbl_dashboard_custom_end");
+        if (savedStart && savedEnd) {
+          activeRange = {
+            startDate: savedStart,
+            endDate: savedEnd,
+            label: "Custom Range",
+            badge: "Custom",
+            displayText: `${formatFriendlyDate(savedStart)} – ${formatFriendlyDate(savedEnd)}`,
+          };
+          setPeriodKey("custom");
+          setPeriodRange(activeRange);
+        }
+      } else if (saved) {
         setPeriodKey(saved);
         activeRange = getPeriodRange(saved);
         setPeriodRange(activeRange);
@@ -444,6 +459,10 @@ export default function DashboardPage() {
     setPeriodRange(range);
     try {
       localStorage.setItem("dubbl_dashboard_period", key);
+      if (key === "custom") {
+        localStorage.setItem("dubbl_dashboard_custom_start", range.startDate);
+        localStorage.setItem("dubbl_dashboard_custom_end", range.endDate);
+      }
     } catch {}
 
     setPnlLoading(true);
@@ -707,6 +726,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <DashboardPeriodSelect
                     value={periodKey}
+                    currentRange={periodRange}
                     onChange={handlePeriodChange}
                     disabled={pnlLoading}
                   />
