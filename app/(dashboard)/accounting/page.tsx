@@ -13,6 +13,10 @@ import {
   CheckCircle2,
   FileEdit,
   Ban,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
@@ -116,94 +120,121 @@ export default function TransactionsPage() {
   const { open: openDrawer } = useCreateDrawer();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search);
+  const debouncedSearch = useDebounce(search, 300);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState("date:desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [summary, setSummary] = useState({
+    totalPostedCents: 0,
+    counts: { all: 0, posted: 0, draft: 0, void: 0 },
+  });
 
   useDocumentTitle("Accounting \u00B7 Manual entries");
 
   useEffect(() => {
+    let cancelled = false;
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
 
-    fetch("/api/v1/entries", {
+    setFetching(true);
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(pageSize));
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
+
+    const [sortKey, sortOrder] = sortBy.split(":");
+    if (sortKey) params.set("sortBy", sortKey);
+    if (sortOrder) params.set("sortOrder", sortOrder);
+
+    fetch(`/api/v1/entries?${params.toString()}`, {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.entries) setEntries(data.entries);
+        if (data.pagination) {
+          setTotalCount(data.pagination.total);
+          setTotalPages(data.pagination.totalPages);
+        } else {
+          setTotalCount(data.total || 0);
+          setTotalPages(Math.ceil((data.total || 0) / pageSize) || 1);
+        }
+        if (data.summary) {
+          setSummary({
+            totalPostedCents: data.summary.totalPostedCents ?? 0,
+            counts: data.summary.counts ?? { all: 0, posted: 0, draft: 0, void: 0 },
+          });
+        }
       })
-      .then(() => devDelay())
-      .finally(() => setLoading(false));
-  }, []);
+      .catch((err) => {
+        if (!cancelled) console.error("Failed to load entries:", err);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setFetching(false);
+        }
+      });
 
-  const posted = entries.filter((e) => e.status === "posted");
-  const drafts = entries.filter((e) => e.status === "draft");
-  const voids = entries.filter((e) => e.status === "void");
-  const totalPosted = posted.reduce(
-    (sum, e) => sum + Math.round(parseFloat(e.totalDebit) * 100),
-    0
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize, statusFilter, debouncedSearch, dateFrom, dateTo, sortBy]);
 
-  const filtered = useMemo(() => {
-    let result = entries;
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(1);
+  };
 
-    // Status filter
-    if (statusFilter !== "all") {
-      result = result.filter((e) => e.status === statusFilter);
-    }
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
 
-    // Search filter
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase();
-      result = result.filter(
-        (e) =>
-          e.description.toLowerCase().includes(q) ||
-          (e.reference || "").toLowerCase().includes(q) ||
-          String(e.entryNumber).includes(q)
-      );
-    }
+  const handleDateFromChange = (val: string) => {
+    setDateFrom(val);
+    setPage(1);
+  };
 
-    // Date range filter
-    if (dateFrom) {
-      result = result.filter((e) => e.date >= dateFrom);
-    }
-    if (dateTo) {
-      result = result.filter((e) => e.date <= dateTo);
-    }
+  const handleDateToChange = (val: string) => {
+    setDateTo(val);
+    setPage(1);
+  };
 
-    // Sort
-    const [key, order] = sortBy.split(":");
-    result = [...result].sort((a, b) => {
-      let cmp = 0;
-      if (key === "date") {
-        cmp = a.date.localeCompare(b.date);
-      } else if (key === "number") {
-        cmp = a.entryNumber - b.entryNumber;
-      } else if (key === "amount") {
-        cmp = parseFloat(a.totalDebit) - parseFloat(b.totalDebit);
-      }
-      return order === "asc" ? cmp : -cmp;
-    });
+  const handleSortChange = (val: string) => {
+    setSortBy(val);
+    setPage(1);
+  };
 
-    return result;
-  }, [entries, statusFilter, debouncedSearch, dateFrom, dateTo, sortBy]);
+  const handlePageSizeChange = (val: string) => {
+    setPageSize(Number(val));
+    setPage(1);
+  };
 
-  const hasFilters = search || dateFrom || dateTo;
+  const handleClearFilters = () => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
+
+  const hasFilters = Boolean(search || dateFrom || dateTo);
   const pendingSearch = search !== debouncedSearch;
-
-  const [contentKey, setContentKey] = useState(0);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setContentKey((k) => k + 1);
-  }, [debouncedSearch, statusFilter, sortBy]);
 
   if (loading) return <BrandLoader />;
 
-  if (!loading && entries.length === 0) {
+  if (!loading && totalCount === 0 && !hasFilters && statusFilter === "all") {
     return (
       <ContentReveal className="space-y-6">
         <div className="flex items-center justify-between">
@@ -334,7 +365,7 @@ export default function TransactionsPage() {
               Total in your books
             </p>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
-              {formatMoney(totalPosted)}
+              {formatMoney(summary.totalPostedCents)}
             </p>
           </div>
 
@@ -345,7 +376,7 @@ export default function TransactionsPage() {
               In your books
             </p>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
-              {posted.length}
+              {summary.counts.posted.toLocaleString()}
             </p>
           </div>
 
@@ -356,7 +387,7 @@ export default function TransactionsPage() {
               Drafts
             </p>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-              {drafts.length}
+              {summary.counts.draft.toLocaleString()}
             </p>
           </div>
 
@@ -367,7 +398,7 @@ export default function TransactionsPage() {
               Cancelled
             </p>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {voids.length}
+              {summary.counts.void.toLocaleString()}
             </p>
           </div>
         </div>
@@ -389,30 +420,30 @@ export default function TransactionsPage() {
         <div className="space-y-4">
           {/* Status filter tabs with counts */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+            <Tabs value={statusFilter} onValueChange={handleStatusFilterChange}>
               <TabsList className="overflow-x-auto">
                 <TabsTrigger value="all" className="whitespace-nowrap">
                   All{" "}
                   <span className="ml-1.5 text-[10px] text-muted-foreground tabular-nums">
-                    {entries.length}
+                    {summary.counts.all.toLocaleString()}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="posted" className="whitespace-nowrap">
                   In your books{" "}
                   <span className="ml-1.5 text-[10px] text-muted-foreground tabular-nums">
-                    {posted.length}
+                    {summary.counts.posted.toLocaleString()}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="draft" className="whitespace-nowrap">
                   Draft{" "}
                   <span className="ml-1.5 text-[10px] text-muted-foreground tabular-nums">
-                    {drafts.length}
+                    {summary.counts.draft.toLocaleString()}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="void" className="whitespace-nowrap">
                   Cancelled{" "}
                   <span className="ml-1.5 text-[10px] text-muted-foreground tabular-nums">
-                    {voids.length}
+                    {summary.counts.void.toLocaleString()}
                   </span>
                 </TabsTrigger>
               </TabsList>
@@ -426,7 +457,7 @@ export default function TransactionsPage() {
               <Input
                 placeholder="Search entries..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="h-8 w-56 pl-8 text-xs"
               />
             </div>
@@ -436,7 +467,7 @@ export default function TransactionsPage() {
               </span>
               <DatePicker
                 value={dateFrom}
-                onChange={(v) => setDateFrom(v)}
+                onChange={(v) => handleDateFromChange(v)}
                 placeholder="Start date"
                 className="h-8 w-40 text-xs"
               />
@@ -445,12 +476,12 @@ export default function TransactionsPage() {
               <span className="text-xs text-muted-foreground shrink-0">To</span>
               <DatePicker
                 value={dateTo}
-                onChange={(v) => setDateTo(v)}
+                onChange={(v) => handleDateToChange(v)}
                 placeholder="End date"
                 className="h-8 w-40 text-xs"
               />
             </div>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="h-8 w-44 text-xs">
                 <SelectValue placeholder="Sort by..." />
               </SelectTrigger>
@@ -468,11 +499,7 @@ export default function TransactionsPage() {
                 variant="ghost"
                 size="sm"
                 className="h-8 text-xs text-muted-foreground"
-                onClick={() => {
-                  setSearch("");
-                  setDateFrom("");
-                  setDateTo("");
-                }}
+                onClick={handleClearFilters}
               >
                 <X className="mr-1 size-3" />
                 Clear filters
@@ -484,10 +511,10 @@ export default function TransactionsPage() {
           {pendingSearch ? (
             <BrandLoader className="h-48" />
           ) : (
-            <ContentReveal key={contentKey}>
+            <div className={`transition-opacity duration-150 ${fetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
               <DataTable
                 columns={columns}
-                data={filtered}
+                data={entries}
                 loading={false}
                 emptyMessage={
                   hasFilters || statusFilter !== "all"
@@ -496,15 +523,105 @@ export default function TransactionsPage() {
                 }
                 onRowClick={(r) => router.push(`/accounting/${r.id}`)}
               />
-            </ContentReveal>
+            </div>
           )}
 
-          {/* Count */}
-          {!pendingSearch && filtered.length > 0 && (
-            <p className="text-xs text-muted-foreground pt-1">
-              Showing {filtered.length} of {entries.length} entr
-              {entries.length !== 1 ? "ies" : "y"}
-            </p>
+          {/* Pagination & Summary Bar */}
+          {!pendingSearch && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 text-xs text-muted-foreground border-t">
+              <div className="flex flex-wrap items-center gap-3">
+                <span>
+                  {totalCount === 0 ? (
+                    "No entries found"
+                  ) : (
+                    <>
+                      Showing{" "}
+                      <span className="font-medium text-foreground">
+                        {((page - 1) * pageSize + 1).toLocaleString()}
+                      </span>
+                      {"–"}
+                      <span className="font-medium text-foreground">
+                        {Math.min(page * pageSize, totalCount).toLocaleString()}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-medium text-foreground">
+                        {totalCount.toLocaleString()}
+                      </span>{" "}
+                      entries
+                    </>
+                  )}
+                </span>
+
+                <div className="flex items-center gap-1.5 ml-2">
+                  <span className="text-[11px]">Per page:</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={handlePageSizeChange}
+                  >
+                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="250">250</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={page <= 1 || fetching}
+                    onClick={() => setPage(1)}
+                    title="First page"
+                  >
+                    <ChevronsLeft className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    disabled={page <= 1 || fetching}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft className="size-3.5 mr-0.5" />
+                    Previous
+                  </Button>
+
+                  <div className="px-2 text-xs tabular-nums">
+                    Page <span className="font-medium text-foreground">{page}</span> of{" "}
+                    <span className="font-medium text-foreground">{totalPages}</span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    disabled={page >= totalPages || fetching}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                    <ChevronRight className="size-3.5 ml-0.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={page >= totalPages || fetching}
+                    onClick={() => setPage(totalPages)}
+                    title="Last page"
+                  >
+                    <ChevronsRight className="size-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

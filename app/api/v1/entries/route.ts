@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { journalEntry, journalLine } from "@/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc, asc, isNull, or, ilike, gte, lte } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import { logAudit } from "@/lib/api/audit";
 import { centsToDecimal } from "@/lib/money";
 import { assertNotLocked } from "@/lib/api/period-lock";
 import { checkMonthlyLimit } from "@/lib/api/check-limit";
+import { parsePagination } from "@/lib/api/pagination";
 import { z } from "zod";
 import { currencyCodeSchema } from "@/lib/currency/zod";
 
@@ -35,29 +36,161 @@ export async function GET(request: Request) {
   try {
     const ctx = await getAuthContext(request);
     const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get("limit") || "50");
+    const { page, limit, offset } = parsePagination(url, 250);
 
-    const entries = await db.query.journalEntry.findMany({
-      where: eq(journalEntry.organizationId, ctx.organizationId),
-      orderBy: desc(journalEntry.createdAt),
-      limit,
-      with: {
-        lines: true,
-      },
-    });
+    const status = url.searchParams.get("status");
+    const search = url.searchParams.get("search") || url.searchParams.get("q");
+    const startDate = url.searchParams.get("from") || url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("to") || url.searchParams.get("endDate");
+    const sortBy = url.searchParams.get("sortBy") || "date";
+    const sortOrder = url.searchParams.get("sortOrder") || "desc";
 
-    const result = entries.map((e) => {
-      const totalDebit = e.lines.reduce((sum, l) => sum + l.debitAmount, 0);
+    const conditions = [
+      eq(journalEntry.organizationId, ctx.organizationId),
+      isNull(journalEntry.deletedAt),
+    ];
+
+    if (status && status !== "all") {
+      conditions.push(eq(journalEntry.status, status as "draft" | "posted" | "void"));
+    }
+
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(journalEntry.description, q),
+          ilike(journalEntry.reference, q),
+          sql`${journalEntry.entryNumber}::text ILIKE ${q}`
+        )!
+      );
+    }
+
+    if (startDate) {
+      conditions.push(gte(journalEntry.date, startDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(journalEntry.date, endDate));
+    }
+
+    // Determine order clause
+    let orderByClause;
+    const isAsc = sortOrder === "asc";
+    if (sortBy === "number" || sortBy === "entryNumber") {
+      orderByClause = isAsc ? [asc(journalEntry.entryNumber)] : [desc(journalEntry.entryNumber)];
+    } else if (sortBy === "amount") {
+      orderByClause = isAsc
+        ? [asc(sql`coalesce(sum(${journalLine.debitAmount}), 0)`)]
+        : [desc(sql`coalesce(sum(${journalLine.debitAmount}), 0)`)];
+    } else if (sortBy === "createdAt") {
+      orderByClause = isAsc ? [asc(journalEntry.createdAt)] : [desc(journalEntry.createdAt)];
+    } else {
+      // Default: date desc, entryNumber desc
+      orderByClause = isAsc
+        ? [asc(journalEntry.date), asc(journalEntry.entryNumber)]
+        : [desc(journalEntry.date), desc(journalEntry.entryNumber)];
+    }
+
+    // Query paginated entries with summed debits in a single query
+    const rows = await db
+      .select({
+        id: journalEntry.id,
+        organizationId: journalEntry.organizationId,
+        entryNumber: journalEntry.entryNumber,
+        date: journalEntry.date,
+        description: journalEntry.description,
+        reference: journalEntry.reference,
+        status: journalEntry.status,
+        fiscalYearId: journalEntry.fiscalYearId,
+        sourceType: journalEntry.sourceType,
+        sourceId: journalEntry.sourceId,
+        createdBy: journalEntry.createdBy,
+        postedAt: journalEntry.postedAt,
+        voidedAt: journalEntry.voidedAt,
+        voidReason: journalEntry.voidReason,
+        autoReverseDate: journalEntry.autoReverseDate,
+        reversedByEntryId: journalEntry.reversedByEntryId,
+        reversesEntryId: journalEntry.reversesEntryId,
+        createdAt: journalEntry.createdAt,
+        updatedAt: journalEntry.updatedAt,
+        totalDebitCents: sql<number>`coalesce(sum(${journalLine.debitAmount}), 0)`.mapWith(Number),
+      })
+      .from(journalEntry)
+      .leftJoin(journalLine, eq(journalLine.journalEntryId, journalEntry.id))
+      .where(and(...conditions))
+      .groupBy(journalEntry.id)
+      .orderBy(...orderByClause)
+      .limit(limit)
+      .offset(offset);
+
+    // Get total matching count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(journalEntry)
+      .where(and(...conditions));
+    const total = Number(countResult?.count || 0);
+
+    // Get organization-wide summary stats (status counts & total posted debits)
+    const statusCountsRaw = await db
+      .select({
+        status: journalEntry.status,
+        count: sql<number>`count(distinct ${journalEntry.id})`.mapWith(Number),
+        totalDebit: sql<number>`coalesce(sum(${journalLine.debitAmount}), 0)`.mapWith(Number),
+      })
+      .from(journalEntry)
+      .leftJoin(journalLine, eq(journalLine.journalEntryId, journalEntry.id))
+      .where(
+        and(
+          eq(journalEntry.organizationId, ctx.organizationId),
+          isNull(journalEntry.deletedAt)
+        )
+      )
+      .groupBy(journalEntry.status);
+
+    let postedCount = 0;
+    let draftCount = 0;
+    let voidCount = 0;
+    let totalPostedDebitCents = 0;
+
+    for (const row of statusCountsRaw) {
+      if (row.status === "posted") {
+        postedCount = row.count;
+        totalPostedDebitCents = row.totalDebit;
+      } else if (row.status === "draft") {
+        draftCount = row.count;
+      } else if (row.status === "void") {
+        voidCount = row.count;
+      }
+    }
+    const allCount = postedCount + draftCount + voidCount;
+
+    const result = rows.map((e) => {
+      const { totalDebitCents, ...rest } = e;
       return {
-        ...e,
-        lines: undefined,
-        totalDebit: centsToDecimal(totalDebit),
+        ...rest,
+        totalDebit: centsToDecimal(totalDebitCents),
       };
     });
 
     return NextResponse.json({
       entries: result,
-      total: result.length,
+      total,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+      summary: {
+        totalPostedDebit: centsToDecimal(totalPostedDebitCents),
+        totalPostedCents: totalPostedDebitCents,
+        counts: {
+          all: allCount,
+          posted: postedCount,
+          draft: draftCount,
+          void: voidCount,
+        },
+      },
     });
   } catch (err) {
     return handleError(err);
