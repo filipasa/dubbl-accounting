@@ -17,7 +17,14 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -359,11 +366,25 @@ export default function TransactionsPage() {
       {/* Inline stats row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          {/* Total in your books */}
+          {/* Total journal volume */}
           <div>
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-              Total in your books
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                Total journal volume
+              </p>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground/70 hover:text-foreground transition-colors cursor-help">
+                      <Info className="size-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Sum of all debit legs recorded across journal entries (£1.2M customer charges + £1.1M payouts to bank + £19.6k fees). Your net sales revenue is £1.2M.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
               {formatMoney(summary.totalPostedCents)}
             </p>
