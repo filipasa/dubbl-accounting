@@ -24,6 +24,7 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { StripeSyncDialog } from "@/components/integrations/stripe-sync-dialog";
 
 interface SyncLogEntry {
   id: string;
@@ -82,8 +83,15 @@ export default function StripeIntegrationPage() {
   const [connecting, setConnecting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncTargetIntegration, setSyncTargetIntegration] = useState<IntegrationItem | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccountItem[]>([]);
+
+  function handleOpenSync(integration: IntegrationItem) {
+    setSyncTargetIntegration(integration);
+    setSyncDialogOpen(true);
+  }
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -312,11 +320,26 @@ export default function StripeIntegrationPage() {
           bankAccounts={bankAccounts}
           syncing={syncingId === integration.id}
           disconnecting={disconnectingId === integration.id}
-          onSync={() => handleSync(integration.id)}
+          onSync={() => handleOpenSync(integration)}
           onDisconnect={() => handleDisconnect(integration.id)}
           onUpdateMapping={(field, value) => updateMapping(integration.id, field, value)}
         />
       ))}
+
+      {syncTargetIntegration && (
+        <StripeSyncDialog
+          isOpen={syncDialogOpen}
+          onClose={() => {
+            setSyncDialogOpen(false);
+            setSyncTargetIntegration(null);
+          }}
+          integrationId={syncTargetIntegration.id}
+          accountName={syncTargetIntegration.displayName || syncTargetIntegration.label || "Stripe Account"}
+          onSyncCompleted={() => {
+            fetchStatus();
+          }}
+        />
+      )}
     </div>
   );
 }

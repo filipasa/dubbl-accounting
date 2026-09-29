@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound } from "@/lib/api/response";
 import { eq, and } from "drizzle-orm";
 import { notDeleted } from "@/lib/db/soft-delete";
+import { syncStripeChunk, SyncStage, SyncPeriod } from "@/lib/integrations/stripe/chunked-sync";
 import { runInitialSync } from "@/lib/integrations/stripe/initial-sync";
 
 export const maxDuration = 60;
@@ -31,10 +32,30 @@ export async function POST(request: Request) {
 
     if (!integration) return notFound("Stripe integration");
 
-    // Await sync so Vercel serverless function does not terminate early
-    await runInitialSync(integration.id);
+    // If caller explicitly asks for full legacy sync (e.g. background worker)
+    if (body.fullSync === true) {
+      await runInitialSync(integration.id);
+      return NextResponse.json({ success: true, message: "Sync completed" });
+    }
 
-    return NextResponse.json({ success: true, message: "Sync completed" });
+    const stage = body.stage as SyncStage | undefined;
+    const cursor = body.cursor as string | undefined;
+    const limit = typeof body.limit === "number" ? body.limit : undefined;
+    const period = body.period as SyncPeriod | undefined;
+    const startDate = body.startDate as string | undefined;
+    const endDate = body.endDate as string | undefined;
+
+    const result = await syncStripeChunk({
+      integrationId: integration.id,
+      stage,
+      cursor,
+      limit,
+      period,
+      startDate,
+      endDate,
+    });
+
+    return NextResponse.json(result);
   } catch (err) {
     return handleError(err);
   }
