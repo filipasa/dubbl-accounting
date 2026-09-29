@@ -18,7 +18,7 @@ const createSchema = z.object({
   phone: z.string().nullable().optional(),
   taxNumber: z.string().nullable().optional(),
   type: z.enum(["customer", "supplier", "both"]).default("customer"),
-  paymentTermsDays: z.number().int().min(0).default(30),
+  paymentTermsDays: z.number().int().min(0).default(0),
   addresses: z.any().optional(),
   notes: z.string().nullable().optional(),
   currencyCode: currencyCodeSchema.optional(),

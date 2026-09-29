@@ -206,6 +206,7 @@ async function resolveContact(
       type: "customer",
       currencyCode: orgCurrency,
       addresses: formattedAddresses,
+      paymentTermsDays: 0,
     })
     .returning();
 
@@ -1526,6 +1527,7 @@ export async function handleCustomerCreated(
       type: "customer",
       currencyCode: contactCurrency,
       addresses: formattedAddresses,
+      paymentTermsDays: 0,
     })
     .returning();
 

@@ -30,7 +30,7 @@ export const contact = pgTable("contact", {
   phone: text("phone"),
   taxNumber: text("tax_number"),
   type: contactTypeEnum("type").notNull().default("customer"),
-  paymentTermsDays: integer("payment_terms_days").default(30),
+  paymentTermsDays: integer("payment_terms_days").default(0),
   addresses: jsonb("addresses").$type<{
     billing?: { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string };
     shipping?: { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string };

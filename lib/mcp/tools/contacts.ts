@@ -182,7 +182,7 @@ export function registerContactTools(server: McpServer, ctx: AuthContext) {
         .int()
         .min(0)
         .optional()
-        .default(30)
+        .default(0)
         .describe("Payment terms in days"),
       notes: z.string().optional().describe("Notes"),
       currencyCode: z

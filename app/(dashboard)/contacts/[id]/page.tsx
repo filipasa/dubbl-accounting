@@ -121,8 +121,9 @@ export default function ContactDetailsPage() {
           phone: form.get("phone") || null,
           taxNumber: form.get("taxNumber") || null,
           type: formType,
-          paymentTermsDays:
-            parseInt(form.get("paymentTermsDays") as string) || 30,
+          paymentTermsDays: isNaN(parseInt(form.get("paymentTermsDays") as string, 10))
+            ? 0
+            : parseInt(form.get("paymentTermsDays") as string, 10),
           addresses,
           creditLimit: creditLimitValue
             ? decimalToCents(creditLimitValue)

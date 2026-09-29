@@ -209,7 +209,9 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
           phone: form.get("phone") || null,
           taxNumber: form.get("taxNumber") || null,
           type: form.get("type") || "customer",
-          paymentTermsDays: parseInt(form.get("paymentTermsDays") as string) || 30,
+          paymentTermsDays: isNaN(parseInt(form.get("paymentTermsDays") as string, 10))
+            ? 0
+            : parseInt(form.get("paymentTermsDays") as string, 10),
           addresses,
           notes: form.get("notes") || null,
         }),
@@ -299,7 +301,7 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="drawer-contact-terms">Payment Terms (days)</Label>
-                  <Input id="drawer-contact-terms" name="paymentTermsDays" type="number" min={0} defaultValue={30} />
+                  <Input id="drawer-contact-terms" name="paymentTermsDays" type="number" min={0} defaultValue={0} />
                 </div>
               </div>
               <div className="space-y-2">
