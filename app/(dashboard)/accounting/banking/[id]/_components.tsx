@@ -282,7 +282,7 @@ export const DERIVED_STATE_META: Record<
   },
   categorized: {
     label: "in your books",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
     title: "Recorded in your books — assigned to a category",
   },
   cleared: {
@@ -1889,7 +1889,7 @@ const EXISTING_TYPE_META: Record<
   },
   stripe_payout: {
     label: "Stripe payout in your books",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
   },
 };
 

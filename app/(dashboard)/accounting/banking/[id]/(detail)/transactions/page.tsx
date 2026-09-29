@@ -283,9 +283,9 @@ export default function BankTransactionsPage() {
       <div className="space-y-4">
       {/* Stripe Payout Matches Banner */}
       {stripeMatches.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-indigo-50/40 to-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-indigo-900/60 dark:from-indigo-950/40 dark:via-indigo-950/20 dark:to-background">
+        <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-card p-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/60 dark:from-emerald-950/40 dark:via-emerald-950/20 dark:to-card">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
               <Sparkles className="size-4" />
             </div>
             <div>
@@ -301,14 +301,14 @@ export default function BankTransactionsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/50"
+              className="h-8 text-xs border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
               onClick={() => setReviewDialogOpen(true)}
             >
               Review matches
             </Button>
             <Button
               size="sm"
-              className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
               onClick={() => handleExecuteStripeMatch()}
               disabled={matchingStripe}
             >
@@ -551,7 +551,7 @@ export default function BankTransactionsPage() {
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="size-5 text-indigo-600" />
+              <Sparkles className="size-5 text-emerald-600 dark:text-emerald-400" />
               Stripe Payout Matches ({stripeMatches.length})
             </DialogTitle>
             <DialogDescription>
@@ -564,7 +564,7 @@ export default function BankTransactionsPage() {
             <div className="space-x-2">
               <button
                 type="button"
-                className="text-indigo-600 hover:underline font-medium"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
                 onClick={() => setSelectedMatchIds(new Set(stripeMatches.map((m) => m.importedTransactionId)))}
               >
                 Select all
@@ -588,7 +588,7 @@ export default function BankTransactionsPage() {
                   key={m.importedTransactionId}
                   className={cn(
                     "flex items-center gap-3 py-2.5 px-2 rounded-lg transition-colors cursor-pointer hover:bg-muted/50",
-                    checked && "bg-indigo-50/40 dark:bg-indigo-950/20"
+                    checked && "bg-emerald-50/40 dark:bg-emerald-950/20"
                   )}
                   onClick={() => {
                     const next = new Set(selectedMatchIds);
@@ -614,7 +614,7 @@ export default function BankTransactionsPage() {
                       <p className="text-muted-foreground">{m.importedDate}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-semibold text-indigo-600 dark:text-indigo-400">Stripe Books Entry</span>
+                      <span className="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-400">Stripe Books Entry</span>
                       <p className="font-medium truncate text-foreground">
                         {m.stripeExternalTransactionId || "Stripe Payout"}
                       </p>
@@ -625,7 +625,7 @@ export default function BankTransactionsPage() {
                     <p className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                       +{formatMoney(m.importedAmount, cur)}
                     </p>
-                    <span className="inline-block text-[10px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                    <span className="inline-block text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                       {m.confidence}% match
                     </span>
                   </div>
@@ -640,7 +640,7 @@ export default function BankTransactionsPage() {
             </Button>
             <Button
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
               disabled={selectedMatchIds.size === 0 || matchingStripe}
               onClick={() => handleExecuteStripeMatch([...selectedMatchIds])}
             >
