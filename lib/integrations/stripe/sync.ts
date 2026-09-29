@@ -92,9 +92,43 @@ async function resolveContact(
   integration: Integration,
   customerId: string | null,
   email: string | null,
-  name: string | null
+  name: string | null,
+  extra?: {
+    address?: Stripe.Address | null;
+    shippingAddress?: Stripe.Address | null;
+    phone?: string | null;
+  }
 ): Promise<string | null> {
   if (!customerId && !email) return null;
+
+  const addrToUse = (extra?.address && extra.address.line1)
+    ? extra.address
+    : (extra?.shippingAddress?.line1 ? extra.shippingAddress : null);
+
+  const formattedAddresses = addrToUse?.line1
+    ? {
+        billing: {
+          line1: addrToUse.line1 ?? undefined,
+          line2: addrToUse.line2 ?? undefined,
+          city: addrToUse.city ?? undefined,
+          state: addrToUse.state ?? undefined,
+          postalCode: addrToUse.postal_code ?? undefined,
+          country: addrToUse.country ?? "GB",
+        },
+        ...(extra?.shippingAddress?.line1
+          ? {
+              shipping: {
+                line1: extra.shippingAddress.line1 ?? undefined,
+                line2: extra.shippingAddress.line2 ?? undefined,
+                city: extra.shippingAddress.city ?? undefined,
+                state: extra.shippingAddress.state ?? undefined,
+                postalCode: extra.shippingAddress.postal_code ?? undefined,
+                country: extra.shippingAddress.country ?? "GB",
+              },
+            }
+          : {}),
+      }
+    : undefined;
 
   // Check entity map for existing customer mapping
   if (customerId) {
@@ -105,7 +139,24 @@ async function resolveContact(
         eq(stripeEntityMap.stripeEntityId, customerId)
       ),
     });
-    if (mapped) return mapped.dubblEntityId;
+    if (mapped) {
+      if (formattedAddresses) {
+        const existing = await db.query.contact.findFirst({
+          where: eq(contact.id, mapped.dubblEntityId),
+        });
+        if (existing && (!existing.addresses || !existing.addresses.billing?.line1)) {
+          await db
+            .update(contact)
+            .set({
+              addresses: formattedAddresses,
+              phone: existing.phone || extra?.phone || null,
+              updatedAt: new Date(),
+            })
+            .where(eq(contact.id, existing.id));
+        }
+      }
+      return mapped.dubblEntityId;
+    }
   }
 
   // Try to match by email
@@ -118,6 +169,16 @@ async function resolveContact(
       ),
     });
     if (existing) {
+      if (formattedAddresses && (!existing.addresses || !existing.addresses.billing?.line1)) {
+        await db
+          .update(contact)
+          .set({
+            addresses: formattedAddresses,
+            phone: existing.phone || extra?.phone || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(contact.id, existing.id));
+      }
       // Create entity map for future lookups
       if (customerId) {
         await insertEntityMap(
@@ -141,8 +202,10 @@ async function resolveContact(
       organizationId: integration.organizationId,
       name: name || email || "Stripe Customer",
       email,
+      phone: extra?.phone ?? null,
       type: "customer",
       currencyCode: orgCurrency,
+      addresses: formattedAddresses,
     })
     .returning();
 
@@ -290,7 +353,12 @@ export async function handleChargeSucceeded(
     integration,
     customerId,
     charge.billing_details?.email ?? null,
-    charge.billing_details?.name ?? null
+    charge.billing_details?.name ?? null,
+    {
+      address: charge.billing_details?.address ?? null,
+      shippingAddress: charge.shipping?.address ?? null,
+      phone: charge.billing_details?.phone ?? charge.shipping?.phone ?? null,
+    }
   );
 
   const chargeDate = new Date(charge.created * 1000).toISOString().slice(0, 10);
@@ -1382,6 +1450,37 @@ export async function handleCustomerCreated(
 ) {
   if (await isDuplicate(integration.organizationId, "customer", customer.id)) return;
 
+  const addrToUse = (customer.address && customer.address.line1)
+    ? customer.address
+    : (customer.shipping?.address?.line1 ? customer.shipping.address : null);
+
+  const formattedAddresses = addrToUse?.line1
+    ? {
+        billing: {
+          line1: addrToUse.line1 ?? undefined,
+          line2: addrToUse.line2 ?? undefined,
+          city: addrToUse.city ?? undefined,
+          state: addrToUse.state ?? undefined,
+          postalCode: addrToUse.postal_code ?? undefined,
+          country: addrToUse.country ?? "GB",
+        },
+        ...(customer.shipping?.address?.line1
+          ? {
+              shipping: {
+                line1: customer.shipping.address.line1 ?? undefined,
+                line2: customer.shipping.address.line2 ?? undefined,
+                city: customer.shipping.address.city ?? undefined,
+                state: customer.shipping.address.state ?? undefined,
+                postalCode: customer.shipping.address.postal_code ?? undefined,
+                country: customer.shipping.address.country ?? "GB",
+              },
+            }
+          : {}),
+      }
+    : undefined;
+
+  const phone = customer.phone || customer.shipping?.phone || null;
+
   // Try to find existing contact by email
   if (customer.email) {
     const existing = await db.query.contact.findFirst({
@@ -1392,6 +1491,16 @@ export async function handleCustomerCreated(
       ),
     });
     if (existing) {
+      if (formattedAddresses && (!existing.addresses || !existing.addresses.billing?.line1)) {
+        await db
+          .update(contact)
+          .set({
+            addresses: formattedAddresses,
+            phone: existing.phone || phone,
+            updatedAt: new Date(),
+          })
+          .where(eq(contact.id, existing.id));
+      }
       await insertEntityMap(
         integration.organizationId,
         "customer",
@@ -1407,28 +1516,16 @@ export async function handleCustomerCreated(
   const contactCurrency = (customer.currency ? customer.currency.toUpperCase() : null) || orgCurrency;
 
   // Create new contact
-  const address = customer.address;
   const [newContact] = await db
     .insert(contact)
     .values({
       organizationId: integration.organizationId,
       name: customer.name || customer.email || "Stripe Customer",
       email: customer.email ?? null,
-      phone: customer.phone ?? null,
+      phone,
       type: "customer",
       currencyCode: contactCurrency,
-      addresses: address
-        ? {
-            billing: {
-              line1: address.line1 ?? undefined,
-              line2: address.line2 ?? undefined,
-              city: address.city ?? undefined,
-              state: address.state ?? undefined,
-              postalCode: address.postal_code ?? undefined,
-              country: address.country ?? undefined,
-            },
-          }
-        : undefined,
+      addresses: formattedAddresses,
     })
     .returning();
 

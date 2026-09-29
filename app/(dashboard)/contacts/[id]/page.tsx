@@ -91,14 +91,21 @@ export default function ContactDetailsPage() {
 
     const creditLimitValue = formCreditLimit;
     const addressLine = ((form.get("addressLine") as string) || "").trim();
+    const addressLine2 = ((form.get("addressLine2") as string) || "").trim();
     const city = ((form.get("city") as string) || "").trim();
+    const state = ((form.get("state") as string) || "").trim();
     const postalCode = ((form.get("postalCode") as string) || "").trim();
-    const addresses = (addressLine || city || postalCode) ? {
+    const country = ((form.get("country") as string) || "").trim();
+    const addresses = (addressLine || addressLine2 || city || state || postalCode || country) ? {
       billing: {
         ...(addressLine ? { line1: addressLine } : {}),
+        ...(addressLine2 ? { line2: addressLine2 } : {}),
         ...(city ? { city } : {}),
+        ...(state ? { state } : {}),
         ...(postalCode ? { postalCode } : {}),
+        ...(country ? { country } : {}),
       },
+      ...(contact?.addresses?.shipping ? { shipping: contact.addresses.shipping } : {}),
     } : null;
 
     try {
@@ -217,17 +224,27 @@ export default function ContactDetailsPage() {
 
         <Section title="Address" description="Billing address for invoices and quotes.">
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Address line</Label>
-              <Input
-                name="addressLine"
-                defaultValue={contact.addresses?.billing?.line1 || ""}
-                placeholder="Street address or line 1"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Address line 1</Label>
+                <Input
+                  name="addressLine"
+                  defaultValue={contact.addresses?.billing?.line1 || ""}
+                  placeholder="Street address or line 1"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Address line 2</Label>
+                <Input
+                  name="addressLine2"
+                  defaultValue={contact.addresses?.billing?.line2 || ""}
+                  placeholder="Apartment, suite, unit, building (optional)"
+                />
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">City</Label>
+                <Label className="text-xs">City / Town</Label>
                 <Input
                   name="city"
                   defaultValue={contact.addresses?.billing?.city || ""}
@@ -235,11 +252,29 @@ export default function ContactDetailsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Postcode</Label>
+                <Label className="text-xs">State / County</Label>
+                <Input
+                  name="state"
+                  defaultValue={contact.addresses?.billing?.state || ""}
+                  placeholder="State, county or region"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Postcode / ZIP</Label>
                 <Input
                   name="postalCode"
                   defaultValue={contact.addresses?.billing?.postalCode || ""}
                   placeholder="Postcode / ZIP"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Country</Label>
+                <Input
+                  name="country"
+                  defaultValue={contact.addresses?.billing?.country || "GB"}
+                  placeholder="Country (e.g. GB)"
                 />
               </div>
             </div>
