@@ -23,6 +23,12 @@ import {
 } from "lucide-react";
 import { GrainGradient } from "@paper-design/shaders-react";
 import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  DashboardPeriodSelect,
+  getPeriodRange,
+  type DashboardPeriodKey,
+  type PeriodRange,
+} from "@/components/dashboard/dashboard-period-select";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Badge } from "@/components/ui/badge";
@@ -297,16 +303,33 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [dismissingOnboarding, setDismissingOnboarding] = useState(false);
 
-  useDocumentTitle("Dashboard \u00B7 Overview");
+  // Period selection state (defaults to Year to Date / YTD)
+  const [periodKey, setPeriodKey] = useState<DashboardPeriodKey>("ytd");
+  const [periodRange, setPeriodRange] = useState<PeriodRange>(() => getPeriodRange("ytd"));
+  const [pnlLoading, setPnlLoading] = useState(false);
+
+  useDocumentTitle("Dashboard · Overview");
 
   useEffect(() => {
     const id = localStorage.getItem("activeOrgId");
     const headers: Record<string, string> = {};
     if (id) headers["x-organization-id"] = id;
 
+    let activeRange = getPeriodRange("ytd");
+    try {
+      const saved = localStorage.getItem("dubbl_dashboard_period") as DashboardPeriodKey | null;
+      if (saved) {
+        setPeriodKey(saved);
+        activeRange = getPeriodRange(saved);
+        setPeriodRange(activeRange);
+      }
+    } catch {}
+
+    const pnlUrl = `/api/v1/reports/profit-and-loss?startDate=${activeRange.startDate}&endDate=${activeRange.endDate}`;
+
     Promise.all([
       fetch("/api/v1/entries?limit=10", { headers }).then((r) => r.json()),
-      fetch("/api/v1/reports/profit-and-loss", { headers })
+      fetch(pnlUrl, { headers })
         .then((r) => r.json())
         .catch(() => null),
       fetch("/api/v1/reports/aged-receivables", { headers })
@@ -414,6 +437,41 @@ export default function DashboardPage() {
       .then(() => setShowOnboarding(false))
       .catch(() => {})
       .finally(() => setDismissingOnboarding(false));
+  };
+
+  const handlePeriodChange = (key: DashboardPeriodKey, range: PeriodRange) => {
+    setPeriodKey(key);
+    setPeriodRange(range);
+    try {
+      localStorage.setItem("dubbl_dashboard_period", key);
+    } catch {}
+
+    setPnlLoading(true);
+    const id = localStorage.getItem("activeOrgId");
+    const headers: Record<string, string> = {};
+    if (id) headers["x-organization-id"] = id;
+
+    fetch(
+      `/api/v1/reports/profit-and-loss?startDate=${range.startDate}&endDate=${range.endDate}`,
+      { headers }
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data) {
+          setPnl({
+            totalRevenue: data.totalRevenue || 0,
+            totalExpenses: data.totalExpenses || 0,
+            netIncome: data.netIncome || 0,
+            expenses: data.expenses || [],
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load P&L for period:", err);
+      })
+      .finally(() => {
+        setPnlLoading(false);
+      });
   };
 
   const receivablesCount = receivables.buckets.reduce(
@@ -632,50 +690,102 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Section B: Stat Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              <StatCard
-                title="Revenue"
-                value={formatMoney(pnl.totalRevenue)}
-                icon={TrendingUp}
-                sparklineData={sparklines.revenue.length > 1 ? sparklines.revenue : undefined}
-              />
-              <StatCard
-                title="Expenses"
-                value={formatMoney(pnl.totalExpenses)}
-                icon={TrendingDown}
-                sparklineData={sparklines.expenses.length > 1 ? sparklines.expenses : undefined}
-              />
-              <StatCard
-                title="Net Income"
-                value={formatMoney(pnl.netIncome)}
-                icon={Wallet}
-                changeType={pnl.netIncome >= 0 ? "positive" : "negative"}
-                sparklineData={sparklines.netIncome.length > 1 ? sparklines.netIncome : undefined}
-              />
-              <StatCard
-                title="Receivables"
-                value={formatMoney(receivables.grandTotal)}
-                icon={ArrowDownLeft}
-                change={`${receivablesCount} outstanding`}
-                changeType="neutral"
-              />
-              <StatCard
-                title="Payables"
-                value={formatMoney(payables.grandTotal)}
-                icon={ArrowUpRight}
-                change={`${payablesCount} outstanding`}
-                changeType="neutral"
-              />
+            {/* Section B: Financial Overview & Stat Cards */}
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    Financial Performance
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="text-[11px] font-normal border-emerald-950/20 text-muted-foreground"
+                  >
+                    {periodRange.displayText}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DashboardPeriodSelect
+                    value={periodKey}
+                    onChange={handlePeriodChange}
+                    disabled={pnlLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <StatCard
+                  title="Revenue"
+                  badge={periodRange.badge}
+                  subtitle={periodRange.displayText}
+                  value={formatMoney(pnl.totalRevenue)}
+                  icon={TrendingUp}
+                  isLoading={pnlLoading}
+                  sparklineData={
+                    sparklines.revenue.length > 1 ? sparklines.revenue : undefined
+                  }
+                />
+                <StatCard
+                  title="Expenses"
+                  badge={periodRange.badge}
+                  subtitle={periodRange.displayText}
+                  value={formatMoney(pnl.totalExpenses)}
+                  icon={TrendingDown}
+                  isLoading={pnlLoading}
+                  sparklineData={
+                    sparklines.expenses.length > 1 ? sparklines.expenses : undefined
+                  }
+                />
+                <StatCard
+                  title="Net Income"
+                  badge={periodRange.badge}
+                  subtitle={periodRange.displayText}
+                  value={formatMoney(pnl.netIncome)}
+                  icon={Wallet}
+                  isLoading={pnlLoading}
+                  changeType={pnl.netIncome >= 0 ? "positive" : "negative"}
+                  sparklineData={
+                    sparklines.netIncome.length > 1
+                      ? sparklines.netIncome
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="Receivables"
+                  badge="Snapshot"
+                  subtitle={`As of today (${receivablesCount} unpaid)`}
+                  value={formatMoney(receivables.grandTotal)}
+                  icon={ArrowDownLeft}
+                  change={`${receivablesCount} outstanding`}
+                  changeType="neutral"
+                />
+                <StatCard
+                  title="Payables"
+                  badge="Snapshot"
+                  subtitle={`As of today (${payablesCount} unpaid)`}
+                  value={formatMoney(payables.grandTotal)}
+                  icon={ArrowUpRight}
+                  change={`${payablesCount} outstanding`}
+                  changeType="neutral"
+                />
+              </div>
             </div>
 
             {/* Section C: Financial Health */}
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Revenue vs Expenses */}
               <div className="rounded-lg border bg-card p-5">
-                <h3 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Revenue vs Expenses
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Revenue vs Expenses
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-normal border-emerald-950/20 text-muted-foreground"
+                  >
+                    {periodRange.label}
+                  </Badge>
+                </div>
                 <div className="mt-4 space-y-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
@@ -747,9 +857,17 @@ export default function DashboardPage() {
 
               {/* Aging Summary */}
               <div className="rounded-lg border bg-card p-5">
-                <h3 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Aging Summary
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Aging Summary
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-normal border-emerald-950/20 text-muted-foreground"
+                  >
+                    As of today
+                  </Badge>
+                </div>
                 <div className="mt-4 grid grid-cols-2 gap-6">
                   <AgingColumn
                     title="Receivables"

@@ -8,6 +8,9 @@ interface StatCardProps {
   changeType?: "positive" | "negative" | "neutral";
   icon: LucideIcon;
   sparklineData?: number[];
+  badge?: string;
+  subtitle?: string;
+  isLoading?: boolean;
 }
 
 function Sparkline({ data }: { data: number[] }) {
@@ -45,35 +48,56 @@ export function StatCard({
   changeType = "neutral",
   icon: Icon,
   sparklineData,
+  badge,
+  subtitle,
+  isLoading = false,
 }: StatCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-3 sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
-          {title}
-        </p>
-        <Icon className="size-4 text-muted-foreground/50" />
-      </div>
-      <div className="mt-2 flex items-end justify-between gap-2">
-        <div className="space-y-1">
-          <p className="text-lg sm:text-[24px] font-bold tracking-tight font-mono tabular-nums">
-            {value}
-          </p>
-          {change && (
-            <p
-              className={cn(
-                "text-xs font-medium",
-                changeType === "positive" && "text-emerald-600 dark:text-emerald-400",
-                changeType === "negative" && "text-red-600 dark:text-red-400",
-                changeType === "neutral" && "text-muted-foreground"
-              )}
-            >
-              {change}
+    <div className="rounded-lg border bg-card p-3 sm:p-5 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground truncate">
+              {title}
             </p>
-          )}
+            {badge && (
+              <span className="inline-flex shrink-0 items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {badge}
+              </span>
+            )}
+          </div>
+          <Icon className="size-4 text-muted-foreground/50 shrink-0" />
         </div>
-        {sparklineData && <Sparkline data={sparklineData} />}
+        <div className="mt-2 flex items-end justify-between gap-2">
+          <div className="space-y-1 min-w-0">
+            {isLoading ? (
+              <div className="h-7 w-24 rounded bg-muted animate-pulse" />
+            ) : (
+              <p className="text-lg sm:text-[24px] font-bold tracking-tight font-mono tabular-nums truncate">
+                {value}
+              </p>
+            )}
+            {change && (
+              <p
+                className={cn(
+                  "text-xs font-medium",
+                  changeType === "positive" && "text-emerald-600 dark:text-emerald-400",
+                  changeType === "negative" && "text-red-600 dark:text-red-400",
+                  changeType === "neutral" && "text-muted-foreground"
+                )}
+              >
+                {change}
+              </p>
+            )}
+          </div>
+          {sparklineData && <Sparkline data={sparklineData} />}
+        </div>
       </div>
+      {subtitle && (
+        <p className="mt-2 pt-2 border-t text-[11px] text-muted-foreground/80 truncate">
+          {subtitle}
+        </p>
+      )}
     </div>
   );
 }
