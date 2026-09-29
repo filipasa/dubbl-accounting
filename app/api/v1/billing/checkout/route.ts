@@ -74,9 +74,23 @@ async function handleSeatCheckout(
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  const priceId = interval === "annual"
-    ? process.env.STRIPE_PRO_ANNUAL_PRICE_ID!
-    : process.env.STRIPE_PRO_PRICE_ID!;
+  const priceId =
+    interval === "annual"
+      ? process.env.STRIPE_PRO_ANNUAL_PRICE_ID
+      : process.env.STRIPE_PRO_PRICE_ID;
+
+  if (!priceId) {
+    const envVar =
+      interval === "annual"
+        ? "STRIPE_PRO_ANNUAL_PRICE_ID"
+        : "STRIPE_PRO_PRICE_ID";
+    return NextResponse.json(
+      {
+        error: `Stripe price ID for Pro seat plan (${interval}) is not configured. Missing environment variable: ${envVar}`,
+      },
+      { status: 400 }
+    );
+  }
 
   // If already has an active seat subscription, update it instead of creating new
   if (sub?.stripeSubscriptionId && sub.status === "active") {
@@ -105,14 +119,16 @@ async function handleSeatCheckout(
     }
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+
   // New subscription - create checkout session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     automatic_tax: { enabled: true },
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
+    success_url: `${appUrl}/settings/billing?success=true`,
+    cancel_url: `${appUrl}/settings/billing`,
     metadata: { organizationId, type: "seats", plan, interval },
   });
 
@@ -143,7 +159,15 @@ async function handleStorageCheckout(
 
   const storagePriceId = storagePriceMap[plan]?.[interval];
   if (!storagePriceId) {
-    return NextResponse.json({ error: "Invalid storage plan" }, { status: 400 });
+    const envVar = `STRIPE_STORAGE_${plan.toUpperCase()}_${
+      interval === "annual" ? "ANNUAL_" : ""
+    }PRICE_ID`;
+    return NextResponse.json(
+      {
+        error: `Stripe price ID for storage plan '${plan}' (${interval}) is not configured. Missing environment variable: ${envVar}`,
+      },
+      { status: 400 }
+    );
   }
 
   // If already has an active storage subscription, update it
