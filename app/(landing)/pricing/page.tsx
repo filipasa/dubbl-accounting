@@ -204,7 +204,7 @@ export default function PricingPage() {
 
                 <div className="mt-8 flex items-baseline gap-2">
                   <span className="font-mono text-6xl font-bold tracking-tighter text-foreground">
-                    $0
+                    £0
                   </span>
                   <span className="text-sm text-muted-foreground">forever</span>
                 </div>
@@ -278,7 +278,7 @@ export default function PricingPage() {
                       transition={{ duration: 0.2 }}
                       className="font-mono text-6xl font-bold tracking-tighter text-foreground"
                     >
-                      ${price("pro")}
+                      £{price("pro")}
                     </motion.span>
                   </AnimatePresence>
                   <span className="text-sm text-muted-foreground">/seat/mo</span>
@@ -288,7 +288,7 @@ export default function PricingPage() {
                       animate={{ opacity: 1 }}
                       className="text-sm text-muted-foreground line-through"
                     >
-                      ${PLAN_PRICES.pro.monthly}
+                      £{PLAN_PRICES.pro.monthly}
                     </motion.span>
                   )}
                 </div>
@@ -301,7 +301,7 @@ export default function PricingPage() {
                     transition={{ duration: 0.15 }}
                     className="mt-1 text-xs text-muted-foreground/70"
                   >
-                    {interval === "annual" ? `Billed as $${price("pro") * 12}/seat/year` : "Billed monthly per seat"}
+                    {interval === "annual" ? `Billed as £${price("pro") * 12}/seat/year` : "Billed monthly per seat"}
                   </motion.p>
                 </AnimatePresence>
 
@@ -397,7 +397,7 @@ export default function PricingPage() {
 
                     <div className="mt-3 flex items-baseline gap-1">
                       {currentPrice === 0 ? (
-                        <span className="font-mono text-3xl font-bold tracking-tighter">$0</span>
+                        <span className="font-mono text-3xl font-bold tracking-tighter">£0</span>
                       ) : (
                         <>
                           <AnimatePresence mode="wait">
@@ -409,7 +409,7 @@ export default function PricingPage() {
                               transition={{ duration: 0.2 }}
                               className="font-mono text-3xl font-bold tracking-tighter"
                             >
-                              ${currentPrice}
+                              £{currentPrice}
                             </motion.span>
                           </AnimatePresence>
                           <span className="text-xs text-muted-foreground">/mo</span>
@@ -419,7 +419,7 @@ export default function PricingPage() {
                               animate={{ opacity: 1 }}
                               className="text-sm text-muted-foreground line-through"
                             >
-                              ${plan.monthly}
+                              £{plan.monthly}
                             </motion.span>
                           )}
                         </>
@@ -546,7 +546,7 @@ export default function PricingPage() {
                         Pro
                       </span>
                       <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                        ${price("pro")}/seat
+                        £{price("pro")}/seat
                       </span>
                     </div>
                   </th>
@@ -650,7 +650,7 @@ export default function PricingPage() {
               },
               {
                 q: "How does seat pricing work?",
-                a: "Every member counts as a seat. Pro is $12/seat/month or $10/seat/month billed annually.",
+                a: "Every member counts as a seat. Pro is £12/seat/month or £10/seat/month billed annually.",
               },
             ].map((faq, i) => (
               <motion.div

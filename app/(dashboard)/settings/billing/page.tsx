@@ -188,7 +188,7 @@ export default function BillingPage() {
               )}
             </div>
             <div className="mt-3">
-              <span className="text-3xl font-bold tracking-tight">$0</span>
+              <span className="text-3xl font-bold tracking-tight">£0</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">For individuals getting started</p>
             <ul className="mt-4 flex-1 space-y-2">
@@ -241,7 +241,7 @@ export default function BillingPage() {
                   transition={{ duration: 0.2 }}
                   className="text-3xl font-bold tracking-tight"
                 >
-                  ${interval === "annual" ? SEAT_PRICE_ANNUAL : SEAT_PRICE_MONTHLY}
+                  £{interval === "annual" ? SEAT_PRICE_ANNUAL : SEAT_PRICE_MONTHLY}
                 </motion.span>
               </AnimatePresence>
               <span className="text-sm text-muted-foreground">/seat/mo</span>
@@ -251,7 +251,7 @@ export default function BillingPage() {
                   animate={{ opacity: 1 }}
                   className="ml-1 text-xs text-muted-foreground line-through"
                 >
-                  ${SEAT_PRICE_MONTHLY}
+                  £{SEAT_PRICE_MONTHLY}
                 </motion.span>
               )}
             </div>
@@ -264,7 +264,7 @@ export default function BillingPage() {
                 transition={{ duration: 0.15 }}
                 className="mt-2 text-xs text-muted-foreground"
               >
-                {interval === "annual" ? `Billed as $${SEAT_PRICE_ANNUAL * 12}/seat/year` : "Billed monthly per seat"}
+                {interval === "annual" ? `Billed as £${SEAT_PRICE_ANNUAL * 12}/seat/year` : "Billed monthly per seat"}
               </motion.p>
             </AnimatePresence>
             <ul className="mt-4 flex-1 space-y-2">
@@ -444,12 +444,12 @@ export default function BillingPage() {
                       transition={{ duration: 0.15 }}
                       className="text-lg font-semibold"
                     >
-                      ${currentPrice}
+                      £{currentPrice}
                     </motion.span>
                   </AnimatePresence>
                   {currentPrice > 0 && <span className="text-xs text-muted-foreground">/mo</span>}
                   {interval === "annual" && plan.monthly > 0 && (
-                    <span className="text-xs text-muted-foreground line-through">${plan.monthly}</span>
+                    <span className="text-xs text-muted-foreground line-through">£{plan.monthly}</span>
                   )}
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">{plan.description}</p>
