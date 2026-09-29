@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { subscription, document, attachment, organization, documentEmailLog } from "@/lib/db/schema";
+import { subscription, document, attachment, organization, documentEmailLog, member, users } from "@/lib/db/schema";
 import { eq, and, gte, sql, isNull } from "drizzle-orm";
 import { getEffectiveLimits, PLAN_LIMITS, STORAGE_PLANS, type PlanName, type StoragePlanName } from "@/lib/plans";
 import type { PgTable, PgColumn } from "drizzle-orm/pg-core";
@@ -15,6 +15,40 @@ export async function getOrgPlanLimits(orgId: string) {
   const sub = await db.query.subscription.findFirst({
     where: eq(subscription.organizationId, orgId),
   });
+
+  // Check if any member of this org is a site admin or dev user
+  const orgMembers = await db.query.member.findMany({
+    where: eq(member.organizationId, orgId),
+    with: { user: true },
+  });
+  const hasSiteAdmin = orgMembers.some(
+    (m) => m.user?.isSiteAdmin || m.user?.email === "dev@dubbl.local"
+  );
+
+  if (hasSiteAdmin) {
+    return {
+      sub,
+      limits: {
+        ...PLAN_LIMITS.pro,
+        organizations: Infinity,
+        members: Infinity,
+        storageMb: Infinity,
+        entriesPerMonth: Infinity,
+        contacts: Infinity,
+        invoicesPerMonth: Infinity,
+        emailsPerMonth: Infinity,
+        bankAccounts: Infinity,
+        projects: Infinity,
+        multiCurrency: true,
+        apiAccess: true,
+        auditLogDays: Infinity,
+        backupRetentionDays: Infinity,
+        maxManualBackups: Infinity,
+        reports: PLAN_LIMITS.pro.reports,
+      },
+    };
+  }
+
   const limits = getEffectiveLimits(
     sub
       ? {
@@ -167,8 +201,12 @@ export async function checkEmailLimit(orgId: string) {
 }
 
 export async function checkOrganizationLimit(userId: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  if (user?.isSiteAdmin || user?.email === "dev@dubbl.local") return;
+
   // Count orgs where user is owner
-  const { member } = await import("@/lib/db/schema");
   const memberships = await db.query.member.findMany({
     where: eq(member.userId, userId),
   });
