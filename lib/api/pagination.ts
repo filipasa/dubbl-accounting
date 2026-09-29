@@ -1,8 +1,8 @@
 /** Parse pagination params from a URL */
-export function parsePagination(url: string | URL) {
+export function parsePagination(url: string | URL, maxLimit = 250) {
   const u = typeof url === "string" ? new URL(url) : url;
   const page = Math.max(1, parseInt(u.searchParams.get("page") || "1"));
-  const limit = Math.min(100, Math.max(1, parseInt(u.searchParams.get("limit") || "50")));
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(u.searchParams.get("limit") || "50")));
   const offset = (page - 1) * limit;
   return { page, limit, offset };
 }

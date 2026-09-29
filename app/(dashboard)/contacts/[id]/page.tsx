@@ -18,6 +18,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { decimalToCents } from "@/lib/money";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { useContactContext, getOrgId } from "./layout";
@@ -272,7 +273,7 @@ export default function ContactDetailsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs">Credit limit</Label>
                 <CurrencyInput
-                  prefix="$"
+                  prefix={getCurrencySymbol(formCurrencyCode || "GBP")}
                   value={formCreditLimit}
                   onChange={setFormCreditLimit}
                   placeholder="No limit"

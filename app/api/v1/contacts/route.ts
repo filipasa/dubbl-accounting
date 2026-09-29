@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { contact, invoice, bill } from "@/lib/db/schema";
+import { contact, invoice, bill, organization } from "@/lib/db/schema";
 import { eq, and, or, ilike, desc, asc, gte, lte, inArray, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -21,7 +21,7 @@ const createSchema = z.object({
   paymentTermsDays: z.number().int().min(0).default(30),
   addresses: z.any().optional(),
   notes: z.string().nullable().optional(),
-  currencyCode: currencyCodeSchema.default("USD"),
+  currencyCode: currencyCodeSchema.optional(),
 });
 
 export async function GET(request: Request) {
@@ -156,14 +156,21 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = createSchema.parse(body);
 
+    const org = await db.query.organization.findFirst({
+      where: eq(organization.id, ctx.organizationId),
+      columns: { defaultCurrency: true },
+    });
+    const currencyCode = parsed.currencyCode || org?.defaultCurrency || "GBP";
+
     await checkResourceLimit(ctx.organizationId, contact, contact.organizationId, "contacts", contact.deletedAt);
-    await checkMultiCurrency(ctx.organizationId, parsed.currencyCode);
+    await checkMultiCurrency(ctx.organizationId, currencyCode);
 
     const [created] = await db
       .insert(contact)
       .values({
         organizationId: ctx.organizationId,
         ...parsed,
+        currencyCode,
       })
       .returning();
 

@@ -109,7 +109,7 @@ export interface TaxRate {
 
 export interface ActivityItem {
   id: string;
-  type: "invoice" | "quote" | "credit_note" | "payment" | "bill";
+  type: "invoice" | "quote" | "credit_note" | "payment" | "bill" | "stripe_charge";
   number: string;
   status: string;
   amount: number;
@@ -159,6 +159,13 @@ export const activityTypeConfig: Record<ActivityItem["type"], {
     color: "text-orange-600 dark:text-orange-400",
     bg: "bg-orange-50 dark:bg-orange-950/40",
     href: (id) => `/purchases/${id}`,
+  },
+  stripe_charge: {
+    label: "Stripe Charge",
+    icon: CreditCard,
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40",
+    href: (id) => `/accounting/${id}`,
   },
 };
 

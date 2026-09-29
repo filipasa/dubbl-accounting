@@ -36,7 +36,7 @@ export const contact = pgTable("contact", {
     shipping?: { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string };
   }>(),
   notes: text("notes"),
-  currencyCode: text("currency_code").default("USD"),
+  currencyCode: text("currency_code").default("GBP"),
   // Bookkeeping defaults
   creditLimit: integer("credit_limit"), // cents, nullable = no limit
   isTaxExempt: boolean("is_tax_exempt").notNull().default(false),

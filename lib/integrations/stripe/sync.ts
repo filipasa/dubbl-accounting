@@ -1,4 +1,3 @@
-import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import {
   stripeIntegration,
@@ -14,6 +13,7 @@ import {
   chartAccount,
   creditNote,
   creditNoteLine,
+  organization,
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { notDeleted } from "@/lib/db/soft-delete";
@@ -80,6 +80,14 @@ async function insertEntityMap(
     .onConflictDoNothing();
 }
 
+async function getOrgDefaultCurrency(organizationId: string): Promise<string> {
+  const org = await db.query.organization.findFirst({
+    where: eq(organization.id, organizationId),
+    columns: { defaultCurrency: true },
+  });
+  return org?.defaultCurrency || "GBP";
+}
+
 async function resolveContact(
   integration: Integration,
   customerId: string | null,
@@ -124,6 +132,8 @@ async function resolveContact(
     }
   }
 
+  const orgCurrency = await getOrgDefaultCurrency(integration.organizationId);
+
   // Create new contact
   const [newContact] = await db
     .insert(contact)
@@ -132,6 +142,7 @@ async function resolveContact(
       name: name || email || "Stripe Customer",
       email,
       type: "customer",
+      currencyCode: orgCurrency,
     })
     .returning();
 
@@ -1392,6 +1403,9 @@ export async function handleCustomerCreated(
     }
   }
 
+  const orgCurrency = await getOrgDefaultCurrency(integration.organizationId);
+  const contactCurrency = (customer.currency ? customer.currency.toUpperCase() : null) || orgCurrency;
+
   // Create new contact
   const address = customer.address;
   const [newContact] = await db
@@ -1402,6 +1416,7 @@ export async function handleCustomerCreated(
       email: customer.email ?? null,
       phone: customer.phone ?? null,
       type: "customer",
+      currencyCode: contactCurrency,
       addresses: address
         ? {
             billing: {

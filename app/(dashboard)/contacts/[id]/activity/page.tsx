@@ -112,6 +112,7 @@ export default function ContactActivityPage() {
               <SelectItem value="quote">Quotes</SelectItem>
               <SelectItem value="credit_note">Credit Notes</SelectItem>
               <SelectItem value="payment">Payments</SelectItem>
+              <SelectItem value="stripe_charge">Stripe Charges</SelectItem>
               <SelectItem value="bill">Bills</SelectItem>
             </SelectContent>
           </Select>
@@ -161,7 +162,7 @@ export default function ContactActivityPage() {
               <p className="text-xs text-muted-foreground/70 mt-1">
                 {activityStartDate || activityEndDate || activityTypeFilter !== "all"
                   ? "Try adjusting your filters"
-                  : "Invoices, quotes, payments, and bills will appear here"}
+                  : "Invoices, quotes, payments, bills, and Stripe charges will appear here"}
               </p>
             </div>
           </ContentReveal>

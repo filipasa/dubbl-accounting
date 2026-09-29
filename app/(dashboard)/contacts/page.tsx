@@ -124,7 +124,7 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
       render: (r) => (
         <span className="text-sm tabular-nums text-muted-foreground">
           {r.creditLimit != null
-            ? formatMoney(r.creditLimit, r.currencyCode || "USD")
+            ? formatMoney(r.creditLimit, r.currencyCode || "GBP")
             : "No limit"}
         </span>
       ),
@@ -137,7 +137,7 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
         <span className="text-sm tabular-nums">
           {r.owesYou && r.owesYou > 0 ? (
             <span className="font-medium text-emerald-600 dark:text-emerald-400">
-              {formatMoney(r.owesYou, r.currencyCode || "USD")}
+              {formatMoney(r.owesYou, r.currencyCode || "GBP")}
             </span>
           ) : (
             <span className="text-muted-foreground">-</span>
@@ -153,7 +153,7 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
         <span className="text-sm tabular-nums">
           {r.youOwe && r.youOwe > 0 ? (
             <span className="font-medium text-orange-600 dark:text-orange-400">
-              {formatMoney(r.youOwe, r.currencyCode || "USD")}
+              {formatMoney(r.youOwe, r.currencyCode || "GBP")}
             </span>
           ) : (
             <span className="text-muted-foreground">-</span>
@@ -169,7 +169,7 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
         <span className="text-sm tabular-nums">
           {r.overdue && r.overdue > 0 ? (
             <span className="font-semibold text-red-600 dark:text-red-400">
-              {formatMoney(r.overdue, r.currencyCode || "USD")}
+              {formatMoney(r.overdue, r.currencyCode || "GBP")}
             </span>
           ) : (
             <span className="text-muted-foreground">-</span>
@@ -288,13 +288,14 @@ export default function ContactsPage() {
   const [refetching, setRefetching] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState("50");
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   useDocumentTitle("Contacts · All Contacts");
 
-  // Reset and fetch page 1 when filters change
+  // Reset and fetch page 1 when filters or pageSize change
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
@@ -314,7 +315,7 @@ export default function ContactsPage() {
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
     params.set("page", "1");
-    params.set("limit", "50");
+    params.set("limit", pageSize);
 
     fetch(`/api/v1/contacts?${params}`, {
       headers: { "x-organization-id": orgId },
@@ -333,7 +334,7 @@ export default function ContactsPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, typeFilter, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [debouncedSearch, typeFilter, sortBy, sortOrder, dateFrom, dateTo, pageSize]);
 
   // Load next page
   const loadMore = useCallback(() => {
@@ -352,7 +353,7 @@ export default function ContactsPage() {
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
     params.set("page", String(nextPage));
-    params.set("limit", "50");
+    params.set("limit", pageSize);
 
     fetch(`/api/v1/contacts?${params}`, {
       headers: { "x-organization-id": orgId },
@@ -367,7 +368,7 @@ export default function ContactsPage() {
         }
       })
       .finally(() => setLoadingMore(false));
-  }, [loadingMore, hasMore, page, debouncedSearch, typeFilter, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [loadingMore, hasMore, page, pageSize, debouncedSearch, typeFilter, sortBy, sortOrder, dateFrom, dateTo]);
 
   // IntersectionObserver to trigger loadMore
   useEffect(() => {
@@ -570,7 +571,9 @@ export default function ContactsPage() {
         {/* Summary + search */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-[13px] text-muted-foreground">
-            <span className="font-medium text-foreground tabular-nums">{contacts.length}</span> contacts
+            <span className="font-semibold text-foreground tabular-nums">
+              {total > contacts.length ? `Showing 1–${contacts.length} of ${total}` : `${total}`}
+            </span> contacts
             <span className="text-border">·</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-blue-500" />
@@ -641,6 +644,19 @@ export default function ContactsPage() {
               <SelectItem value="terms:desc">Longest terms</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={pageSize}
+            onValueChange={(val) => setPageSize(val)}
+          >
+            <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="50">50 per page</SelectItem>
+              <SelectItem value="100">100 per page</SelectItem>
+              <SelectItem value="250">250 per page</SelectItem>
+            </SelectContent>
+          </Select>
           {hasFilters && (
             <Button
               variant="ghost"
@@ -689,13 +705,31 @@ export default function ContactsPage() {
           </MotionConfig>
         )}
 
-        {/* Infinite scroll sentinel */}
+        {/* Infinite scroll sentinel + explicit Load More button */}
         {hasMore && !refetching && (
-          <div ref={sentinelRef} className="flex items-center justify-center py-6">
-            {loadingMore && (
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            )}
+          <div ref={sentinelRef} className="flex flex-col items-center justify-center py-6 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loadingMore}
+              onClick={loadMore}
+              className="text-xs gap-2"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                  Loading contacts...
+                </>
+              ) : (
+                `Load more (${contacts.length} of ${total} shown)`
+              )}
+            </Button>
           </div>
+        )}
+        {!hasMore && total > 50 && (
+          <p className="text-center text-xs text-muted-foreground py-4">
+            All {total} contacts loaded
+          </p>
         )}
       </div>
       {confirmDialog}

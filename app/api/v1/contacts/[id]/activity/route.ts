@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, quote, creditNote } from "@/lib/db/schema";
-import { payment } from "@/lib/db/schema";
-import { bill } from "@/lib/db/schema";
-import { eq, and, gte, lte, lt } from "drizzle-orm";
+import {
+  invoice,
+  quote,
+  creditNote,
+  payment,
+  bill,
+  stripeEntityMap,
+  journalEntry,
+} from "@/lib/db/schema";
+import { eq, and, gte, lte, lt, desc, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 
 type ActivityItem = {
   id: string;
-  type: "invoice" | "quote" | "credit_note" | "payment" | "bill";
+  type: "invoice" | "quote" | "credit_note" | "payment" | "bill" | "stripe_charge";
   number: string;
   status: string;
   amount: number;
@@ -18,6 +24,8 @@ type ActivityItem = {
   date: string;
   createdAt: string;
 };
+
+const ALL_TYPES = ["invoice", "quote", "credit_note", "payment", "bill", "stripe_charge"] as const;
 
 export async function GET(
   request: Request,
@@ -35,8 +43,8 @@ export async function GET(
     const typeFilter = url.searchParams.get("type");
 
     const types = typeFilter
-      ? typeFilter.split(",").filter((t) => ["invoice", "quote", "credit_note", "payment", "bill"].includes(t))
-      : ["invoice", "quote", "credit_note", "payment", "bill"];
+      ? typeFilter.split(",").filter((t) => (ALL_TYPES as readonly string[]).includes(t))
+      : [...ALL_TYPES];
 
     // Fetch limit+1 from each type (for cursor detection), then merge and slice
     const fetchLimit = limit + 1;
@@ -141,6 +149,61 @@ export async function GET(
             amount: r.total, currencyCode: r.currencyCode, date: r.issueDate,
             createdAt: r.createdAt.toISOString(),
           })))
+        : [],
+
+      types.includes("stripe_charge")
+        ? db
+            .select({
+              dubblEntityId: stripeEntityMap.dubblEntityId,
+              stripeEntityId: stripeEntityMap.stripeEntityId,
+              metadata: stripeEntityMap.metadata,
+              createdAt: stripeEntityMap.createdAt,
+              entryNumber: journalEntry.entryNumber,
+              entryStatus: journalEntry.status,
+              entryDate: journalEntry.date,
+            })
+            .from(stripeEntityMap)
+            .leftJoin(
+              journalEntry,
+              and(
+                eq(stripeEntityMap.dubblEntityId, journalEntry.id),
+                notDeleted(journalEntry.deletedAt)
+              )
+            )
+            .where(
+              and(
+                eq(stripeEntityMap.organizationId, ctx.organizationId),
+                eq(stripeEntityMap.stripeEntityType, "charge"),
+                sql`${stripeEntityMap.metadata}->>'contactId' = ${id}`,
+                ...(cursorDate ? [lt(stripeEntityMap.createdAt, cursorDate)] : []),
+                ...(startDate ? [gte(journalEntry.date, startDate)] : []),
+                ...(endDate ? [lte(journalEntry.date, endDate)] : [])
+              )
+            )
+            .orderBy(desc(stripeEntityMap.createdAt))
+            .limit(fetchLimit)
+            .then((rows) =>
+              rows.map((r): ActivityItem => {
+                const meta = (r.metadata as Record<string, unknown>) || {};
+                const amount = typeof meta.amount === "number" ? meta.amount : 0;
+                const currency = typeof meta.currency === "string" ? meta.currency : "GBP";
+                const dateStr = r.entryDate
+                  ? typeof r.entryDate === "string"
+                    ? r.entryDate
+                    : (r.entryDate as Date).toISOString().slice(0, 10)
+                  : r.createdAt.toISOString().slice(0, 10);
+                return {
+                  id: r.dubblEntityId,
+                  type: "stripe_charge",
+                  number: r.stripeEntityId,
+                  status: r.entryStatus || "posted",
+                  amount,
+                  currencyCode: currency,
+                  date: dateStr,
+                  createdAt: r.createdAt.toISOString(),
+                };
+              })
+            )
         : [],
     ]);
 
