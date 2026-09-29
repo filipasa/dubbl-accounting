@@ -29,7 +29,7 @@ function Sparkline({ data }: { data: number[] }) {
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-6 w-20">
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-6 w-16 sm:w-20 shrink-0">
       <polyline
         points={points}
         fill="none"
@@ -52,6 +52,8 @@ export function StatCard({
   subtitle,
   isLoading = false,
 }: StatCardProps) {
+  const isLongValue = value.length > 11;
+
   return (
     <div className="rounded-lg border bg-card p-3 sm:p-5 flex flex-col justify-between">
       <div>
@@ -68,12 +70,19 @@ export function StatCard({
           </div>
           <Icon className="size-4 text-muted-foreground/50 shrink-0" />
         </div>
-        <div className="mt-2 flex items-end justify-between gap-2">
-          <div className="space-y-1 min-w-0">
+        <div className="mt-2 flex items-end justify-between gap-1.5">
+          <div className="space-y-1">
             {isLoading ? (
               <div className="h-7 w-24 rounded bg-muted animate-pulse" />
             ) : (
-              <p className="text-lg sm:text-[24px] font-bold tracking-tight font-mono tabular-nums truncate">
+              <p
+                className={cn(
+                  "font-bold tracking-tight font-mono tabular-nums whitespace-nowrap",
+                  isLongValue
+                    ? "text-base sm:text-lg xl:text-[19px] 2xl:text-[22px]"
+                    : "text-lg sm:text-xl xl:text-[22px] 2xl:text-[24px]"
+                )}
+              >
                 {value}
               </p>
             )}
@@ -94,7 +103,7 @@ export function StatCard({
         </div>
       </div>
       {subtitle && (
-        <p className="mt-2 pt-2 border-t text-[11px] text-muted-foreground/80 truncate">
+        <p className="mt-2 pt-2 border-t text-[11px] text-muted-foreground/80">
           {subtitle}
         </p>
       )}
