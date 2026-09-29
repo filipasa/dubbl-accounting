@@ -253,8 +253,8 @@ export default function StripeIntegrationPage() {
 
         <div className="rounded-lg border p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
-              <Zap className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/40">
+              <Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
               <h2 className="font-medium">Connect Stripe</h2>

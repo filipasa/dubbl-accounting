@@ -253,7 +253,7 @@ export function StripeSyncDialog({
         <div className="border-b bg-muted/30 px-6 py-4">
           <DialogHeader>
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <Sparkles className="h-4 w-4" />
               </span>
               <div>
@@ -294,8 +294,8 @@ export function StripeSyncDialog({
                     onClick={() => setPeriod(opt.id)}
                     className={`text-left p-3 rounded-lg border transition-all ${
                       isSelected
-                        ? "border-violet-600 bg-violet-50/50 dark:border-violet-500 dark:bg-violet-950/20 ring-1 ring-violet-600 dark:ring-violet-500"
-                        : "border-border hover:border-muted-foreground/30 bg-card"
+                        ? "border-emerald-600 bg-emerald-50/50 dark:border-emerald-500 dark:bg-emerald-950/20 ring-1 ring-emerald-600 dark:ring-emerald-500"
+                        : "border-border hover:border-emerald-500/40 hover:bg-muted/50 bg-card"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -339,7 +339,7 @@ export function StripeSyncDialog({
             {/* Notice info */}
             <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Calendar className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Chunked Cursor Architecture</span>
               </div>
               <p>
@@ -354,7 +354,7 @@ export function StripeSyncDialog({
               </Button>
               <Button
                 size="sm"
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                 onClick={() => runBatchSync("customers", null)}
               >
                 Start Sync
@@ -370,7 +370,7 @@ export function StripeSyncDialog({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
                   Syncing {STAGE_CONFIGS.find((s) => s.key === currentStage)?.label}...
                 </span>
                 <span className="tabular-nums font-mono text-muted-foreground">
@@ -379,7 +379,7 @@ export function StripeSyncDialog({
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-violet-600 dark:bg-violet-500 transition-all duration-300"
+                  className="h-full rounded-full bg-emerald-600 dark:bg-emerald-500 transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -401,7 +401,7 @@ export function StripeSyncDialog({
                     key={stage.key}
                     className={`flex items-center justify-between p-3 text-xs transition-colors ${
                       isCurrent
-                        ? "bg-violet-50/40 dark:bg-violet-950/20"
+                        ? "bg-emerald-50/40 dark:bg-emerald-950/20"
                         : ""
                     }`}
                   >
@@ -411,7 +411,7 @@ export function StripeSyncDialog({
                           isDone
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
                             : isCurrent
-                            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
@@ -430,7 +430,7 @@ export function StripeSyncDialog({
                           {count} synced
                         </Badge>
                       ) : isCurrent ? (
-                        <Badge variant="outline" className="text-violet-700 border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800 text-[10px]">
+                        <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 text-[10px]">
                           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                           {count > 0 ? `${count} processed` : "Scanning..."}
                         </Badge>
@@ -535,7 +535,7 @@ export function StripeSyncDialog({
               </Button>
               <Button
                 size="sm"
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => runBatchSync(currentStage, currentCursor)}
               >
                 Resume Sync
