@@ -337,7 +337,6 @@ export function detectStatementFormat(
   const extensionMap: Partial<Record<string, BankImportFormat>> = {
     csv: "csv",
     tsv: "tsv",
-    txt: "mt940",
     qif: "qif",
     ofx: "ofx",
     qfx: "qfx",
@@ -366,9 +365,16 @@ export function detectStatementFormat(
   if (/^:20:/m.test(content) && /^:61:/m.test(content)) {
     return content.includes(":13D:") ? "mt942" : "mt940";
   }
-  if (content.includes("\t")) {
+
+  const sample = content.slice(0, 2000);
+  const commaCount = (sample.match(/,/g) || []).length;
+  const tabCount = (sample.match(/\t/g) || []).length;
+  const semicolonCount = (sample.match(/;/g) || []).length;
+
+  if (tabCount > commaCount && tabCount > semicolonCount) {
     return "tsv";
   }
+
   return "csv";
 }
 
@@ -380,57 +386,216 @@ function detectXmlStatementFormat(content: string): BankImportFormat {
   return "camt053";
 }
 
+const DATE_COLUMN_CANDIDATES = [
+  "date",
+  "transaction date",
+  "trans date",
+  "txn date",
+  "posting date",
+  "posted date",
+  "book date",
+  "booking date",
+  "value date",
+  "payment date",
+  "operation date",
+  "process date",
+  "processed date",
+  "date time",
+  "date & time",
+  "date and time",
+  "time",
+];
+
+const AMOUNT_COLUMN_CANDIDATES = [
+  "amount",
+  "amount gbp",
+  "amount eur",
+  "amount usd",
+  "transaction amount",
+  "net amount",
+  "value",
+  "sum",
+  "total",
+];
+
+const DEBIT_COLUMN_CANDIDATES = [
+  "paid out",
+  "paid out gbp",
+  "paid out eur",
+  "paid out usd",
+  "paid out amount",
+  "money out",
+  "money out gbp",
+  "debit",
+  "debit amount",
+  "debit amount gbp",
+  "debits",
+  "withdrawal",
+  "withdrawals",
+  "out",
+  "outgoing",
+  "outflow",
+  "payments",
+  "spent",
+];
+
+const CREDIT_COLUMN_CANDIDATES = [
+  "paid in",
+  "paid in gbp",
+  "paid in eur",
+  "paid in usd",
+  "paid in amount",
+  "money in",
+  "money in gbp",
+  "credit",
+  "credit amount",
+  "credit amount gbp",
+  "credits",
+  "deposit",
+  "deposits",
+  "in",
+  "incoming",
+  "inflow",
+  "received",
+];
+
+const BALANCE_COLUMN_CANDIDATES = [
+  "balance",
+  "running balance",
+  "account balance",
+  "balance gbp",
+  "balance eur",
+  "balance usd",
+  "current balance",
+  "closing balance",
+];
+
+const DESC_COLUMN_CANDIDATES = [
+  "description",
+  "transaction description",
+  "narrative",
+  "details",
+  "transaction details",
+  "memo",
+  "particulars",
+  "transaction narrative",
+  "notes",
+  "remarks",
+];
+
+const REF_COLUMN_CANDIDATES = [
+  "reference",
+  "transaction id",
+  "trans id",
+  "txn id",
+  "transaction reference",
+  "payment reference",
+  "ref",
+  "ref no",
+  "reference no",
+  "reference number",
+  "fitid",
+  "check number",
+  "cheque number",
+  "cheque no",
+  "id",
+];
+
+const PAYEE_COLUMN_CANDIDATES = [
+  "payee",
+  "merchant",
+  "name",
+  "beneficiary",
+  "recipient",
+];
+
+const COUNTERPARTY_COLUMN_CANDIDATES = [
+  "counterparty",
+  "beneficiary",
+  "recipient",
+  "sender",
+  "party",
+];
+
+const TYPE_COLUMN_CANDIDATES = [
+  "transaction type",
+  "type",
+  "trans type",
+  "txn type",
+  "entry type",
+  "direction",
+  "cr dr",
+  "dr cr",
+  "indicator",
+];
+
 function parseDelimitedStatement(
   content: string,
   delimiter: string,
   format: BankImportFormat,
   mapping?: CsvColumnMapping
 ): ParsedStatement {
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const { rows } = parseCsvRows(content, delimiter);
 
-  if (lines.length < 2) {
+  if (rows.length < 2) {
     throw new Error("Statement must contain a header row and at least one data row");
   }
 
-  const header = parseDelimitedLine(lines[0], delimiter).map((cell) =>
-    normalizeHeader(cell)
-  );
-  const rows = lines.slice(1).map((line) => parseDelimitedLine(line, delimiter));
+  // Scan the first 25 rows to identify the actual header row
+  let headerRowIdx = -1;
+  const maxScanRows = Math.min(rows.length, 25);
+
+  for (let i = 0; i < maxScanRows; i++) {
+    const candidateHeaders = rows[i].map(normalizeHeader);
+    const hasDate = findColumnIndex(candidateHeaders, mapping?.date, DATE_COLUMN_CANDIDATES) !== -1;
+    const hasAmount = findColumnIndex(candidateHeaders, mapping?.amount, AMOUNT_COLUMN_CANDIDATES) !== -1;
+    const hasDebit = findColumnIndex(candidateHeaders, mapping?.debit, DEBIT_COLUMN_CANDIDATES) !== -1;
+    const hasCredit = findColumnIndex(candidateHeaders, mapping?.credit, CREDIT_COLUMN_CANDIDATES) !== -1;
+
+    if (hasDate && (hasAmount || hasDebit || hasCredit)) {
+      headerRowIdx = i;
+      break;
+    }
+  }
+
+  // Fallback to row 0 if no clear header was matched in the scan window
+  if (headerRowIdx === -1) {
+    headerRowIdx = 0;
+  }
+
+  // Extract metadata from preamble rows before the header (e.g. Account Name, Sort Code, Account Number)
+  const metadata: Record<string, unknown> = {};
+  for (let i = 0; i < headerRowIdx; i++) {
+    const preambleRow = rows[i];
+    if (preambleRow.length >= 2 && preambleRow[0] && preambleRow[1]) {
+      const key = normalizeHeader(preambleRow[0]);
+      if (key) {
+        metadata[key] = preambleRow.slice(1).filter(Boolean).join(" ").trim();
+      }
+    } else if (preambleRow.length === 1 && preambleRow[0].includes(":")) {
+      const colonIdx = preambleRow[0].indexOf(":");
+      const key = normalizeHeader(preambleRow[0].slice(0, colonIdx));
+      const val = preambleRow[0].slice(colonIdx + 1).trim();
+      if (key && val) {
+        metadata[key] = val;
+      }
+    }
+  }
+
+  const header = rows[headerRowIdx].map(normalizeHeader);
+  const dataRows = rows.slice(headerRowIdx + 1);
   const warnings: string[] = [];
 
-  const dateIdx = findColumnIndex(header, mapping?.date, [
-    "date",
-    "transaction date",
-    "trans date",
-    "posting date",
-    "posted date",
-    "book date",
-  ]);
-  const descIdx = findColumnIndex(header, mapping?.description, [
-    "description",
-    "memo",
-    "details",
-    "narrative",
-    "particulars",
-    "transaction description",
-  ]);
-  const amountIdx = findColumnIndex(header, mapping?.amount, ["amount", "value", "sum"]);
-  const debitIdx = findColumnIndex(header, mapping?.debit, ["debit", "withdrawal", "withdrawals"]);
-  const creditIdx = findColumnIndex(header, mapping?.credit, ["credit", "deposit", "deposits"]);
-  const balanceIdx = findColumnIndex(header, mapping?.balance, ["balance", "running balance"]);
-  const referenceIdx = findColumnIndex(header, mapping?.reference, [
-    "reference",
-    "ref",
-    "transaction id",
-    "fitid",
-    "check number",
-    "cheque number",
-  ]);
-  const payeeIdx = findColumnIndex(header, mapping?.payee, ["payee", "merchant", "name"]);
-  const counterpartyIdx = findColumnIndex(header, mapping?.counterparty, ["counterparty", "beneficiary"]);
+  const dateIdx = findColumnIndex(header, mapping?.date, DATE_COLUMN_CANDIDATES);
+  const descIdx = findColumnIndex(header, mapping?.description, DESC_COLUMN_CANDIDATES);
+  const amountIdx = findColumnIndex(header, mapping?.amount, AMOUNT_COLUMN_CANDIDATES);
+  const debitIdx = findColumnIndex(header, mapping?.debit, DEBIT_COLUMN_CANDIDATES);
+  const creditIdx = findColumnIndex(header, mapping?.credit, CREDIT_COLUMN_CANDIDATES);
+  const balanceIdx = findColumnIndex(header, mapping?.balance, BALANCE_COLUMN_CANDIDATES);
+  const referenceIdx = findColumnIndex(header, mapping?.reference, REF_COLUMN_CANDIDATES);
+  const payeeIdx = findColumnIndex(header, mapping?.payee, PAYEE_COLUMN_CANDIDATES);
+  const counterpartyIdx = findColumnIndex(header, mapping?.counterparty, COUNTERPARTY_COLUMN_CANDIDATES);
+  const typeIdx = findColumnIndex(header, undefined, TYPE_COLUMN_CANDIDATES);
 
   if (dateIdx === -1) {
     throw new Error("Could not find a date column in the statement header");
@@ -441,20 +606,31 @@ function parseDelimitedStatement(
   }
 
   const transactions: NormalizedTransaction[] = [];
-  for (const row of rows) {
+  for (const row of dataRows) {
     if (row.every((cell) => !cell.trim())) continue;
     const rawDate = row[dateIdx]?.trim();
     if (!rawDate) continue;
+
+    const date = normalizeDate(rawDate);
+    // If the date column does not parse to a valid date (e.g. footer rows like "Closing Balance" or "Total"), skip it
+    if (!date) continue;
 
     const description =
       row[descIdx]?.trim() ||
       row[payeeIdx]?.trim() ||
       row[counterpartyIdx]?.trim() ||
+      (typeIdx !== -1 ? row[typeIdx]?.trim() : "") ||
       "Imported transaction";
 
     let amount = 0;
     if (amountIdx !== -1) {
       amount = parseLocalizedAmount(row[amountIdx]);
+      if (amount > 0 && typeIdx !== -1 && debitIdx === -1 && creditIdx === -1) {
+        const typeVal = (row[typeIdx]?.trim() || "").toLowerCase();
+        if (/^(d|dr|debit|out|outgoing|withdrawal|payment|card purchase|direct debit)$/i.test(typeVal)) {
+          amount = -amount;
+        }
+      }
     } else {
       const debit = debitIdx !== -1 ? Math.abs(parseLocalizedAmount(row[debitIdx])) : 0;
       const credit = creditIdx !== -1 ? Math.abs(parseLocalizedAmount(row[creditIdx])) : 0;
@@ -463,12 +639,16 @@ function parseDelimitedStatement(
 
     if (!description && amount === 0) continue;
 
+    const refValue = referenceIdx !== -1 ? emptyToNull(row[referenceIdx]) : null;
+    const balanceValue = balanceIdx !== -1 ? emptyToNull(row[balanceIdx]) : null;
+
     transactions.push({
-      date: normalizeDate(rawDate),
+      date,
       description,
       amount,
-      balance: balanceIdx !== -1 ? parseLocalizedAmount(row[balanceIdx]) : null,
-      reference: referenceIdx !== -1 ? emptyToNull(row[referenceIdx]) : null,
+      balance: balanceValue != null ? parseLocalizedAmount(balanceValue) : null,
+      reference: refValue,
+      externalTransactionId: refValue,
       payee: payeeIdx !== -1 ? emptyToNull(row[payeeIdx]) : null,
       counterparty: counterpartyIdx !== -1 ? emptyToNull(row[counterpartyIdx]) : null,
       raw: { row },
@@ -479,10 +659,41 @@ function parseDelimitedStatement(
     warnings.push("No statement lines were parsed from the delimited file.");
   }
 
+  let statementStartDate: string | null = null;
+  let statementEndDate: string | null = null;
+  let openingBalance: number | null = null;
+  let closingBalance: number | null = null;
+
+  if (transactions.length > 0) {
+    const dates = transactions.map((t) => t.date).filter(Boolean).sort();
+    statementStartDate = dates[0] || null;
+    statementEndDate = dates[dates.length - 1] || null;
+
+    const firstWithBal = transactions.find((t) => t.balance != null);
+    if (firstWithBal && firstWithBal.balance != null) {
+      openingBalance = firstWithBal.balance - firstWithBal.amount;
+    }
+
+    const lastWithBal = [...transactions].reverse().find((t) => t.balance != null);
+    if (lastWithBal && lastWithBal.balance != null) {
+      closingBalance = lastWithBal.balance;
+    }
+  }
+
+  const accountIdentifier =
+    typeof metadata["account number"] === "string"
+      ? (metadata["account number"] as string)
+      : null;
+
   return {
     format,
+    accountIdentifier,
+    statementStartDate,
+    statementEndDate,
+    openingBalance,
+    closingBalance,
     warnings,
-    metadata: { header },
+    metadata: { ...metadata, header },
     transactions,
   };
 }
@@ -747,6 +958,101 @@ function parseBai2Statement(content: string): ParsedStatement {
   };
 }
 
+export function parseCsvRows(
+  content: string,
+  preferredDelimiter?: string
+): { rows: string[][]; delimiter: string } {
+  const clean = content.replace(/^\uFEFF/, "");
+  let delim = preferredDelimiter || ",";
+
+  // Auto-detect delimiter if comma yields 0 or 1 column while semicolon or tab yields more
+  if (!preferredDelimiter || preferredDelimiter === ",") {
+    const firstLines = clean.slice(0, 2000);
+    const commaCount = (firstLines.match(/,/g) || []).length;
+    const semicolonCount = (firstLines.match(/;/g) || []).length;
+    const tabCount = (firstLines.match(/\t/g) || []).length;
+    if (tabCount > commaCount && tabCount > semicolonCount) {
+      delim = "\t";
+    } else if (semicolonCount > commaCount) {
+      delim = ";";
+    }
+  }
+
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let inQuotes = false;
+  let i = 0;
+  const len = clean.length;
+
+  while (i < len) {
+    const char = clean[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (i + 1 < len && clean[i + 1] === '"') {
+          currentField += '"';
+          i += 2;
+          continue;
+        } else {
+          inQuotes = false;
+          i += 1;
+          continue;
+        }
+      } else {
+        currentField += char;
+        i += 1;
+        continue;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        i += 1;
+        continue;
+      } else if (char === delim) {
+        currentRow.push(currentField.trim());
+        currentField = "";
+        i += 1;
+        continue;
+      } else if (char === "\r") {
+        if (i + 1 < len && clean[i + 1] === "\n") {
+          i += 1;
+        }
+        currentRow.push(currentField.trim());
+        currentField = "";
+        if (currentRow.some((c) => c !== "")) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        i += 1;
+        continue;
+      } else if (char === "\n") {
+        currentRow.push(currentField.trim());
+        currentField = "";
+        if (currentRow.some((c) => c !== "")) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        i += 1;
+        continue;
+      } else {
+        currentField += char;
+        i += 1;
+        continue;
+      }
+    }
+  }
+
+  if (currentField !== "" || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some((c) => c !== "")) {
+      rows.push(currentRow);
+    }
+  }
+
+  return { rows, delimiter: delim };
+}
+
 function parseDelimitedLine(line: string, delimiter: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -781,15 +1087,27 @@ function findColumnIndex(headers: string[], override: string | undefined, candid
     if (overrideIdx !== -1) return overrideIdx;
   }
 
+  // Pass 1: Exact matches
   for (const candidate of candidates) {
-    const idx = headers.indexOf(normalizeHeader(candidate));
+    const needle = normalizeHeader(candidate);
+    const idx = headers.indexOf(needle);
     if (idx !== -1) return idx;
   }
 
+  // Pass 2: Multi-word phrase containment or whole word token match
   for (const candidate of candidates) {
     const needle = normalizeHeader(candidate);
-    const idx = headers.findIndex((header) => header.includes(needle));
-    if (idx !== -1) return idx;
+    if (!needle) continue;
+    if (needle.includes(" ")) {
+      const idx = headers.findIndex((header) => header.includes(needle));
+      if (idx !== -1) return idx;
+    } else if (needle.length >= 3) {
+      const idx = headers.findIndex((header) => {
+        const tokens = header.split(/\s+/);
+        return tokens.includes(needle);
+      });
+      if (idx !== -1) return idx;
+    }
   }
 
   return -1;
@@ -802,19 +1120,33 @@ function normalizeHeader(value: string): string {
 function parseLocalizedAmount(value: string | null | undefined): number {
   if (!value) return 0;
   const trimmed = value.trim();
-  if (!trimmed) return 0;
+  if (!trimmed || trimmed === "-" || trimmed === "--" || /^n\/?a$/i.test(trimmed)) return 0;
 
-  let cleaned = trimmed.replace(/[A-Z]{3}\s+/gi, "").replace(/[^\d,.\-()]/g, "");
-  const isNegative = cleaned.includes("(") && cleaned.includes(")");
-  cleaned = cleaned.replace(/[()]/g, "");
+  const upper = trimmed.toUpperCase();
+  const hasDr = /\bDR\b/.test(upper);
+  const hasParentheses = upper.includes("(") && upper.includes(")");
+  const hasMinus = upper.includes("-");
+
+  // Strip ISO currency codes, CR/DR indicators, and currency symbols
+  let cleaned = upper
+    .replace(/[A-Z]{3}\b/g, "")
+    .replace(/\b(DR|CR)\b/g, "")
+    .replace(/[£$€¥₹]/g, "")
+    .replace(/[^\d,.\-()]/g, "")
+    .trim();
+
+  cleaned = cleaned.replace(/[()]/g, "").trim();
+  if (!cleaned || cleaned === "-") return 0;
 
   const commaCount = (cleaned.match(/,/g) || []).length;
   const dotCount = (cleaned.match(/\./g) || []).length;
 
   if (commaCount > 0 && dotCount > 0) {
     if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+      // European format (e.g. 1.250,50)
       cleaned = cleaned.replace(/\./g, "").replace(",", ".");
     } else {
+      // UK/US format (e.g. 1,250.50)
       cleaned = cleaned.replace(/,/g, "");
     }
   } else if (commaCount > 0 && dotCount === 0) {
@@ -827,6 +1159,7 @@ function parseLocalizedAmount(value: string | null | undefined): number {
   }
 
   const cents = decimalToCents(cleaned);
+  const isNegative = hasDr || hasParentheses || hasMinus;
   return isNegative ? -Math.abs(cents) : cents;
 }
 
@@ -835,44 +1168,128 @@ function parseOptionalAmount(value: string | null | undefined): number | null {
   return parseLocalizedAmount(value);
 }
 
-function normalizeDate(raw: string | null | undefined): string {
+const MONTH_NAME_MAP: Record<string, string> = {
+  jan: "01", january: "01",
+  feb: "02", february: "02",
+  mar: "03", march: "03",
+  apr: "04", april: "04",
+  may: "05",
+  jun: "06", june: "06",
+  jul: "07", july: "07",
+  aug: "08", august: "08",
+  sep: "09", sept: "09", september: "09",
+  oct: "10", october: "10",
+  nov: "11", november: "11",
+  dec: "12", december: "12",
+};
+
+export function normalizeDate(raw: string | null | undefined): string {
   if (!raw) return "";
   const value = raw.trim();
   if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  if (/^\d{8}$/.test(value)) {
+
+  // 1. Fast match standard ISO date (with optional time / ISO timezone)
+  const isoTimeMatch = value.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+  if (isoTimeMatch) {
+    return isoTimeMatch[1];
+  }
+
+  // 2. 14-digit timestamp YYYYMMDDHHMMSS
+  if (/^\d{14}(?:\.\d+)?/.test(value)) {
     return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
   }
-  if (/^\d{14}\.\d{3}/.test(value)) {
-    return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+
+  // 3. 8-digit compact date YYYYMMDD
+  const eightDigitMatch = value.match(/^(\d{8})(?:[T\s].*)?$/);
+  if (eightDigitMatch) {
+    const v = eightDigitMatch[1];
+    return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
   }
-  if (/^\d{8}T/.test(value)) {
-    return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
-  }
+
+  // 4. 6-digit compact date YYMMDD (SWIFT/MT)
   if (/^\d{6}$/.test(value)) {
     const year = Number(value.slice(0, 2));
-    return `${year >= 70 ? 1900 + year : 2000 + year}-${value.slice(2, 4)}-${value.slice(4, 6)}`;
+    const fullYear = year >= 70 ? 1900 + year : 2000 + year;
+    return `${fullYear}-${value.slice(2, 4)}-${value.slice(4, 6)}`;
   }
 
-  const slash = value.split(/[\/.\-']/);
+  // 5. Strip trailing time portion (e.g. " 14:22:05" or " 14:22")
+  const strippedTime = value.replace(/\s+\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/i, "").trim();
+
+  // 6. Text month formats (e.g. "12 Mar 2024", "12-Mar-2024", "12 March 2024", "12/Mar/2024")
+  const dayMonthTextMatch = strippedTime.match(/^(\d{1,2})[\s\-\/]+([a-zA-Z]{3,9})[\s\-\/]+(\d{2,4})$/);
+  if (dayMonthTextMatch) {
+    const day = dayMonthTextMatch[1].padStart(2, "0");
+    const monKey = dayMonthTextMatch[2].toLowerCase();
+    let year = dayMonthTextMatch[3];
+    if (year.length === 2) {
+      const y = Number(year);
+      year = String(y >= 70 ? 1900 + y : 2000 + y);
+    }
+    const mon = MONTH_NAME_MAP[monKey];
+    if (mon) {
+      return `${year}-${mon}-${day}`;
+    }
+  }
+
+  // 7. "Mar 12, 2024" or "March 12 2024"
+  const monthDayTextMatch = strippedTime.match(/^([a-zA-Z]{3,9})[\s\-\/]+(\d{1,2})(?:st|nd|rd|th)?,?[\s\-\/]+(\d{2,4})$/);
+  if (monthDayTextMatch) {
+    const monKey = monthDayTextMatch[1].toLowerCase();
+    const day = monthDayTextMatch[2].padStart(2, "0");
+    let year = monthDayTextMatch[3];
+    if (year.length === 2) {
+      const y = Number(year);
+      year = String(y >= 70 ? 1900 + y : 2000 + y);
+    }
+    const mon = MONTH_NAME_MAP[monKey];
+    if (mon) {
+      return `${year}-${mon}-${day}`;
+    }
+  }
+
+  // 8. Delimited date formats: DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD
+  const slash = strippedTime.split(/[\/.\-']/);
   if (slash.length === 3) {
-    const [a, b, c] = slash;
-    const year = c.length === 2 ? String(Number(c) + 2000) : c;
-    if (a.length === 4) {
-      return `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
+    const [a, b, c] = slash.map((s) => s.trim());
+    if (/^\d+$/.test(a) && /^\d+$/.test(b) && /^\d+$/.test(c)) {
+      if (a.length === 4) {
+        return `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
+      }
+
+      let year = c;
+      if (c.length === 2) {
+        const y = Number(c);
+        year = String(y >= 70 ? 1900 + y : 2000 + y);
+      } else if (c.length !== 4) {
+        return "";
+      }
+
+      const numA = Number(a);
+      const numB = Number(b);
+
+      if (numA > 12 && numB <= 12) {
+        return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+      } else if (numB > 12 && numA <= 12) {
+        return `${year}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
+      } else if (numA <= 31 && numB <= 12) {
+        // UK / International default: DD/MM/YYYY
+        return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+      }
     }
-    if (Number(a) > 12) {
-      return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-    }
-    return `${year}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
   }
 
-  const parsed = new Date(value);
+  // 9. Fallback Date parsing
+  const parsed = new Date(strippedTime);
   if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().slice(0, 10);
+    const iso = parsed.toISOString().slice(0, 10);
+    const yr = Number(iso.slice(0, 4));
+    if (yr >= 1970 && yr <= 2100) {
+      return iso;
+    }
   }
 
-  return value;
+  return "";
 }
 
 function readOfxField(content: string, tag: string): string {

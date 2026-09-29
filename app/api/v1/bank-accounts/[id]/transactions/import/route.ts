@@ -99,6 +99,13 @@ export async function POST(
 
     return NextResponse.json({ import: result }, { status: 201 });
   } catch (err) {
+    if (err instanceof z.ZodError) {
+      return validationError(err.issues.map((i) => i.message).join(", "));
+    }
+    if (err instanceof Error) {
+      console.error("Statement import error:", err);
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return handleError(err);
   }
 }
