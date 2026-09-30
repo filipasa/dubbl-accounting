@@ -11,12 +11,12 @@ const faqs = [
   {
     question: "Is fixbooks really free?",
     answer:
-      "Yes. fixbooks is open source under the Apache 2.0 license. You can self-host it for free with no feature limitations, no user caps, and no hidden costs.",
+      "Yes. fixbooks is open source under the Apache 2.0 license. You can use it as Cloud Hosted with no feature limitations, no user caps, and no hidden costs.",
   },
   {
-    question: "Can I self-host fixbooks?",
+    question: "Is fixbooks Cloud Hosted?",
     answer:
-      "Absolutely. fixbooks is designed for self-hosting. We provide Docker images, Helm charts, and comprehensive deployment guides for AWS, GCP, and bare metal.",
+      "Absolutely. fixbooks is available Cloud Hosted. We provide secure cloud hosting, automated backups, and comprehensive deployment guides for AWS, GCP, and bare metal.",
   },
   {
     question: "Does fixbooks support multi-currency?",

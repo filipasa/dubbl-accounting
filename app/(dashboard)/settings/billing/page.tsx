@@ -148,7 +148,7 @@ export default function BillingPage() {
           </div>
           <h3 className="text-lg font-semibold">All features unlocked</h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            This is a self-hosted instance with all Pro features enabled. No billing or subscription is required.
+            This is a Cloud Hosted instance with all Pro features enabled. No billing or subscription is required.
           </p>
         </div>
       </ContentReveal>

@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · fixbooks",
   },
   description:
-    "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Self-host or use our cloud. API-first, MCP-ready, Apache 2.0.",
+    "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted. API-first, MCP-ready, Apache 2.0.",
   metadataBase: new URL(APP_URL),
   keywords: [
     "open source accounting",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     "inventory management",
     "project management",
     "CRM",
-    "self-hosted accounting",
+    "cloud-hosted accounting",
     "API-first accounting",
     "small business accounting",
     "free accounting software",
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     siteName: "fixbooks",
     title: "fixbooks · Open-Source Accounting & Business Management",
     description:
-      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Self-host or use our cloud.",
+      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
         url: "/og.jpg",
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "fixbooks · Open-Source Accounting & Business Management",
     description:
-      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Self-host or use our cloud.",
+      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
         url: "/og.jpg",

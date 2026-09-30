@@ -83,7 +83,7 @@ function DockerCard() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
         <Terminal className="size-3.5 text-emerald-400" />
-        <span className="font-mono text-[11px] text-white/40">self-host</span>
+        <span className="font-mono text-[11px] text-white/40">cloud-hosted</span>
       </div>
       {/* Body */}
       <div className="flex-1 px-5 py-5 font-mono text-[13px] leading-loose">
@@ -162,7 +162,7 @@ const badges = [
   "REST API",
   "MCP Protocol",
   "Webhooks",
-  "Self-hostable",
+  "Cloud Hosted",
   "Apache 2.0",
 ];
 
@@ -177,7 +177,7 @@ export function Testimonials() {
         <SectionHeader
           badge="Developer Experience"
           title="Built API-first"
-          subtitle="REST API, MCP protocol, and self-hosting. Extend and integrate with anything."
+          subtitle="REST API, MCP protocol, and Cloud Hosted. Extend and integrate with anything."
         />
 
         <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">

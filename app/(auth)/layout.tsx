@@ -11,7 +11,7 @@ import { BookOpen, Server, Code2, ArrowUpRight } from "lucide-react";
 
 const features = [
   { text: "Double-entry", icon: BookOpen },
-  { text: "Self-hosted", icon: Server },
+  { text: "Cloud Hosted", icon: Server },
   { text: "API-first", icon: Code2 },
 ];
 

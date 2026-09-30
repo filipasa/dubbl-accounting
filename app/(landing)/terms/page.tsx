@@ -44,7 +44,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           fixbooks is a double-entry bookkeeping platform available as both a hosted
-          SaaS at fixbooks.dev and an open-source project that can be self-hosted.
+          SaaS at fixbooks.dev and an open-source project that can be Cloud Hosted.
           These Terms govern your use of the <strong>hosted service</strong>{" "}
           only.
         </p>
@@ -120,12 +120,12 @@ const sections: LegalSection[] = [
         <Callout icon={BookOpen} title="Open Source Distinction">
           <p>
             The fixbooks source code is licensed under the{" "}
-            <strong>Apache License 2.0</strong>. You are free to self-host,
+            <strong>Apache License 2.0</strong>. You are free to run as Cloud Hosted,
             modify, and distribute the code under that licence.
           </p>
           <p>
             These Terms of Service apply <strong>only</strong> to the hosted
-            service at fixbooks.dev. Self-hosted instances are governed solely by
+            service at fixbooks.dev. Cloud Hosted instances outside our managed platform are governed solely by
             the Apache 2.0 licence.
           </p>
         </Callout>

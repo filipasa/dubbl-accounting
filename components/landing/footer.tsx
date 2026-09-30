@@ -15,7 +15,7 @@ const footerLinks: Record<string, FooterLink[]> = {
     { label: "Pricing", href: "/pricing" },
     { label: "Features", href: "/#features" },
     { label: "Integrations", href: "/#integrations" },
-    { label: "Self-Hosting", href: "/docs/self-hosting" },
+    { label: "Cloud Hosted", href: "/docs/self-hosting" },
     { label: "Changelog", href: "https://github.com/fixbooks/fixbooks/releases", external: true },
   ],
   Resources: [
@@ -134,7 +134,7 @@ export function Footer() {
           <div className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5">
             <ShieldCheck className="size-3.5 text-emerald-400" />
             <span className="text-xs font-medium text-white/60">
-              Open Source &middot; Self-Hostable
+              Open Source &middot; Cloud Hosted
             </span>
           </div>
         </div>

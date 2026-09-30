@@ -307,13 +307,13 @@ const sections: LegalSection[] = [
     ),
   },
   {
-    id: "self-hosted-instances",
-    title: "Self-Hosted Instances",
+    id: "cloud-hosted-instances",
+    title: "Cloud Hosted Instances",
     content: (
       <>
         <p>
           This privacy policy applies exclusively to the hosted service at{" "}
-          <strong>fixbooks.dev</strong>. If you self-host fixbooks using our
+          <strong>fixbooks.dev</strong>. If you deploy fixbooks as Cloud Hosted outside our platform using our
           open-source code, you are responsible for your own data processing,
           privacy policy, and compliance with applicable data protection laws.
         </p>

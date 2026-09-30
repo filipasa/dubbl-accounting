@@ -146,7 +146,7 @@ export default function PricingPage() {
             </span>
           </h1>
           <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Two simple plans. Storage add-ons when you need them. Self-host for
+            Two simple plans. Storage add-ons when you need them. Cloud Hosted for
             free with zero limits.
           </p>
 
@@ -473,7 +473,7 @@ export default function PricingPage() {
           </div>
         </motion.div>
 
-        {/* Self-hosting callout */}
+        {/* Cloud Hosted callout */}
         <motion.div
           className="mt-20"
           initial={{ opacity: 0, y: 24 }}
@@ -490,10 +490,10 @@ export default function PricingPage() {
                   </span>
                 </div>
                 <h3 className="text-xl font-semibold text-foreground">
-                  Self-host with zero limits
+                  Cloud Hosted with zero limits
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  fixbooks is Apache 2.0 licensed. Self-hosted instances unlock
+                  fixbooks is Apache 2.0 licensed. Cloud Hosted instances unlock
                   every feature with no user caps and no telemetry. Cloud plans
                   fund development.
                 </p>
@@ -641,7 +641,7 @@ export default function PricingPage() {
                 a: "Yes. Pay for 10 months, get 12. Switch to annual in your billing settings at any time.",
               },
               {
-                q: "Is self-hosting really free?",
+                q: "Is Cloud Hosted really free?",
                 a: "Yes. Apache 2.0 licensed. No feature limits, no user caps, no telemetry. Ever.",
               },
               {
@@ -696,11 +696,11 @@ export default function PricingPage() {
                 Start managing your business today
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-lg text-white/60">
-                Self-host in minutes, extend via API and MCP, and own your
+                Cloud hosted in minutes, extend via API and MCP, and own your
                 data. Forever free.
               </p>
               <p className="mt-6 text-sm text-white/40">
-                Open source &middot; Self-hostable &middot; Free forever
+                Open source &middot; Cloud Hosted &middot; Free forever
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link

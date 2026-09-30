@@ -1,5 +1,5 @@
 ---
-title: Self-Hosting
+title: Cloud Hosted
 description: Deploy Fixbooks with Docker Compose for production use.
 ---
 
@@ -9,7 +9,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Docker Compose
 
-The easiest way to self-host Fixbooks is with Docker Compose.
+The easiest way to run Fixbooks as Cloud Hosted is with Docker Compose.
 
 ```yaml title="docker-compose.yml"
 services:
@@ -125,7 +125,7 @@ Restrict registration to specific email domains by setting `ALLOWED_EMAIL_DOMAIN
 ALLOWED_EMAIL_DOMAINS="acme.com,example.com"
 ```
 
-## Self-Hosted Unlimited Mode
+## Cloud Hosted Unlimited Mode
 
 Without Stripe configured, all organizations automatically receive unlimited Pro features. No billing, subscriptions, or plan limits apply. This is detected automatically based on the absence of `STRIPE_SECRET_KEY`.
 
@@ -136,10 +136,10 @@ You can also control this behavior from the admin settings page:
 
 ## Admin Settings
 
-Site admins can configure all self-hosting settings from `/admin/settings`:
+Site admins can configure all Cloud Hosted settings from `/admin/settings`:
 - Registration mode and allowed email domains
 - Organization creation permissions
-- Self-hosted unlimited mode toggle
+- Cloud Hosted unlimited mode toggle
 
 ## Billing (Stripe)
 
@@ -148,7 +148,7 @@ Billing is fully optional. Without Stripe configured, all users get unlimited Pr
 To enable paid plans, see the [Billing & Stripe Setup](/docs/settings/billing) guide for full instructions on creating products, prices, and configuring webhooks.
 
 <Callout type="info">
-  Self-hosted instances don't need Stripe. All features are automatically unlocked.
+  Cloud Hosted instances don't need Stripe. All features are automatically unlocked.
 </Callout>
 
 ## Email
@@ -201,7 +201,7 @@ File uploads (receipts, attachments) require S3-compatible storage:
     Standard cloud storage. Set `S3_ENDPOINT` to `https://s3.amazonaws.com` or omit it.
   </Tab>
   <Tab value="MinIO">
-    Self-hosted S3-compatible storage. Set `S3_ENDPOINT` to your MinIO server URL.
+    Cloud Hosted S3-compatible storage. Set `S3_ENDPOINT` to your MinIO server URL.
   </Tab>
   <Tab value="Cloudflare R2">
     Cost-effective alternative. Set `S3_ENDPOINT` to your R2 endpoint URL.

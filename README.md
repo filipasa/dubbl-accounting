@@ -121,9 +121,9 @@ Without Trigger.dev, scheduled backups, bookkeeping maintenance, invoicing maint
 - **UI** - [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)
 - **Docs** - [Fumadocs](https://fumadocs.vercel.app)
 
-## Self-Hosting
+## Cloud Hosted
 
-See the [Self-Hosting Guide](https://fixbooks.dev/docs/self-hosting) for instructions on deploying fixbooks with Docker.
+See the [Cloud Hosted Guide](https://fixbooks.dev/docs/self-hosting) for instructions on deploying fixbooks with Docker or using our cloud.
 
 ## MCP Server
 

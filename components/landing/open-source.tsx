@@ -23,7 +23,7 @@ const values = [
     icon: Unlock,
     title: "Zero Lock-In",
     description:
-      "Self-host on your own infrastructure. Export your data anytime, in any format.",
+      "Cloud Hosted with full data ownership. Export your data anytime, in any format.",
   },
   {
     icon: Users,

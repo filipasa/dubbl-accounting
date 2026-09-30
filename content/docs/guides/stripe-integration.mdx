@@ -83,9 +83,9 @@ These mappings use your existing chart of accounts, so they work regardless of y
 | `customer.updated` | Updates the linked contact |
 | `account.application.deauthorized` | Marks integration as disconnected |
 
-### Self-Hosting Setup
+### Cloud Hosted Setup
 
-To enable Stripe Connect on a self-hosted instance:
+To enable Stripe Connect on a Cloud Hosted instance:
 
 1. Register a [Stripe Connect platform](https://dashboard.stripe.com/settings/connect)
 2. Set `STRIPE_CONNECT_CLIENT_ID` in your environment
@@ -109,9 +109,9 @@ The following MCP tools are available for AI agents:
 | `trigger_stripe_sync` | Start a manual sync for the last N days (1-90) |
 | `list_stripe_sync_log` | View recent sync history with status and errors |
 
-## Connecting Stripe (Self-Hosting)
+## Connecting Stripe (Cloud Hosted)
 
-If you're self-hosting fixbooks, you need to connect your own Stripe account. The basic steps are:
+If you're using fixbooks as Cloud Hosted, you need to connect your own Stripe account. The basic steps are:
 
 1. Create a [Stripe account](https://stripe.com) and complete onboarding
 2. Create products and prices for seat plans and storage add-ons
@@ -185,12 +185,12 @@ All webhook events are verified using the `STRIPE_WEBHOOK_SECRET` signing secret
 
 ## Without Stripe
 
-Stripe is optional for self-hosted instances. Without it configured:
+Stripe is optional for Cloud Hosted instances. Without it configured:
 
 - All organizations default to the free plan
 - Invoice payment links are not available
 - Site admins can manually override plan limits (members, storage, features) from `/admin/organizations`
 
 <Callout type="info">
-  Self-hosted instances can grant unlimited access to all features without Stripe by using admin overrides.
+  Cloud Hosted instances can grant unlimited access to all features without Stripe by using admin overrides.
 </Callout>

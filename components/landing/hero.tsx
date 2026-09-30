@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowRight, Github } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Container } from "@/components/shared/container";
 import { cn } from "@/lib/utils";
@@ -580,7 +580,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             Accounting, projects, inventory, payroll, and CRM in one
-            platform. Self-host, extend via API and MCP, and own your
+            platform. Cloud hosted, extend via API and MCP, and own your
             data. Forever free.
           </motion.p>
 
@@ -616,42 +616,13 @@ export function Hero() {
                 <span className="relative">Get Started Free</span>
                 <ArrowRight className="relative size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
-
-              <a
-                href="https://github.com/fixbooks/fixbooks"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "group relative inline-flex h-13 items-center justify-center gap-2 overflow-hidden rounded-xl px-6",
-                  "bg-emerald-950 text-emerald-100",
-                  "font-mono text-sm font-medium",
-                  "shadow-lg shadow-emerald-950/25",
-                  "transition-all duration-200 hover:bg-emerald-900 hover:shadow-xl hover:shadow-emerald-950/30",
-                  "active:scale-[0.98]",
-                  "dark:bg-emerald-950/80 dark:text-emerald-200 dark:border dark:border-emerald-800/40 dark:shadow-emerald-950/40"
-                )}
-              >
-                {/* Animated top-edge scan line */}
-                <motion.div
-                  className="pointer-events-none absolute top-0 left-0 h-px w-8 bg-gradient-to-r from-transparent via-emerald-400 to-transparent"
-                  animate={{ left: ["0%", "100%", "0%"] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <Github className="relative size-4" />
-                <span className="relative">&gt; git clone</span>
-                <motion.span
-                  className="relative inline-block h-4 w-px bg-emerald-400"
-                  animate={{ opacity: [1, 1, 0, 0] }}
-                  transition={{ duration: 1, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
-                />
-              </a>
             </div>
 
             {/* Trust signals — terminal style */}
             <div className="mt-12 flex items-center gap-3 font-mono text-[11px] text-muted-foreground sm:gap-5">
               {[
                 { icon: "Apache-2.0", label: "Licensed" },
-                { icon: "Self-host", label: "Ready" },
+                { icon: "Cloud Hosted", label: "Ready" },
                 { icon: "MCP-ready", label: "AI-native" },
               ].map((item, i) => (
                 <div key={item.icon} className="flex items-center gap-2">

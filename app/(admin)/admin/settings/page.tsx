@@ -203,7 +203,7 @@ export default function AdminSettingsPage() {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium">
-                Self-hosted unlimited mode
+                Cloud Hosted unlimited mode
               </Label>
               <Select
                 value={settings.self_hosted_unlimited}

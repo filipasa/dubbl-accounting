@@ -49,11 +49,11 @@ export function CTASection() {
               Start managing your business today
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-white/60">
-              Self-host in minutes, extend via API and MCP, and own your
+              Cloud hosted in minutes, extend via API and MCP, and own your
               data. Forever free.
             </p>
             <p className="mt-6 text-sm text-white/40">
-              Open source &middot; Self-hostable &middot; Free forever
+              Open source &middot; Cloud Hosted &middot; Free forever
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link

@@ -261,7 +261,7 @@ export function getEffectiveLimits(sub: {
   overrideMultiCurrency?: boolean | null;
   overrideEntriesPerMonth?: number | null;
 } | null) {
-  // Self-hosted mode: if no Stripe key, everything is unlimited
+  // Cloud Hosted mode: if no Stripe key, everything is unlimited
   if (!process.env.STRIPE_SECRET_KEY) {
     return {
       ...PLAN_LIMITS.pro,

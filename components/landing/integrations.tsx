@@ -45,7 +45,7 @@ const row2: Integration[] = [
   { name: "Invoicing", category: "Built-in", icon: Send, color: "text-blue-500" },
   { name: "Inventory", category: "Built-in", icon: ShoppingBag, color: "text-purple-500" },
   { name: "Projects", category: "Built-in", icon: Store, color: "text-emerald-500" },
-  { name: "Self-Host", category: "Full Control", icon: Building2, color: "text-emerald-500" },
+  { name: "Cloud Hosted", category: "Full Control", icon: Building2, color: "text-emerald-500" },
 ];
 
 /* ------------------------------------------------------------------ */
