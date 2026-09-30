@@ -107,10 +107,13 @@ export async function createConnectionsSession(
   publishableKey: string;
   days: number;
   startDate: string;
+  isTestMode: boolean;
 }> {
   if (!stripe) {
     throw new Error("Stripe is not configured. Please set STRIPE_SECRET_KEY.");
   }
+
+  const isTestMode = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_test_");
 
   const customerId = await getOrCreateStripeCustomer(organizationId);
   const { days, startDate } = calculateHistoricalDays(options);
@@ -120,7 +123,7 @@ export async function createConnectionsSession(
       type: "customer",
       customer: customerId,
     },
-    permissions: ["balances", "transactions", "ownership"],
+    permissions: ["balances", "transactions"],
     prefetch: ["balances", "transactions"],
     ...(options?.returnUrl ? { return_url: options.returnUrl } : {}),
   });
@@ -150,6 +153,7 @@ export async function createConnectionsSession(
     publishableKey,
     days,
     startDate,
+    isTestMode,
   };
 }
 

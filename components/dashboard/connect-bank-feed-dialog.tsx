@@ -25,6 +25,8 @@ import {
   RefreshCw,
   PlusCircle,
   ExternalLink,
+  Info,
+  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
@@ -106,9 +108,11 @@ export function ConnectBankFeedDialog({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [manualPublishableKey, setManualPublishableKey] = useState<string>("");
+  const [isTestMode, setIsTestMode] = useState<boolean | null>(null);
   const [pendingSessionData, setPendingSessionData] = useState<{
     sessionId: string;
     clientSecret: string;
+    isTestMode?: boolean;
   } | null>(null);
 
   const customDateInputId = useId();
@@ -243,6 +247,9 @@ export function ConnectBankFeedDialog({
 
       const sessionData = await res.json();
       setActiveSessionId(sessionData.sessionId);
+      if (typeof sessionData.isTestMode === "boolean") {
+        setIsTestMode(sessionData.isTestMode);
+      }
 
       if (!sessionData.clientSecret) {
         throw new Error(
@@ -259,6 +266,7 @@ export function ConnectBankFeedDialog({
         setPendingSessionData({
           sessionId: sessionData.sessionId,
           clientSecret: sessionData.clientSecret,
+          isTestMode: sessionData.isTestMode,
         });
         setStep("missing_key");
         setLoading(false);
@@ -283,10 +291,25 @@ export function ConnectBankFeedDialog({
       setErrorMsg("Please enter your Stripe Publishable Key.");
       return;
     }
-    if (!key.startsWith("pk_")) {
-      setErrorMsg("Invalid format. Stripe Publishable Keys start with 'pk_test_' or 'pk_live_'");
+    if (!key.startsWith("pk_test_") && !key.startsWith("pk_live_")) {
+      setErrorMsg("Invalid format. Stripe Publishable Keys must start with 'pk_test_' or 'pk_live_'");
       return;
     }
+
+    const currentMode = pendingSessionData?.isTestMode ?? isTestMode;
+    if (currentMode === true && key.startsWith("pk_live_")) {
+      setErrorMsg(
+        "Key Mode Mismatch: Your server is running in Stripe Test Mode (sk_test_...), but you entered a Live Publishable Key (pk_live_...). Please enter your Test Publishable Key (starts with pk_test_)."
+      );
+      return;
+    }
+    if (currentMode === false && key.startsWith("pk_test_")) {
+      setErrorMsg(
+        "Key Mode Mismatch: Your server is running in Stripe Live Mode (sk_live_...), but you entered a Test Publishable Key (pk_test_...). Please enter your Live Publishable Key (starts with pk_live_)."
+      );
+      return;
+    }
+
     if (!pendingSessionData) {
       setStep("configure");
       return;
@@ -462,6 +485,28 @@ export function ConnectBankFeedDialog({
               </div>
             </div>
 
+            {/* Key info badge if set */}
+            {manualPublishableKey && (
+              <div className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <KeyRound className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Stripe Publishable Key:</span>
+                  <code className="font-mono text-[11px] text-foreground">
+                    {manualPublishableKey.slice(0, 12)}...{manualPublishableKey.slice(-4)}
+                  </code>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setStep("missing_key")}
+                >
+                  Change key
+                </Button>
+              </div>
+            )}
+
             {/* Trust badge */}
             <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 p-3 text-xs text-emerald-800 dark:text-emerald-300">
               <ShieldCheck className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -476,12 +521,25 @@ export function ConnectBankFeedDialog({
         {step === "missing_key" && (
           <div className="space-y-4 py-2">
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20 space-y-2">
-              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-medium text-sm">
-                <AlertCircle className="size-4 shrink-0" />
-                Stripe Publishable Key Required
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-medium text-sm">
+                  <AlertCircle className="size-4 shrink-0" />
+                  Stripe Publishable Key Required
+                </div>
+                {isTestMode !== null && (
+                  <Badge variant={isTestMode ? "secondary" : "default"} className="text-[10px] font-mono">
+                    {isTestMode ? "Test Mode" : "Live Mode"}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your Stripe Secret Key is active, but Stripe.js requires your <strong>Publishable Key</strong> (<code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">pk_test_...</code> or <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">pk_live_...</code>) to securely launch the bank portal in your browser.
+                Your Stripe Secret Key is active, but Stripe.js requires your <strong>Publishable Key</strong> (
+                {isTestMode ? (
+                  <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded text-foreground font-semibold">pk_test_...</code>
+                ) : (
+                  <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded text-foreground font-semibold">pk_live_...</code>
+                )}
+                ) to securely launch the bank portal in your browser.
               </p>
             </div>
 
@@ -491,7 +549,7 @@ export function ConnectBankFeedDialog({
               </Label>
               <Input
                 id="stripe-publishable-key-input"
-                placeholder="pk_test_51... or pk_live_51..."
+                placeholder={isTestMode ? "pk_test_51..." : "pk_live_51..."}
                 value={manualPublishableKey}
                 onChange={(e) => {
                   setManualPublishableKey(e.target.value.trim());
@@ -510,7 +568,7 @@ export function ConnectBankFeedDialog({
                 >
                   Stripe API Keys Dashboard <ExternalLink className="size-2.5 inline" />
                 </a>
-                . Entering it here saves it in your browser so you won&apos;t be asked again. To set it permanently for all team members, configure <code className="font-mono text-[10px] bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in your environment variables.
+                . Entering it here saves it in your browser so you won&apos;t be asked again.
               </p>
             </div>
           </div>
@@ -518,13 +576,38 @@ export function ConnectBankFeedDialog({
 
         {/* STEP 2: CONNECTING / LOADING */}
         {step === "connecting" && (
-          <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center">
-            <Loader2 className="size-8 animate-spin text-emerald-600" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Opening secure bank portal...</p>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                Complete the authorization in the Stripe dialog to connect your bank account.
-              </p>
+          <div className="py-4 space-y-5">
+            <div className="flex flex-col items-center justify-center space-y-3 text-center">
+              <Loader2 className="size-8 animate-spin text-emerald-600" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Bank Authorization in Progress...</p>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Complete your bank authorization in the Stripe window to link your bank accounts.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/40 p-4 text-xs space-y-2.5">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Info className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                Troubleshooting & Authorization Guidance:
+              </div>
+              <ul className="space-y-2 text-muted-foreground text-[11px] list-disc pl-4 leading-relaxed">
+                {isTestMode ? (
+                  <li className="text-amber-700 dark:text-amber-400 font-medium">
+                    <strong>Test Mode:</strong> Select <strong>&quot;Test Institution&quot;</strong> in the Stripe bank list (not a real bank). Real banks cannot authenticate using test credentials.
+                  </li>
+                ) : null}
+                <li>
+                  <strong>Stuck on &quot;Hang on, nearly there&quot;?</strong> Browser adblockers (such as uBlock Origin, AdBlock) or Brave Shields frequently intercept Stripe&apos;s authentication requests (<code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono">connections-auth.stripe.com</code>). Please temporarily pause adblockers or disable shields on this tab.
+                </li>
+                <li>
+                  <strong>Third-Party Cookies:</strong> Chrome Incognito and Safari restrict cross-site iframe cookies by default. If it spins continuously, enable third-party cookies or test in a standard browser window.
+                </li>
+                <li>
+                  <strong>OAuth Popups:</strong> If your bank requires an OAuth login window, please ensure browser popups are allowed for this site.
+                </li>
+              </ul>
             </div>
           </div>
         )}
@@ -748,6 +831,34 @@ export function ConnectBankFeedDialog({
                 {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 Continue to Bank Login
                 <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {step === "connecting" && (
+            <div className="flex w-full items-center justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStep("configure");
+                  setLoading(false);
+                }}
+              >
+                Cancel & Return
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setStep("missing_key");
+                  setLoading(false);
+                }}
+              >
+                Change Stripe Key
               </Button>
             </div>
           )}
