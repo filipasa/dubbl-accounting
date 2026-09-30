@@ -135,10 +135,19 @@ export async function createConnectionsSession(
     initialSyncStartDate: startDate,
   });
 
+  const publishableKey =
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    process.env.STRIPE_PUBLISHABLE_KEY ||
+    process.env.STRIPE_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_STRIPE_KEY ||
+    process.env.NEXT_PUBLIC_STRIPE_PK ||
+    process.env.STRIPE_PK ||
+    "";
+
   return {
     sessionId: session.id,
     clientSecret: session.client_secret,
-    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
+    publishableKey,
     days,
     startDate,
   };

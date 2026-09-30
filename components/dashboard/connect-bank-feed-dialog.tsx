@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useEffect, useId } from "react";
 import {
   Dialog,
   DialogContent,
@@ -86,7 +86,9 @@ export function ConnectBankFeedDialog({
   preselectedBankAccountId,
   onSuccess,
 }: ConnectBankFeedDialogProps) {
-  const [step, setStep] = useState<"configure" | "connecting" | "mapping" | "syncing" | "complete">("configure");
+  const [step, setStep] = useState<
+    "configure" | "missing_key" | "connecting" | "mapping" | "syncing" | "complete"
+  >("configure");
   const [selectedDays, setSelectedDays] = useState<number>(90);
   const [isCustomDate, setIsCustomDate] = useState(false);
 
@@ -103,8 +105,21 @@ export function ConnectBankFeedDialog({
   const [syncSummary, setSyncSummary] = useState<{ totalSynced: number; totalAccounts: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [manualPublishableKey, setManualPublishableKey] = useState<string>("");
+  const [pendingSessionData, setPendingSessionData] = useState<{
+    sessionId: string;
+    clientSecret: string;
+  } | null>(null);
 
   const customDateInputId = useId();
+
+  // Load cached publishable key from localStorage on mount if available
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("stripe_publishable_key") || "";
+      if (cached) setManualPublishableKey(cached);
+    }
+  }, []);
 
   // Reset modal state
   const handleOpenChange = (open: boolean) => {
@@ -112,52 +127,31 @@ export function ConnectBankFeedDialog({
       setStep("configure");
       setErrorMsg(null);
       setLoading(false);
+      setPendingSessionData(null);
       onClose();
     }
   };
 
-  // Launch Stripe Financial Connections Session
-  const handleStartConnection = async () => {
+  // Connect via Stripe.js using the specified publishable key and client secret
+  const runStripeConnect = async (
+    publishableKey: string,
+    clientSecret: string,
+    sessionId: string
+  ) => {
     setLoading(true);
     setErrorMsg(null);
     setStep("connecting");
 
     try {
-      const payload: { days?: number; startDate?: string } = {};
-      if (isCustomDate) {
-        payload.startDate = customStartDate;
-      } else {
-        payload.days = selectedDays;
-      }
-
-      const res = await fetch("/api/v1/integrations/stripe-financial-connections/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to initialize bank feed session");
-      }
-
-      const sessionData = await res.json();
-      setActiveSessionId(sessionData.sessionId);
-
-      // Launch Stripe client-side modal
-      if (!sessionData.publishableKey || !sessionData.clientSecret) {
+      const stripe = await loadStripe(publishableKey);
+      if (!stripe) {
         throw new Error(
-          "Stripe credentials missing. Ensure STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY are configured."
+          "Unable to initialize Stripe.js. Please verify your publishable key or network connection."
         );
       }
 
-      const stripe = await loadStripe(sessionData.publishableKey);
-      if (!stripe) {
-        throw new Error("Unable to initialize Stripe.js. Please check your network connection.");
-      }
-
       const result = await stripe.collectFinancialConnectionsAccounts({
-        clientSecret: sessionData.clientSecret,
+        clientSecret,
       });
 
       if (result.error) {
@@ -166,7 +160,7 @@ export function ConnectBankFeedDialog({
 
       // Retrieve discovered accounts
       const accountsRes = await fetch(
-        `/api/v1/integrations/stripe-financial-connections/session/${sessionData.sessionId}`
+        `/api/v1/integrations/stripe-financial-connections/session/${sessionId}`
       );
       if (!accountsRes.ok) {
         throw new Error("Failed to retrieve connected bank accounts.");
@@ -220,6 +214,93 @@ export function ConnectBankFeedDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Launch Stripe Financial Connections Session
+  const handleStartConnection = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    setStep("connecting");
+
+    try {
+      const payload: { days?: number; startDate?: string } = {};
+      if (isCustomDate) {
+        payload.startDate = customStartDate;
+      } else {
+        payload.days = selectedDays;
+      }
+
+      const res = await fetch("/api/v1/integrations/stripe-financial-connections/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to initialize bank feed session");
+      }
+
+      const sessionData = await res.json();
+      setActiveSessionId(sessionData.sessionId);
+
+      if (!sessionData.clientSecret) {
+        throw new Error(
+          "Stripe secret key is not configured on the server. Please ensure STRIPE_SECRET_KEY is set in your environment variables."
+        );
+      }
+
+      let pKey = sessionData.publishableKey?.trim();
+      if (!pKey && typeof window !== "undefined") {
+        pKey = (localStorage.getItem("stripe_publishable_key") || "").trim();
+      }
+
+      if (!pKey) {
+        setPendingSessionData({
+          sessionId: sessionData.sessionId,
+          clientSecret: sessionData.clientSecret,
+        });
+        setStep("missing_key");
+        setLoading(false);
+        return;
+      }
+
+      await runStripeConnect(pKey, sessionData.clientSecret, sessionData.sessionId);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      toast.error(msg);
+      setStep("configure");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for manual publishable key submission
+  const handleSaveKeyAndContinue = async () => {
+    const key = manualPublishableKey.trim();
+    if (!key) {
+      setErrorMsg("Please enter your Stripe Publishable Key.");
+      return;
+    }
+    if (!key.startsWith("pk_")) {
+      setErrorMsg("Invalid format. Stripe Publishable Keys start with 'pk_test_' or 'pk_live_'");
+      return;
+    }
+    if (!pendingSessionData) {
+      setStep("configure");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("stripe_publishable_key", key);
+    }
+
+    await runStripeConnect(
+      key,
+      pendingSessionData.clientSecret,
+      pendingSessionData.sessionId
+    );
   };
 
   // Complete Account Mapping and Initial Sync
@@ -387,6 +468,50 @@ export function ConnectBankFeedDialog({
               <span>
                 FCA & Open Banking compliant via Stripe. Your credentials are never stored by Fixbooks.
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* STEP: MISSING PUBLISHABLE KEY INPUT */}
+        {step === "missing_key" && (
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20 space-y-2">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-medium text-sm">
+                <AlertCircle className="size-4 shrink-0" />
+                Stripe Publishable Key Required
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Your Stripe Secret Key is active, but Stripe.js requires your <strong>Publishable Key</strong> (<code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">pk_test_...</code> or <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">pk_live_...</code>) to securely launch the bank portal in your browser.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stripe-publishable-key-input" className="text-xs font-medium">
+                Enter your Stripe Publishable Key:
+              </Label>
+              <Input
+                id="stripe-publishable-key-input"
+                placeholder="pk_test_51... or pk_live_51..."
+                value={manualPublishableKey}
+                onChange={(e) => {
+                  setManualPublishableKey(e.target.value.trim());
+                  setErrorMsg(null);
+                }}
+                className="font-mono text-xs"
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                You can copy this from your{" "}
+                <a
+                  href="https://dashboard.stripe.com/apikeys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-emerald-600 underline hover:text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-0.5"
+                >
+                  Stripe API Keys Dashboard <ExternalLink className="size-2.5 inline" />
+                </a>
+                . Entering it here saves it in your browser so you won&apos;t be asked again. To set it permanently for all team members, configure <code className="font-mono text-[10px] bg-muted px-1 py-0.5 rounded">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in your environment variables.
+              </p>
             </div>
           </div>
         )}
@@ -597,6 +722,31 @@ export function ConnectBankFeedDialog({
               >
                 {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 Connect with Bank
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {step === "missing_key" && (
+            <div className="flex w-full items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep("configure")}
+                disabled={loading}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                onClick={handleSaveKeyAndContinue}
+                disabled={!manualPublishableKey.trim() || loading}
+              >
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                Continue to Bank Login
                 <ArrowRight className="size-3.5" />
               </Button>
             </div>

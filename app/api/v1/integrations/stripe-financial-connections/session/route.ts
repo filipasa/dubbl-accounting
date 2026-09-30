@@ -20,6 +20,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(session);
   } catch (err) {
+    if (err instanceof Error) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return handleError(err);
   }
 }
