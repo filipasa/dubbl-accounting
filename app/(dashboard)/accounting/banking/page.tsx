@@ -19,7 +19,9 @@ import {
   EyeOff,
   ExternalLink,
   ArrowLeftRight,
+  RefreshCw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { Button } from "@/components/ui/button";
@@ -93,8 +95,33 @@ export default function BankingPage() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   useDocumentTitle("Accounting \u00B7 Bank Accounts");
+
+  async function handleSyncAllBalances() {
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+    setSyncingAll(true);
+    try {
+      const res = await fetch("/api/v1/bank-accounts/sync-all", {
+        method: "POST",
+        headers: { "x-organization-id": orgId },
+      });
+      if (!res.ok) throw new Error("Failed to sync balances");
+      const data = await res.json();
+      if (data.updatedCount > 0) {
+        toast.success(`Updated balances for ${data.updatedCount} account(s)`);
+        fetchAccounts();
+      } else {
+        toast.info("All account balances are up to date with imported statements");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to sync balances");
+    } finally {
+      setSyncingAll(false);
+    }
+  }
 
   function fetchAccounts() {
     const orgId = localStorage.getItem("activeOrgId");
@@ -297,6 +324,16 @@ export default function BankingPage() {
           >
             {showBalances ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
             {showBalances ? "Hide" : "Show"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncAllBalances}
+            loading={syncingAll}
+            title="Sync statement closing balances from imported transactions"
+          >
+            <RefreshCw className={cn("mr-2 size-4", syncingAll && "animate-spin")} />
+            Sync Balances
           </Button>
           <Button
             variant="outline"

@@ -62,6 +62,8 @@ test("parseBankStatement parses standard Tide UK statement CSV (Paid out / Paid 
 
   assert.equal(result.statementStartDate, "2024-03-11");
   assert.equal(result.statementEndDate, "2024-03-12");
+  assert.equal(result.closingBalance, 125000);
+  assert.equal(result.openingBalance, 90000);
 });
 
 test("parseBankStatement parses Tide CSV with preamble metadata headers and timestamps", () => {
@@ -128,3 +130,34 @@ test("parseBankStatement handles currency symbols and DR/CR notations", () => {
   assert.equal(result.transactions[1].amount, 5000);
   assert.equal(result.transactions[2].amount, -2500);
 });
+
+test("parseBankStatement correctly extracts closing balance for reverse chronological CSV (newest first)", () => {
+  // Simulates Wise / Barclaycard exports where newest transaction is at row 1
+  const csv = `Date,Description,Amount,Balance
+2026-04-30,Latest payout,500.00,101058.03
+2026-04-29,Vendor bill,-100.00,100558.03
+2024-03-15,Oldest opening deposit,45.00,45.00`;
+
+  const result = parseBankStatement({ content: csv, fileName: "wise.csv" });
+  assert.equal(result.transactions.length, 3);
+  assert.equal(result.statementStartDate, "2024-03-15");
+  assert.equal(result.statementEndDate, "2026-04-30");
+  assert.equal(result.closingBalance, 10105803); // Latest balance £101,058.03
+  assert.equal(result.openingBalance, 0); // 4500 - 4500 = 0
+});
+
+test("parseBankStatement correctly extracts closing balance for chronological CSV (oldest first)", () => {
+  // Simulates Anna exports where oldest transaction is at row 1
+  const csv = `Date,Description,Amount,Balance
+2024-01-01,Opening deposit,100.00,100.00
+2026-04-29,Client invoice,500.00,600.00
+2026-04-30,Final invoice,27319.66,27919.66`;
+
+  const result = parseBankStatement({ content: csv, fileName: "anna.csv" });
+  assert.equal(result.transactions.length, 3);
+  assert.equal(result.statementStartDate, "2024-01-01");
+  assert.equal(result.statementEndDate, "2026-04-30");
+  assert.equal(result.closingBalance, 2791966); // £27,919.66
+  assert.equal(result.openingBalance, 0); // 10000 - 10000 = 0
+});
+

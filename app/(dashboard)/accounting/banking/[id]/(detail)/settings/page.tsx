@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { AccountPicker } from "@/components/dashboard/account-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencySelect } from "@/components/ui/currency-select";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { getCurrencySymbol } from "@/lib/currency/iso4217";
+import { RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,20 +30,65 @@ export default function BankSettingsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { account, setAccount, refetch } = useBankAccountContext();
   const [saving, setSaving] = useState(false);
+  const [syncingBalance, setSyncingBalance] = useState(false);
   const [bankCurrency, setBankCurrency] = useState(account?.currencyCode || "USD");
+  const [balanceStr, setBalanceStr] = useState(
+    account?.balance != null ? (account.balance / 100).toFixed(2) : "0.00"
+  );
   // Which ledger account this bank account is recorded under. Defaults to the
   // one connected automatically; the picker lets the user point it elsewhere.
   const [chartAccountId, setChartAccountId] = useState(account?.chartAccountId ?? "");
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
-  useDocumentTitle("Accounting \u00B7 Bank Settings");
+  useDocumentTitle("Accounting · Bank Settings");
+
+  useEffect(() => {
+    if (account?.currencyCode) {
+      setBankCurrency(account.currencyCode);
+    }
+    if (account?.balance != null) {
+      setBalanceStr((account.balance / 100).toFixed(2));
+    }
+  }, [account?.balance, account?.currencyCode]);
+
+  async function handleSyncBalance() {
+    if (!orgId) return;
+    setSyncingBalance(true);
+    try {
+      const res = await fetch(`/api/v1/bank-accounts/${id}/sync-balance`, {
+        method: "POST",
+        headers: { "x-organization-id": orgId },
+      });
+      if (!res.ok) throw new Error("Failed to sync balance");
+      const data = await res.json();
+      if (data.success && data.balance != null) {
+        setBalanceStr((data.balance / 100).toFixed(2));
+        setAccount((prev) => (prev ? { ...prev, balance: data.balance } : prev));
+        refetch();
+        toast.success(
+          data.message || `Balance synced to ${(data.balance / 100).toFixed(2)}`
+        );
+      } else {
+        toast.info(
+          data.message || "No running balance column found in imported statements."
+        );
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to sync balance");
+    } finally {
+      setSyncingBalance(false);
+    }
+  }
 
   async function handleSaveSettings(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!orgId) return;
     setSaving(true);
     const fd = new FormData(e.currentTarget);
+    const parsedBalance =
+      balanceStr !== "" ? Math.round(parseFloat(balanceStr) * 100) : 0;
+
     try {
       const res = await fetch(`/api/v1/bank-accounts/${id}`, {
         method: "PATCH",
@@ -53,6 +101,7 @@ export default function BankSettingsPage() {
           countryCode: fd.get("countryCode") || null,
           accountType: fd.get("accountType") || undefined,
           color: fd.get("color") || undefined,
+          balance: isNaN(parsedBalance) ? 0 : parsedBalance,
           // Only send a connection when one is chosen — never actively unlink
           // (an empty value just falls back to the automatic connection).
           ...(chartAccountId ? { chartAccountId } : {}),
@@ -126,6 +175,43 @@ export default function BankSettingsPage() {
               <Label className="text-xs">Account Number / IBAN</Label>
               <Input name="accountNumber" defaultValue={account.accountNumber || ""} placeholder="1234 or GB29NWBK..." />
             </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        <div className="grid gap-6 sm:grid-cols-[200px_1fr] sm:gap-10">
+          <div className="shrink-0">
+            <p className="text-sm font-medium">Statement Balance</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              Current closing balance shown on your bank statement.
+            </p>
+          </div>
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="w-full sm:w-56">
+                <CurrencyInput
+                  prefix={getCurrencySymbol(bankCurrency)}
+                  value={balanceStr}
+                  onChange={setBalanceStr}
+                  placeholder="0.00"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSyncBalance}
+                loading={syncingBalance}
+                className="gap-1.5 text-xs shrink-0 self-start sm:self-auto"
+              >
+                <RefreshCw className={cn("size-3.5", syncingBalance && "animate-spin")} />
+                Sync from statement
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              If your bank statement CSV included a running balance column, clicking &ldquo;Sync from statement&rdquo; auto-detects your latest balance. For statements without balance columns (such as Barclays or Tide), you can manually enter your closing balance here.
+            </p>
           </div>
         </div>
 

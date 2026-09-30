@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   bankAccount,
@@ -222,15 +222,30 @@ export async function commitBankStatementImport(
     await db.insert(bankTransaction).values(insertedRows);
   }
 
+  const rowsWithBal = insertedRows
+    .filter((r) => r.balance != null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
   const finalBalance =
     parsed.closingBalance ??
-    insertedRows[insertedRows.length - 1]?.balance ??
+    rowsWithBal[0]?.balance ??
     account.balance;
 
-  await db
-    .update(bankAccount)
-    .set({ balance: finalBalance })
-    .where(eq(bankAccount.id, bankAccountId));
+  const newerTx = parsed.statementEndDate
+    ? await db.query.bankTransaction.findFirst({
+        where: and(
+          eq(bankTransaction.bankAccountId, bankAccountId),
+          gt(bankTransaction.date, parsed.statementEndDate)
+        ),
+      })
+    : null;
+
+  if (!newerTx && finalBalance !== account.balance) {
+    await db
+      .update(bankAccount)
+      .set({ balance: finalBalance })
+      .where(eq(bankAccount.id, bankAccountId));
+  }
 
   await db
     .update(bankStatementImport)
@@ -669,14 +684,19 @@ function parseDelimitedStatement(
     statementStartDate = dates[0] || null;
     statementEndDate = dates[dates.length - 1] || null;
 
-    const firstWithBal = transactions.find((t) => t.balance != null);
-    if (firstWithBal && firstWithBal.balance != null) {
-      openingBalance = firstWithBal.balance - firstWithBal.amount;
-    }
+    const rowsWithDate = transactions.filter((t) => t.date);
+    const isReverseChronological =
+      rowsWithDate.length >= 2 &&
+      rowsWithDate[0].date! > rowsWithDate[rowsWithDate.length - 1].date!;
 
-    const lastWithBal = [...transactions].reverse().find((t) => t.balance != null);
-    if (lastWithBal && lastWithBal.balance != null) {
-      closingBalance = lastWithBal.balance;
+    const orderedTransactions = isReverseChronological
+      ? [...transactions].reverse()
+      : transactions;
+
+    const sortedWithBal = orderedTransactions.filter((t) => t.balance != null);
+    if (sortedWithBal.length > 0) {
+      openingBalance = sortedWithBal[0].balance! - sortedWithBal[0].amount;
+      closingBalance = sortedWithBal[sortedWithBal.length - 1].balance!;
     }
   }
 
