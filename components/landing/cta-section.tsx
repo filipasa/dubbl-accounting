@@ -53,7 +53,7 @@ export function CTASection() {
               data. Forever free.
             </p>
             <p className="mt-6 text-sm text-white/40">
-              Open source &middot; Cloud Hosted &middot; Free forever
+              Cloud Hosted &middot; Free forever
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link

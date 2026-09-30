@@ -484,9 +484,8 @@ export default function PricingPage() {
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="max-w-lg">
                 <div className="flex items-center gap-2 mb-3">
-                  <Github className="size-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                    Open Source
+                    Apache 2.0
                   </span>
                 </div>
                 <h3 className="text-xl font-semibold text-foreground">
@@ -700,7 +699,7 @@ export default function PricingPage() {
                 data. Forever free.
               </p>
               <p className="mt-6 text-sm text-white/40">
-                Open source &middot; Cloud Hosted &middot; Free forever
+                Cloud Hosted &middot; Free forever
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link

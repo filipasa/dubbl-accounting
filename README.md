@@ -2,7 +2,7 @@
   <img src="public/logo.svg" alt="fixbooks logo" width="80" height="64" />
 </p>
 <h1 align="center">fixbooks</h1>
-<p align="center">Open source, double-entry bookkeeping for modern teams.</p>
+<p align="center">Double-entry bookkeeping for modern teams.</p>
 
 <p align="center">
   <a href="/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
@@ -12,7 +12,7 @@
 
 ---
 
-fixbooks is a full-featured, open-source alternative to Xero and QuickBooks. It is API-first, developer-friendly, and built for teams that want full control over their financial data.
+fixbooks is a full-featured alternative to Xero and QuickBooks. It is API-first, developer-friendly, and built for teams that want full control over their financial data.
 
 ## Features
 

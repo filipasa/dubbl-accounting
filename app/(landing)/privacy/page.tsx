@@ -313,8 +313,8 @@ const sections: LegalSection[] = [
       <>
         <p>
           This privacy policy applies exclusively to the hosted service at{" "}
-          <strong>fixbooks.io</strong>. If you deploy fixbooks as Cloud Hosted outside our platform using our
-          open-source code, you are responsible for your own data processing,
+          <strong>fixbooks.io</strong>. If you deploy fixbooks as Cloud Hosted outside our platform using the
+          codebase, you are responsible for your own data processing,
           privacy policy, and compliance with applicable data protection laws.
         </p>
       </>

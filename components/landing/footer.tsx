@@ -66,7 +66,7 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-3 max-w-[220px] text-sm leading-relaxed text-white/50">
-              Open source business management platform for modern teams.
+              Modern business management platform for teams.
             </p>
             <div className="mt-5 flex items-center gap-2.5">
               {socialLinks.map((link) => (
@@ -133,7 +133,7 @@ export function Footer() {
           <div className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5">
             <ShieldCheck className="size-3.5 text-emerald-400" />
             <span className="text-xs font-medium text-white/60">
-              Open Source &middot; Cloud Hosted
+              Cloud Hosted
             </span>
           </div>
         </div>

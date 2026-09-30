@@ -117,7 +117,7 @@ export default function AuthLayout({
                   fixbooks
                 </span>
                 <p className="text-xs text-white/60">
-                  Open source bookkeeping, done right
+                  Modern bookkeeping, done right
                 </p>
               </div>
             </div>

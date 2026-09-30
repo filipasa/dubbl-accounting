@@ -11,7 +11,7 @@ const faqs = [
   {
     question: "Is fixbooks really free?",
     answer:
-      "Yes. fixbooks is open source under the Apache 2.0 license. You can use it as Cloud Hosted with no feature limitations, no user caps, and no hidden costs.",
+      "Yes. fixbooks is licensed under the Apache 2.0 license. You can use it as Cloud Hosted with no feature limitations, no user caps, and no hidden costs.",
   },
   {
     question: "Is fixbooks Cloud Hosted?",

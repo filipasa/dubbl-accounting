@@ -513,16 +513,16 @@ export default function BillingPage() {
       <div className="rounded-xl border bg-muted/30 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-lg">
-            <h3 className="text-sm font-semibold">Open source, transparent pricing</h3>
+            <h3 className="text-sm font-semibold">Transparent, fair pricing</h3>
             <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-              Fixbooks is open source. Our pricing is designed to be fair and sustainable. The free tier gives you everything you need to get started. Storage plans are organization-wide and cover all data, not just file uploads. Need more storage or have special requirements? We are happy to help.
+              Our pricing is designed to be fair and sustainable. The free tier gives you everything you need to get started. Storage plans are organization-wide and cover all data, not just file uploads. Need more storage or have special requirements? We are happy to help.
             </p>
           </div>
           <Button
             variant="outline"
             size="sm"
             className="shrink-0 gap-1.5"
-            onClick={() => window.location.href = "mailto:support@fixbooks.dev"}
+            onClick={() => window.location.href = "mailto:info@fixbooks.io"}
           >
             <Mail className="size-3.5" />
             Contact us

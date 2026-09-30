@@ -26,14 +26,14 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://fixbooks.dev";
 
 export const metadata: Metadata = {
   title: {
-    default: "fixbooks · Open-Source Accounting, ERP & Business Management",
+    default: "fixbooks · Accounting, ERP & Business Management",
     template: "%s · fixbooks",
   },
   description:
-    "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted. API-first, MCP-ready, Apache 2.0.",
+    "Double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted. API-first, MCP-ready, Apache 2.0.",
   metadataBase: new URL(APP_URL),
   keywords: [
-    "open source accounting",
+    "cloud accounting",
     "double-entry bookkeeping",
     "invoicing software",
     "accounts payable",
@@ -56,29 +56,29 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: APP_URL,
     siteName: "fixbooks",
-    title: "fixbooks · Open-Source Accounting & Business Management",
+    title: "fixbooks · Accounting & Business Management",
     description:
-      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
+      "Double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "fixbooks - Open-source accounting for modern teams",
+        alt: "fixbooks - Accounting for modern teams",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "fixbooks · Open-Source Accounting & Business Management",
+    title: "fixbooks · Accounting & Business Management",
     description:
-      "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
+      "Double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "fixbooks - Open-source accounting for modern teams",
+        alt: "fixbooks - Accounting for modern teams",
       },
     ],
   },

@@ -401,7 +401,7 @@ const html = `<!DOCTYPE html>
     <div class="pill">Inventory</div>
     <div class="pill">Payroll</div>
     <div class="pill">CRM</div>
-    <div class="pill">Open Source</div>
+    <div class="pill">Cloud Hosted</div>
   </div>
 
 </body>

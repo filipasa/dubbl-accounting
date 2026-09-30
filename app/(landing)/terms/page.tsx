@@ -44,7 +44,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           fixbooks is a double-entry bookkeeping platform available as both a hosted
-          SaaS at fixbooks.io and an open-source project that can be Cloud Hosted.
+          SaaS at fixbooks.io and as Cloud Hosted software.
           These Terms govern your use of the <strong>hosted service</strong>{" "}
           only.
         </p>
@@ -113,11 +113,11 @@ const sections: LegalSection[] = [
     ),
   },
   {
-    id: "open-source-vs-hosted",
-    title: "Open Source vs Hosted Service",
+    id: "licensing-vs-hosted",
+    title: "Licensing vs Hosted Service",
     content: (
       <>
-        <Callout icon={BookOpen} title="Open Source Distinction">
+        <Callout icon={BookOpen} title="Licensing Distinction">
           <p>
             The fixbooks source code is licensed under the{" "}
             <strong>Apache License 2.0</strong>. You are free to run as Cloud Hosted,
@@ -208,7 +208,7 @@ const sections: LegalSection[] = [
           <li>
             The fixbooks <strong>brand</strong>, logos, service design, and hosted
             infrastructure are owned by Legacy Line Ventures Ltd and are not covered by the
-            open-source licence.
+            Apache 2.0 licence.
           </li>
           <li>
             <strong>Your data</strong> ·you retain full ownership of all
