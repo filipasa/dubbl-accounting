@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Github, Twitter, ShieldCheck } from "lucide-react";
+import { Twitter, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { Container } from "@/components/shared/container";
 import { Separator } from "@/components/ui/separator";
@@ -48,7 +48,6 @@ const footerLinks: Record<string, FooterLink[]> = {
 };
 
 const socialLinks = [
-  { icon: Github, href: "https://github.com/fixbooks/fixbooks", label: "GitHub" },
   { icon: Twitter, href: "https://x.com/FixBooksHQ", label: "X" },
 ];
 
@@ -128,7 +127,7 @@ export function Footer() {
               &copy; 2026 fixbooks. Apache 2.0 License.
             </p>
             <p className="text-[11px] text-white/25">
-              Mindroot Ltd &middot; Registered in England and Wales &middot; Company No. 16543299 &middot; 71-75 Shelton Street, London, WC2H 9JQ
+              Legacy Line Ventures Ltd &middot; Registered in England and Wales &middot; Company No. 14814854 &middot; Unit A, 82 James Carter Road, Bury St. Edmunds, Mildenhall, Suffolk, United Kingdom, IP28 7DE
             </p>
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5">

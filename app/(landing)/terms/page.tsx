@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms governing your use of the fixbooks hosted service, operated by Mindroot Ltd.",
+    "Terms governing your use of the fixbooks hosted service, operated by Legacy Line Ventures Ltd.",
 };
 
 const sections: LegalSection[] = [
@@ -19,16 +19,16 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          The fixbooks hosted service at fixbooks.dev is operated by:
+          The fixbooks hosted service at fixbooks.io is operated by:
         </p>
         <p>
-          <strong>Mindroot Ltd</strong>
+          <strong>Legacy Line Ventures Ltd</strong>
           <br />
-          Company No. 16543299, registered in England and Wales
+          Company No. 14814854, registered in England and Wales
           <br />
-          Registered office: 71-75 Shelton Street, London, England, WC2H 9JQ
+          Registered office: Unit A, 82 James Carter Road, Bury St. Edmunds, Mildenhall, Suffolk, United Kingdom, IP28 7DE
           <br />
-          Contact: <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>
+          Contact: <a href="mailto:info@fixbooks.io">info@fixbooks.io</a>
         </p>
         <p>
           This information is provided in compliance with the Electronic Commerce
@@ -44,7 +44,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           fixbooks is a double-entry bookkeeping platform available as both a hosted
-          SaaS at fixbooks.dev and an open-source project that can be Cloud Hosted.
+          SaaS at fixbooks.io and an open-source project that can be Cloud Hosted.
           These Terms govern your use of the <strong>hosted service</strong>{" "}
           only.
         </p>
@@ -72,7 +72,7 @@ const sections: LegalSection[] = [
         </ul>
         <p>
           You must notify us immediately at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> if you suspect
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a> if you suspect
           unauthorised access to your account.
         </p>
       </>
@@ -125,7 +125,7 @@ const sections: LegalSection[] = [
           </p>
           <p>
             These Terms of Service apply <strong>only</strong> to the hosted
-            service at fixbooks.dev. Cloud Hosted instances outside our managed platform are governed solely by
+            service at fixbooks.io. Cloud Hosted instances outside our managed platform are governed solely by
             the Apache 2.0 licence.
           </p>
         </Callout>
@@ -207,7 +207,7 @@ const sections: LegalSection[] = [
           </li>
           <li>
             The fixbooks <strong>brand</strong>, logos, service design, and hosted
-            infrastructure are owned by Mindroot Ltd and are not covered by the
+            infrastructure are owned by Legacy Line Ventures Ltd and are not covered by the
             open-source licence.
           </li>
           <li>
@@ -233,7 +233,7 @@ const sections: LegalSection[] = [
           <strong>data processor</strong> on your behalf. You remain the data
           controller for that data. If you require a formal Data Processing
           Agreement (DPA), please contact us at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a>.
         </p>
       </>
     ),
@@ -244,7 +244,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          To the maximum extent permitted by law, Mindroot Ltd&apos;s total
+          To the maximum extent permitted by law, Legacy Line Ventures Ltd&apos;s total
           aggregate liability arising from or related to your use of the service
           is limited to the <strong>fees you paid in the 12 months</strong>{" "}
           preceding the claim.
@@ -285,7 +285,7 @@ const sections: LegalSection[] = [
         <p>
           If the digital content is faulty or does not meet these standards, you
           may be entitled to a repair, replacement, or price reduction. Contact
-          us at <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> to report
+          us at <a href="mailto:info@fixbooks.io">info@fixbooks.io</a> to report
           any issues.
         </p>
       </>
@@ -325,7 +325,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           If a dispute arises, we encourage you to contact us first at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> so we can attempt
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a> so we can attempt
           to resolve the matter informally.
         </p>
         <p>
@@ -391,7 +391,7 @@ const sections: LegalSection[] = [
           <li>
             <strong>Entire agreement</strong> ·these Terms, together with our
             Privacy Policy, constitute the entire agreement between you and
-            Mindroot Ltd regarding the hosted service.
+            Legacy Line Ventures Ltd regarding the hosted service.
           </li>
           <li>
             <strong>No assignment</strong> ·you may not assign or transfer

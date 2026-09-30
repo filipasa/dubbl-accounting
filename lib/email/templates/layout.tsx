@@ -71,10 +71,10 @@ export function EmailLayout({ preview, children, unsubscribeUrl }: LayoutProps) 
               )}
             </Text>
             <Text style={companyText}>
-              Mindroot Ltd · Company No. 16543299
+              Legacy Line Ventures Ltd · Company No. 14814854
             </Text>
             <Text style={companyText}>
-              Registered in England and Wales · 71-75 Shelton Street, London, WC2H 9JQ
+              Registered in England and Wales · Unit A, 82 James Carter Road, Bury St. Edmunds, Mildenhall, Suffolk, United Kingdom, IP28 7DE
             </Text>
           </Section>
         </Container>

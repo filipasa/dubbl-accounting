@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How fixbooks (Mindroot Ltd) collects, uses, and protects your personal data under the UK GDPR.",
+    "How fixbooks (Legacy Line Ventures Ltd) collects, uses, and protects your personal data under the UK GDPR.",
 };
 
 const sections: LegalSection[] = [
@@ -19,20 +19,20 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          The data controller for personal data processed through fixbooks.dev is:
+          The data controller for personal data processed through fixbooks.io is:
         </p>
         <p>
-          <strong>Mindroot Ltd</strong>
+          <strong>Legacy Line Ventures Ltd</strong>
           <br />
-          Company No. 16543299, registered in England and Wales
+          Company No. 14814854, registered in England and Wales
           <br />
-          71-75 Shelton Street, London, England, WC2H 9JQ
+          Registered office: Unit A, 82 James Carter Road, Bury St. Edmunds, Mildenhall, Suffolk, United Kingdom, IP28 7DE
           <br />
           ICO Registration: ZB958997
         </p>
         <p>
           For data protection enquiries, contact us at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a>.
         </p>
       </>
     ),
@@ -235,7 +235,7 @@ const sections: LegalSection[] = [
         </Callout>
         <p>
           To exercise any of these rights, contact us at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>. We will respond
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a>. We will respond
           within 30 days. If we need to extend this period, we will notify you
           with reasons.
         </p>
@@ -269,7 +269,7 @@ const sections: LegalSection[] = [
         </p>
         <p>
           We encourage you to contact us first at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> so we can try to
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a> so we can try to
           resolve your concern directly.
         </p>
       </>
@@ -313,7 +313,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           This privacy policy applies exclusively to the hosted service at{" "}
-          <strong>fixbooks.dev</strong>. If you deploy fixbooks as Cloud Hosted outside our platform using our
+          <strong>fixbooks.io</strong>. If you deploy fixbooks as Cloud Hosted outside our platform using our
           open-source code, you are responsible for your own data processing,
           privacy policy, and compliance with applicable data protection laws.
         </p>
@@ -329,7 +329,7 @@ const sections: LegalSection[] = [
           fixbooks is not directed at individuals under the age of 16. We do not
           knowingly collect personal data from children. If you believe we have
           inadvertently collected data from a child, please contact us at{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> and we will
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a> and we will
           promptly delete it.
         </p>
       </>
@@ -356,7 +356,7 @@ const sections: LegalSection[] = [
         <p>
           No system is 100% secure. If you discover a security vulnerability,
           please report it to{" "}
-          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
+          <a href="mailto:info@fixbooks.io">info@fixbooks.io</a>.
         </p>
       </>
     ),

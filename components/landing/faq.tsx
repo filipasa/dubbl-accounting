@@ -69,14 +69,12 @@ export function FAQ() {
               className="mb-6"
             />
             <p className="text-sm text-muted-foreground">
-              Can&apos;t find what you&apos;re looking for? Reach out on{" "}
+              Can&apos;t find what you&apos;re looking for?{" "}
               <a
-                href="https://github.com/fixbooks/fixbooks/discussions"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:info@fixbooks.io"
                 className="text-emerald-600 underline underline-offset-4 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                GitHub Discussions
+                contact us
               </a>
               .
             </p>
