@@ -25,6 +25,8 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+import { stripeFinancialAccount } from "@/lib/db/schema/integrations";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -43,7 +45,38 @@ export async function GET(
     });
 
     if (!found) return notFound("Bank account");
-    return NextResponse.json({ bankAccount: found });
+
+    const [activeFeed] = await db
+      .select()
+      .from(stripeFinancialAccount)
+      .where(
+        and(
+          eq(stripeFinancialAccount.bankAccountId, id),
+          eq(stripeFinancialAccount.organizationId, ctx.organizationId),
+          eq(stripeFinancialAccount.status, "active")
+        )
+      )
+      .limit(1);
+
+    return NextResponse.json({
+      bankAccount: {
+        ...found,
+        feed: activeFeed
+          ? {
+              id: activeFeed.id,
+              stripeAccountId: activeFeed.stripeAccountId,
+              institutionName: activeFeed.institutionName,
+              displayName: activeFeed.displayName,
+              last4: activeFeed.last4,
+              currency: activeFeed.currency,
+              status: activeFeed.status,
+              lastSyncAt: activeFeed.lastSyncAt ? activeFeed.lastSyncAt.toISOString() : null,
+              lastSyncTxnCount: activeFeed.lastSyncTxnCount,
+              errorMessage: activeFeed.errorMessage,
+            }
+          : null,
+      },
+    });
   } catch (err) {
     return handleError(err);
   }

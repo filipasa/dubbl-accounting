@@ -120,6 +120,7 @@ export default function BankAccountDetailLayout({ children }: { children: React.
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [imports, setImports] = useState<StatementImport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncingFeed, setSyncingFeed] = useState(false);
 
   // Import sheet state
   const [importOpen, setImportOpen] = useState(false);
@@ -187,6 +188,28 @@ export default function BankAccountDetailLayout({ children }: { children: React.
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  async function handleSyncFeed() {
+    if (!orgId) return;
+    setSyncingFeed(true);
+    try {
+      const res = await fetch("/api/v1/integrations/stripe-financial-connections/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({ bankAccountId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to sync bank feed");
+      toast.success(
+        `Bank feed synced! ${data.result?.syncedCount ?? 0} new transaction(s) imported.`
+      );
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncingFeed(false);
+    }
+  }
 
   // Load the org's other bank accounts once — used as transfer targets.
   useEffect(() => {
@@ -476,6 +499,12 @@ export default function BankAccountDetailLayout({ children }: { children: React.
                 <h1 className="text-base sm:text-lg font-semibold tracking-tight">{account.accountName}</h1>
                 <Badge variant="outline">{ACCOUNT_TYPE_LABELS[account.accountType]}</Badge>
                 <Badge variant="outline" className="text-[10px]">{account.currencyCode}</Badge>
+                {account.feed?.status === "active" && (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] gap-1 shrink-0">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Feed Active
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {[account.bankName, account.countryCode, account.accountNumber ? `····${account.accountNumber.slice(-4)}` : null]
@@ -485,6 +514,18 @@ export default function BankAccountDetailLayout({ children }: { children: React.
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {account.feed?.status === "active" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncFeed}
+                loading={syncingFeed}
+                title="Sync latest bank feed transactions via Stripe Financial Connections"
+              >
+                <RefreshCcw className={cn("mr-2 size-3.5", syncingFeed && "animate-spin")} />
+                Sync Feed
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => router.push(`/accounting/banking/${id}/reconcile`)} title="Tick off transactions against your bank statement">
               <RefreshCcw className="mr-2 size-3.5" />
               Match statement to your books

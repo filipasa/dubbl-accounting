@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { AccountPicker } from "@/components/dashboard/account-picker";
+import { ConnectBankFeedDialog } from "@/components/dashboard/connect-bank-feed-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { getCurrencySymbol } from "@/lib/currency/iso4217";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Landmark } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -22,7 +24,7 @@ import { useConfirm } from "@/lib/hooks/use-confirm";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useBankAccountContext } from "../layout";
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_COLORS } from "../../_components";
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_COLORS, type BankAccountFeed } from "../../_components";
 
 export default function BankSettingsPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,10 +40,30 @@ export default function BankSettingsPage() {
   // Which ledger account this bank account is recorded under. Defaults to the
   // one connected automatically; the picker lets the user point it elsewhere.
   const [chartAccountId, setChartAccountId] = useState(account?.chartAccountId ?? "");
+  const [feed, setFeed] = useState<BankAccountFeed | null>(account?.feed || null);
+  const [syncingFeed, setSyncingFeed] = useState(false);
+  const [connectFeedOpen, setConnectFeedOpen] = useState(false);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
   useDocumentTitle("Accounting · Bank Settings");
+
+  useEffect(() => {
+    if (account?.feed !== undefined) {
+      setFeed(account.feed);
+    }
+    if (!orgId) return;
+    fetch(`/api/v1/bank-accounts/${id}/feed`, {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.feed !== undefined) {
+          setFeed(data.feed);
+        }
+      })
+      .catch(() => {});
+  }, [id, orgId, account?.feed]);
 
   useEffect(() => {
     if (account?.currencyCode) {
@@ -79,6 +101,61 @@ export default function BankSettingsPage() {
     } finally {
       setSyncingBalance(false);
     }
+  }
+
+  async function handleSyncFeed() {
+    if (!orgId) return;
+    setSyncingFeed(true);
+    try {
+      const res = await fetch("/api/v1/integrations/stripe-financial-connections/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({ bankAccountId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to sync bank feed");
+      toast.success(
+        `Bank feed synced! ${data.result?.syncedCount ?? 0} new transaction(s) imported.`
+      );
+      refetch();
+      const feedRes = await fetch(`/api/v1/bank-accounts/${id}/feed`, {
+        headers: { "x-organization-id": orgId },
+      });
+      const feedData = await feedRes.json();
+      if (feedData.feed !== undefined) setFeed(feedData.feed);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to sync bank feed");
+    } finally {
+      setSyncingFeed(false);
+    }
+  }
+
+  async function handleDisconnectFeed() {
+    if (!orgId) return;
+    await confirm({
+      title: "Disconnect bank feed?",
+      description:
+        "This will unlink the Stripe Financial Connections feed from this account. Previously imported transactions will not be deleted.",
+      confirmLabel: "Disconnect Feed",
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/v1/bank-accounts/${id}/feed`, {
+            method: "DELETE",
+            headers: { "x-organization-id": orgId },
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || "Failed to disconnect feed");
+          }
+          toast.success("Bank feed disconnected");
+          setFeed(null);
+          refetch();
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Failed to disconnect feed");
+        }
+      },
+    });
   }
 
   async function handleSaveSettings(e: React.FormEvent<HTMLFormElement>) {
@@ -175,6 +252,105 @@ export default function BankSettingsPage() {
               <Label className="text-xs">Account Number / IBAN</Label>
               <Input name="accountNumber" defaultValue={account.accountNumber || ""} placeholder="1234 or GB29NWBK..." />
             </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        <div className="grid gap-6 sm:grid-cols-[200px_1fr] sm:gap-10">
+          <div className="shrink-0">
+            <p className="text-sm font-medium">Bank Feed</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              Automate transaction ingestion via Stripe Financial Connections.
+            </p>
+          </div>
+          <div className="min-w-0">
+            {feed && feed.status === "active" ? (
+              <div className="rounded-xl border bg-card p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                      <Landmark className="size-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{feed.institutionName}</p>
+                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] gap-1">
+                          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Connected
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {feed.displayName} {feed.last4 ? `(····${feed.last4})` : ""} · {feed.currency}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSyncFeed}
+                      loading={syncingFeed}
+                      className="gap-1.5 text-xs"
+                    >
+                      <RefreshCw className={cn("size-3.5", syncingFeed && "animate-spin")} />
+                      Sync Now
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDisconnectFeed}
+                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-2 border-t">
+                  <span>
+                    Last synced:{" "}
+                    <strong className="text-foreground font-medium">
+                      {feed.lastSyncAt ? new Date(feed.lastSyncAt).toLocaleString() : "Never"}
+                    </strong>
+                  </span>
+                  {feed.lastSyncTxnCount != null && (
+                    <span>
+                      Transactions imported in last sync:{" "}
+                      <strong className="text-foreground font-medium">{feed.lastSyncTxnCount}</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed p-5 space-y-3 bg-muted/20">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground shrink-0 mt-0.5">
+                    <Landmark className="size-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">No live bank feed connected</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Connect your bank via Stripe Financial Connections to automatically stream transactions and keep your balance up to date with zero manual exports.
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConnectFeedOpen(true)}
+                    className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-950/40 text-xs"
+                  >
+                    <Landmark className="mr-2 size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Connect Bank Feed
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -310,6 +486,33 @@ export default function BankSettingsPage() {
           </div>
         </div>
       </form>
+
+      <ConnectBankFeedDialog
+        isOpen={connectFeedOpen}
+        onClose={() => setConnectFeedOpen(false)}
+        existingAccounts={[
+          {
+            id: account.id,
+            accountName: account.accountName,
+            accountNumber: account.accountNumber,
+            bankName: account.bankName,
+            currencyCode: account.currencyCode,
+          },
+        ]}
+        preselectedBankAccountId={account.id}
+        onSuccess={() => {
+          refetch();
+          if (orgId) {
+            fetch(`/api/v1/bank-accounts/${id}/feed`, {
+              headers: { "x-organization-id": orgId },
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.feed !== undefined) setFeed(data.feed);
+              });
+          }
+        }}
+      />
 
       {confirmDialog}
     </>

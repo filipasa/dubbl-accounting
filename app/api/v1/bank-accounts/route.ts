@@ -12,6 +12,8 @@ import { ensureBankLedgerAccount } from "@/lib/api/bank-ledger";
 import { z } from "zod";
 import { currencyCodeSchema } from "@/lib/currency/zod";
 
+import { stripeFinancialAccount } from "@/lib/db/schema/integrations";
+
 const createSchema = z.object({
   accountName: z.string().min(1),
   accountNumber: z.string().nullable().optional(),
@@ -39,7 +41,28 @@ export async function GET(request: Request) {
       with: { chartAccount: true },
     });
 
-    return NextResponse.json({ bankAccounts: accounts });
+    const activeFeeds = await db
+      .select({ bankAccountId: stripeFinancialAccount.bankAccountId })
+      .from(stripeFinancialAccount)
+      .where(
+        and(
+          eq(stripeFinancialAccount.organizationId, ctx.organizationId),
+          eq(stripeFinancialAccount.status, "active")
+        )
+      );
+
+    const feedSet = new Set(
+      activeFeeds
+        .map((f) => f.bankAccountId)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    const enrichedAccounts = accounts.map((acc) => ({
+      ...acc,
+      hasFeed: feedSet.has(acc.id),
+    }));
+
+    return NextResponse.json({ bankAccounts: enrichedAccounts });
   } catch (err) {
     return handleError(err);
   }

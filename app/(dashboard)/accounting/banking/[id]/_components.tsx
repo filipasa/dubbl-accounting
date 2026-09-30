@@ -100,6 +100,19 @@ export type StatementFormat =
   | "mt942"
   | "bai2";
 
+export interface BankAccountFeed {
+  id: string;
+  stripeAccountId: string;
+  institutionName: string;
+  displayName: string;
+  last4: string | null;
+  currency: string;
+  status: string;
+  lastSyncAt: string | null;
+  lastSyncTxnCount: number | null;
+  errorMessage: string | null;
+}
+
 export interface BankAccountDetail {
   id: string;
   accountName: string;
@@ -111,6 +124,7 @@ export interface BankAccountDetail {
   color: string;
   balance: number;
   isActive: boolean;
+  feed?: BankAccountFeed | null;
   // The ledger account this bank account is recorded under in the books. Set up
   // automatically; surfaced read-only so users can see the connection exists.
   chartAccountId?: string | null;

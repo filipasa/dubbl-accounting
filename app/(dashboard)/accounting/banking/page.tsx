@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
+import { ConnectBankFeedDialog } from "@/components/dashboard/connect-bank-feed-dialog";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -57,6 +58,7 @@ interface BankAccount {
   color: string;
   balance: number;
   isActive: boolean;
+  hasFeed?: boolean;
 }
 
 const ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
@@ -96,6 +98,7 @@ export default function BankingPage() {
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [connectFeedOpen, setConnectFeedOpen] = useState(false);
 
   useDocumentTitle("Accounting \u00B7 Bank Accounts");
 
@@ -212,14 +215,24 @@ export default function BankingPage() {
                 Add a bank account to start importing statements and tracking balances.
               </p>
             </div>
-            <Button
-              onClick={() => openDrawer("bankAccount")}
-              size="lg"
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Plus className="mr-2 size-4" />
-              New Bank Account
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button
+                onClick={() => setConnectFeedOpen(true)}
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Landmark className="mr-2 size-4" />
+                Connect Bank Feed
+              </Button>
+              <Button
+                onClick={() => openDrawer("bankAccount")}
+                size="lg"
+                variant="outline"
+              >
+                <Plus className="mr-2 size-4" />
+                New Bank Account
+              </Button>
+            </div>
           </div>
 
           {/* Preview stats */}
@@ -345,6 +358,15 @@ export default function BankingPage() {
             Move money
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConnectFeedOpen(true)}
+            className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+          >
+            <Landmark className="mr-2 size-4 text-emerald-600 dark:text-emerald-400" />
+            Connect Bank Feed
+          </Button>
+          <Button
             onClick={() => openDrawer("bankAccount")}
             size="sm"
             className="bg-emerald-600 hover:bg-emerald-700"
@@ -406,6 +428,12 @@ export default function BankingPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">{account.accountName}</p>
+                          {account.hasFeed && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Live Feed
+                            </span>
+                          )}
                           {!account.isActive && (
                             <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground border-muted-foreground/30">
                               Inactive
@@ -494,6 +522,13 @@ export default function BankingPage() {
           );
         })}
       </div>
+
+      <ConnectBankFeedDialog
+        isOpen={connectFeedOpen}
+        onClose={() => setConnectFeedOpen(false)}
+        existingAccounts={accounts}
+        onSuccess={fetchAccounts}
+      />
     </ContentReveal>
   );
 }

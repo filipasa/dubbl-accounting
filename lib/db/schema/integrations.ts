@@ -146,3 +146,85 @@ export const stripeSyncLogRelations = relations(stripeSyncLog, ({ one }) => ({
     references: [stripeIntegration.id],
   }),
 }));
+
+// Stripe Financial Connections (Session & Connection records)
+export const stripeFinancialConnection = pgTable(
+  "stripe_financial_connection",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    stripeCustomerId: text("stripe_customer_id").notNull(),
+    sessionId: text("session_id").notNull(),
+    status: text("status").notNull().default("active"), // "active" | "disconnected"
+    initialSyncDays: integer("initial_sync_days").notNull().default(90),
+    initialSyncStartDate: text("initial_sync_start_date"), // YYYY-MM-DD
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("stripe_fc_session_idx").on(table.sessionId),
+  ]
+);
+
+// Stripe Financial Account (individual connected accounts linked to bankAccount)
+export const stripeFinancialAccount = pgTable(
+  "stripe_financial_account",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => stripeFinancialConnection.id, { onDelete: "cascade" }),
+    stripeAccountId: text("stripe_account_id").notNull(), // "fca_xxx"
+    bankAccountId: uuid("bank_account_id")
+      .references(() => bankAccount.id, { onDelete: "set null" }),
+    institutionName: text("institution_name"),
+    displayName: text("display_name"),
+    last4: text("last4"),
+    currency: text("currency").notNull().default("GBP"),
+    category: text("category").default("cash"),
+    subcategory: text("subcategory").default("checking"),
+    status: text("status").notNull().default("active"), // "active" | "inactive" | "disconnected"
+    lastSyncAt: timestamp("last_sync_at", { mode: "date" }),
+    lastSyncTxnCount: integer("last_sync_txn_count").default(0),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("stripe_fa_account_idx").on(table.stripeAccountId),
+  ]
+);
+
+export const stripeFinancialConnectionRelations = relations(
+  stripeFinancialConnection,
+  ({ one, many }) => ({
+    organization: one(organization, {
+      fields: [stripeFinancialConnection.organizationId],
+      references: [organization.id],
+    }),
+    accounts: many(stripeFinancialAccount),
+  })
+);
+
+export const stripeFinancialAccountRelations = relations(
+  stripeFinancialAccount,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [stripeFinancialAccount.organizationId],
+      references: [organization.id],
+    }),
+    connection: one(stripeFinancialConnection, {
+      fields: [stripeFinancialAccount.connectionId],
+      references: [stripeFinancialConnection.id],
+    }),
+    bankAccount: one(bankAccount, {
+      fields: [stripeFinancialAccount.bankAccountId],
+      references: [bankAccount.id],
+    }),
+  })
+);
