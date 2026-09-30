@@ -259,13 +259,13 @@ export default function StripeIntegrationPage() {
             <div>
               <h2 className="font-medium">Connect Stripe</h2>
               <p className="text-sm text-muted-foreground">
-                Authorize dubbl to read your Stripe data
+                Authorize fixbooks to read your Stripe data
               </p>
             </div>
           </div>
 
           <div className="text-sm text-muted-foreground space-y-2">
-            <p>When connected, dubbl will automatically:</p>
+            <p>When connected, fixbooks will automatically:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Record each payment you take as income</li>
               <li>Track Stripe&apos;s processing fees as an expense</li>

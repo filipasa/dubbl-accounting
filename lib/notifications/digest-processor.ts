@@ -95,7 +95,7 @@ export async function processDigests() {
 
       const element = createElement(NotificationDigestEmail, {
         userName: user.name || "there",
-        orgName: org?.name || "dubbl",
+        orgName: org?.name || "fixbooks",
         notifications: notifications.map((n) => ({
           type: n.type,
           title: n.title,
@@ -109,7 +109,7 @@ export async function processDigests() {
 
       await sendPlatformEmail({
         to: user.email,
-        subject: `You have ${notifications.length} new notification${notifications.length !== 1 ? "s" : ""} on dubbl`,
+        subject: `You have ${notifications.length} new notification${notifications.length !== 1 ? "s" : ""} on fixbooks`,
         html,
       });
 

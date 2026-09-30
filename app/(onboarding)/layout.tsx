@@ -44,7 +44,7 @@ export default function OnboardingLayout({
             <Link href="/" className="inline-flex items-center gap-2">
               <Logo />
               <span className="text-lg font-bold tracking-tight text-foreground">
-                dubbl
+                fixbooks
               </span>
             </Link>
           </motion.div>

@@ -101,7 +101,7 @@ export default function ApiKeysPage() {
     } finally { setDeletingId(null); }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dubbl.dev";
+  const baseUrl = process.env.NEXT_PUBLIC_URL || "https://fixbooks.dev";
   const curlExample = `curl -X GET ${baseUrl}/api/v1/invoices \\
   -H "Authorization: Bearer dk_live_..."`;
 
@@ -134,7 +134,7 @@ export default function ApiKeysPage() {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">API Keys</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create and manage keys for programmatic access to the dubbl API
+            Create and manage keys for programmatic access to the fixbooks API
             {keys.length > 0 && (
               <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                 {keys.length}/{maxKeys}
@@ -165,7 +165,7 @@ export default function ApiKeysPage() {
         <EmptyState
           icon={Key}
           title="No API keys yet"
-          description="Create your first API key to start integrating with the dubbl API programmatically."
+          description="Create your first API key to start integrating with the fixbooks API programmatically."
         >
           <Button
             size="sm"

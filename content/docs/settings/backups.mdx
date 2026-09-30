@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 ## Overview
 
-Dubbl automatically creates daily snapshots of your entire organization data. You can also create manual backups, download snapshots to keep offline, and restore from any backup if something goes wrong.
+Fixbooks automatically creates daily snapshots of your entire organization data. You can also create manual backups, download snapshots to keep offline, and restore from any backup if something goes wrong.
 
 <Callout type="info">
   Backups capture all entity data (accounts, contacts, invoices, bills, journal entries, products, and more) as a single JSON file stored in S3. Document file contents are stored separately and are not affected by restore operations.
@@ -43,13 +43,13 @@ You can download a full snapshot of your current data directly to your computer 
 2. Click **Download Snapshot**
 3. A JSON file will be saved to your downloads folder
 
-This is useful for keeping offline copies or transferring data between Dubbl instances.
+This is useful for keeping offline copies or transferring data between Fixbooks instances.
 
 You can also download any existing backup by clicking the download icon next to it in the backup list.
 
 ## Uploading a backup
 
-If you have a previously downloaded Dubbl snapshot file, you can upload it:
+If you have a previously downloaded Fixbooks snapshot file, you can upload it:
 
 1. Go to **Settings > Backups**
 2. Click **Upload Backup**
@@ -100,7 +100,7 @@ Each backup includes:
 | Purpose | Migration from external tools | Disaster recovery |
 | Scope | One entity type at a time | All entities at once |
 | Restore | Manual re-import | One-click restore |
-| Source mapping | QuickBooks, Xero, etc. | Dubbl native format |
+| Source mapping | QuickBooks, Xero, etc. | Fixbooks native format |
 
 ## API
 

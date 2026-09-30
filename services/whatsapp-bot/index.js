@@ -168,8 +168,8 @@ async function connectToWhatsApp() {
       isReconnecting = false;
       pairingCodeRequested = false;
       console.log("\n" + "=".repeat(60));
-      console.log("🚀 Dubbl Personal WhatsApp Bot is ONLINE!");
-      console.log(`Connected to Dubbl at: ${config.dubblUrl}`);
+      console.log("🚀 Fixbooks Personal WhatsApp Bot is ONLINE!");
+      console.log(`Connected to Fixbooks at: ${config.dubblUrl}`);
       console.log(
         config.geminiApiKey
           ? "🤖 Natural Language AI (Gemini) is ENABLED."

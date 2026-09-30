@@ -95,7 +95,7 @@ function uniqueSheetName(title: string, used: Set<string>): string {
 export async function toWorkbookXlsx(statements: Statement[]): Promise<Buffer> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "dubbl";
+  wb.creator = "fixbooks";
   wb.created = new Date();
 
   const usedNames = new Set<string>();

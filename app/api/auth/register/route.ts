@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     // Send welcome email (fire and forget)
     render(createElement(WelcomeEmail, { userName: parsed.name, loginUrl: toAppUrl("/sign-in") }))
-      .then((html) => sendPlatformEmail({ to: parsed.email, subject: "Welcome to dubbl", html }))
+      .then((html) => sendPlatformEmail({ to: parsed.email, subject: "Welcome to fixbooks", html }))
       .catch(() => {});
 
     return NextResponse.json(

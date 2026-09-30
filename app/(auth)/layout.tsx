@@ -69,7 +69,7 @@ export default function AuthLayout({
           <Link href="/" className="inline-flex items-center gap-2">
             <Logo />
             <span className="text-lg font-bold tracking-tight text-foreground">
-              dubbl
+              fixbooks
             </span>
           </Link>
           <ThemeToggle />
@@ -114,7 +114,7 @@ export default function AuthLayout({
                   />
                 </svg>
                 <span className="text-lg font-bold tracking-tight text-white">
-                  dubbl
+                  fixbooks
                 </span>
                 <p className="text-xs text-white/60">
                   Open source bookkeeping, done right
@@ -234,7 +234,7 @@ export default function AuthLayout({
                           />
                         </svg>
                         <span className="text-2xl font-bold tracking-tight text-white">
-                          dubbl
+                          fixbooks
                         </span>
                       </div>
                     </div>

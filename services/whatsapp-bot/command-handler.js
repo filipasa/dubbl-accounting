@@ -27,7 +27,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "create_quote",
     description:
-      "Create a sales quote / estimate in Dubbl. Use this when the user asks for a 'quote', 'estimate', or 'pricing proposal'. Put ALL items (doors, materials, delivery fees, installation, etc.) as separate objects inside the 'lines' array of a SINGLE quote. NEVER create multiple quotes for one request.",
+      "Create a sales quote / estimate in Fixbooks. Use this when the user asks for a 'quote', 'estimate', or 'pricing proposal'. Put ALL items (doors, materials, delivery fees, installation, etc.) as separate objects inside the 'lines' array of a SINGLE quote. NEVER create multiple quotes for one request.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -90,7 +90,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "create_invoice",
     description:
-      "Create a sales invoice in Dubbl. Use this ONLY when the user asks for an 'invoice' or 'bill'. Put ALL items and delivery fees into the 'lines' array of a SINGLE invoice.",
+      "Create a sales invoice in Fixbooks. Use this ONLY when the user asks for an 'invoice' or 'bill'. Put ALL items and delivery fees into the 'lines' array of a SINGLE invoice.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -155,7 +155,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "list_quotes",
-    description: "List recent sales quotes / estimates in Dubbl.",
+    description: "List recent sales quotes / estimates in Fixbooks.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -168,7 +168,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "list_invoices",
-    description: "List recent invoices in Dubbl with status, numbers, and totals.",
+    description: "List recent invoices in Fixbooks with status, numbers, and totals.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -307,7 +307,7 @@ export async function handleIncomingMessage(text, senderNumber) {
 
     // 4. Guidance if no AI key configured yet
     return (
-      `👋 *Dubbl WhatsApp Bot*\n\n` +
+      `👋 *Fixbooks WhatsApp Bot*\n\n` +
       `To chat in natural language (e.g. _"Create an invoice for Filip for 2 doors at £250 each"_ or _"What are our recent invoices?"_):\n\n` +
       `🔑 *Add an AI Key:*\n` +
       `Add a free Gemini API key to \`services/whatsapp-bot/.env\`:\n` +
@@ -503,7 +503,7 @@ async function handleCommand(text) {
       case "!help":
       case "help":
         return (
-          `📋 *Dubbl WhatsApp Commands:*\n\n` +
+          `📋 *Fixbooks WhatsApp Commands:*\n\n` +
           `• *!quotes* — List recent quotes / estimates\n` +
           `• *!invoices* — List recent invoices\n` +
           `• *!invoice <Customer>, <Amount>, <Description>* — Create an invoice\n` +
@@ -617,7 +617,7 @@ async function handleCommand(text) {
           `• *Item:* ${description}\n` +
           `• *Status:* ${invoice.status.toUpperCase()}\n` +
           `• *Due Date:* ${invoice.dueDate}\n\n` +
-          `🔗 View in Dubbl: http://localhost:3001/invoices`
+          `🔗 View in Fixbooks: http://localhost:3001/invoices`
         );
       }
 

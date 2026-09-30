@@ -8,7 +8,7 @@ import { Steps, Step } from "fumadocs-ui/components/steps";
 
 ## Overview
 
-Dubbl uses Stripe for subscription billing. There are two independent subscription types per organization:
+Fixbooks uses Stripe for subscription billing. There are two independent subscription types per organization:
 
 - **Seat plan** - Pro ($12/seat/mo or $10/seat/mo annual) for team access, reports, API, and multi-currency
 - **Storage add-on** - Starter, Growth, or Scale tiers for file storage and email sending limits
@@ -87,7 +87,7 @@ Both subscriptions are managed separately in Stripe and can be upgraded or downg
 
 When a user upgrades or changes their plan:
 
-1. If they already have an active subscription, Dubbl calls `stripe.subscriptions.update()` with the new price ID
+1. If they already have an active subscription, Fixbooks calls `stripe.subscriptions.update()` with the new price ID
 2. Stripe automatically prorates the charge for the remaining billing period
 3. The local database is updated immediately
 4. No duplicate subscriptions are created

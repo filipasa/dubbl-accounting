@@ -84,7 +84,7 @@ import {
   revenueSchedule,
   revenueEntry,
 } from "./schema";
-import { eq, isNull } from "drizzle-orm";
+import { eq, isNull, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { DEFAULT_ACCOUNTS } from "./default-accounts";
 import { getIsoCurrencies } from "../currency/iso4217";
@@ -129,7 +129,7 @@ const TAX_RATES = [
 ];
 
 async function seed() {
-  console.log("Seeding dubbl demo data...\n");
+  console.log("Seeding fixbooks demo data...\n");
 
   // 1. Currencies — upsert so codes are present and metadata stays correct.
   console.log("Seeding currencies...");
@@ -149,7 +149,7 @@ async function seed() {
 
   // Prefer the dev user's org first, then fall back to any owner membership
   const devUser = await db.query.users.findFirst({
-    where: eq(users.email, "dev@dubbl.local"),
+    where: or(eq(users.email, "dev@fixbooks.local"), eq(users.email, "dev@dubbl.local")),
     columns: { id: true },
   });
 
@@ -182,7 +182,7 @@ async function seed() {
       .values({
         id: "00000000-0000-0000-0000-000000000001",
         name: "Demo User",
-        email: "demo@dubbl.dev",
+        email: "demo@fixbooks.dev",
         passwordHash,
         isSiteAdmin: true,
       })

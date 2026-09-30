@@ -1,5 +1,5 @@
-const DEFAULT_SITE_URL = "https://dubbl.dev";
-const DEFAULT_APP_URL = "https://dubbl.dev";
+const DEFAULT_SITE_URL = "https://fixbooks.dev";
+const DEFAULT_APP_URL = "https://fixbooks.dev";
 
 function trimTrailingSlash(url: string) {
   return url.replace(/\/+$/, "");

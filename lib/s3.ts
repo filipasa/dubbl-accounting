@@ -16,7 +16,7 @@ const s3 = new S3Client({
   forcePathStyle: true,
 });
 
-const bucket = process.env.S3_BUCKET || "dubbl";
+const bucket = process.env.S3_BUCKET || "fixbooks";
 
 export async function getUploadUrl(key: string, contentType: string) {
   const command = new PutObjectCommand({

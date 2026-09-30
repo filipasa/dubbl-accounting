@@ -73,7 +73,7 @@ export function OrgLoader({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col items-center gap-4">
             <Logo className="org-loader-logo h-10 w-auto" />
             <span className="text-sm font-medium tracking-tight text-muted-foreground/60">
-              dubbl
+              fixbooks
             </span>
           </div>
         </div>

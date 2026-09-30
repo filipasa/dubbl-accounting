@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         title: (
           <div className="flex items-center gap-2">
             <Logo className="h-6 w-7" />
-            <span className="font-semibold tracking-tight">dubbl</span>
+            <span className="font-semibold tracking-tight">fixbooks</span>
           </div>
         ),
         url: "/",
@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         { text: "App", url: "/dashboard" },
         {
           text: "GitHub",
-          url: "https://github.com/dubbl-org/dubbl",
+          url: "https://github.com/fixbooks/fixbooks",
           external: true,
         },
       ]}

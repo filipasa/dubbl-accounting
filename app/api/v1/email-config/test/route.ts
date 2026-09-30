@@ -26,8 +26,8 @@ export async function POST(request: Request) {
     try {
       await sendEmail(config, {
         to: config.fromEmail,
-        subject: "Dubbl - Test Email",
-        html: "<p>This is a test email from your Dubbl SMTP configuration. If you received this, your email settings are working correctly.</p>",
+        subject: "Fixbooks - Test Email",
+        html: "<p>This is a test email from your Fixbooks SMTP configuration. If you received this, your email settings are working correctly.</p>",
       });
 
       // Mark as verified if test succeeds

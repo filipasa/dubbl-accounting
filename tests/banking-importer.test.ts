@@ -67,7 +67,7 @@ test("parseBankStatement parses standard Tide UK statement CSV (Paid out / Paid 
 });
 
 test("parseBankStatement parses Tide CSV with preamble metadata headers and timestamps", () => {
-  const csv = `Account Name: Dubbl Ltd
+  const csv = `Account Name: Fixbooks Ltd
 Account Number: 21104471
 Sort Code: 04-00-04
 

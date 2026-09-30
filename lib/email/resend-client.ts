@@ -22,7 +22,7 @@ export async function sendPlatformEmail(options: EmailOptions) {
   const resend = new Resend(apiKey);
 
   await resend.emails.send({
-    from: options.from || "dubbl <noreply@dubbl.dev>",
+    from: options.from || "fixbooks <noreply@fixbooks.dev>",
     to: options.to,
     subject: options.subject,
     html: options.html,

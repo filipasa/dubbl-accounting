@@ -182,7 +182,7 @@ export async function POST(request: Request) {
         .then((html) =>
           sendPlatformEmail({
             to: parsed.email,
-            subject: `You've been invited to ${org.name} on dubbl`,
+            subject: `You've been invited to ${org.name} on fixbooks`,
             html,
           })
         )

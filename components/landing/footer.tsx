@@ -16,7 +16,7 @@ const footerLinks: Record<string, FooterLink[]> = {
     { label: "Features", href: "/#features" },
     { label: "Integrations", href: "/#integrations" },
     { label: "Self-Hosting", href: "/docs/self-hosting" },
-    { label: "Changelog", href: "https://github.com/dubbl-org/dubbl/releases", external: true },
+    { label: "Changelog", href: "https://github.com/fixbooks/fixbooks/releases", external: true },
   ],
   Resources: [
     { label: "Documentation", href: "/docs" },
@@ -33,11 +33,11 @@ const footerLinks: Record<string, FooterLink[]> = {
     { label: "MCP for AI Agents", href: "/docs/guides/mcp" },
   ],
   Developers: [
-    { label: "GitHub", href: "https://github.com/dubbl-org/dubbl", external: true },
+    { label: "GitHub", href: "https://github.com/fixbooks/fixbooks", external: true },
     { label: "Contributing", href: "/docs/contributing" },
     { label: "Developer Guide", href: "/docs/guides/developer-guide" },
     { label: "API Keys", href: "/docs/settings/api-keys" },
-    { label: "Status", href: "https://status.dubbl.dev", external: true },
+    { label: "Status", href: "https://status.fixbooks.dev", external: true },
   ],
   Company: [
     { label: "Privacy Policy", href: "/privacy" },
@@ -48,8 +48,8 @@ const footerLinks: Record<string, FooterLink[]> = {
 };
 
 const socialLinks = [
-  { icon: Github, href: "https://github.com/dubbl-org/dubbl", label: "GitHub" },
-  { icon: Twitter, href: "https://x.com/DubblHQ", label: "X" },
+  { icon: Github, href: "https://github.com/fixbooks/fixbooks", label: "GitHub" },
+  { icon: Twitter, href: "https://x.com/FixBooksHQ", label: "X" },
 ];
 
 export function Footer() {
@@ -63,7 +63,7 @@ export function Footer() {
             <div className="flex items-center gap-2">
               <Logo />
               <span className="text-lg font-bold tracking-tight text-white">
-                dubbl
+                fixbooks
               </span>
             </div>
             <p className="mt-3 max-w-[220px] text-sm leading-relaxed text-white/50">
@@ -125,7 +125,7 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex flex-col gap-1">
             <p className="text-xs text-white/40">
-              &copy; 2026 dubbl. Apache 2.0 License.
+              &copy; 2026 fixbooks. Apache 2.0 License.
             </p>
             <p className="text-[11px] text-white/25">
               Mindroot Ltd &middot; Registered in England and Wales &middot; Company No. 16543299 &middot; 71-75 Shelton Street, London, WC2H 9JQ

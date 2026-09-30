@@ -1,7 +1,7 @@
 import { config } from "./config.js";
 
 /**
- * Execute a tool on the Dubbl MCP Server
+ * Execute a tool on the Fixbooks MCP Server
  */
 export async function callMcpTool(name, args = {}) {
   const res = await fetch(config.dubblUrl, {
@@ -51,7 +51,7 @@ export async function callMcpTool(name, args = {}) {
     }
   }
 
-  throw new Error("Empty or unrecognized response from Dubbl MCP");
+  throw new Error("Empty or unrecognized response from Fixbooks MCP");
 }
 
 export async function getOrganization() {

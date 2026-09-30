@@ -162,7 +162,7 @@ function sanitizeText(value: string): string {
 export async function toXlsx(statement: Statement): Promise<Buffer> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "dubbl";
+  wb.creator = "fixbooks";
   wb.created = new Date();
 
   const ws = wb.addWorksheet(sheetName(statement.title));

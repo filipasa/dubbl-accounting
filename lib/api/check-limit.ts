@@ -22,7 +22,7 @@ export async function getOrgPlanLimits(orgId: string) {
     with: { user: true },
   });
   const hasSiteAdmin = orgMembers.some(
-    (m) => m.user?.isSiteAdmin || m.user?.email === "dev@dubbl.local"
+    (m) => m.user?.isSiteAdmin || m.user?.email === "dev@fixbooks.local" || m.user?.email === "dev@dubbl.local"
   );
 
   if (hasSiteAdmin) {

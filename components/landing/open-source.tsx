@@ -39,13 +39,13 @@ const values = [
 
 function TerminalBlock() {
   const lines = [
-    { text: "$ git clone https://github.com/dubbl-org/dubbl.git", delay: 0.3 },
-    { text: "$ cd dubbl && docker compose up -d", delay: 0.7 },
+    { text: "$ git clone https://github.com/fixbooks/fixbooks.git", delay: 0.3 },
+    { text: "$ cd fixbooks && docker compose up -d", delay: 0.7 },
     { text: "", delay: 1.0 },
-    { text: "  ✓ Container dubbl-db     Started", delay: 1.2, success: true },
-    { text: "  ✓ Container dubbl-app    Started", delay: 1.4, success: true },
+    { text: "  ✓ Container fixbooks-db     Started", delay: 1.2, success: true },
+    { text: "  ✓ Container fixbooks-app    Started", delay: 1.4, success: true },
     { text: "", delay: 1.6 },
-    { text: "  dubbl running at http://localhost:3000", delay: 1.8, highlight: true },
+    { text: "  fixbooks running at http://localhost:3000", delay: 1.8, highlight: true },
   ];
 
   return (
@@ -102,7 +102,7 @@ export function OpenSource() {
               <SectionHeader
                 badge="Open Source"
                 title="Fork it. Extend it. Own it."
-                subtitle="dubbl is fully open source under the Apache 2.0 license. No vendor lock-in, no hidden fees, no surprises. Your data, your rules."
+                subtitle="fixbooks is fully open source under the Apache 2.0 license. No vendor lock-in, no hidden fees, no surprises. Your data, your rules."
                 align="left"
                 className="mb-8 md:mb-10"
               />
@@ -160,7 +160,7 @@ export function OpenSource() {
                   asChild
                 >
                   <a
-                    href="https://github.com/dubbl-org/dubbl"
+                    href="https://github.com/fixbooks/fixbooks"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

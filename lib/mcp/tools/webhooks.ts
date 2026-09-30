@@ -264,7 +264,7 @@ export function registerWebhookTools(server: McpServer, ctx: AuthContext) {
         const testPayload = {
           event: "test",
           data: {
-            message: "This is a test webhook delivery from dubbl",
+            message: "This is a test webhook delivery from fixbooks",
             webhookId: existing.id,
             timestamp: new Date().toISOString(),
           },

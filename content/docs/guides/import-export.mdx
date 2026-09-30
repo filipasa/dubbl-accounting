@@ -1,11 +1,11 @@
 ---
 title: Import & Export
-description: Migrate data from other bookkeeping tools into Dubbl, or export your data as CSV.
+description: Migrate data from other bookkeeping tools into Fixbooks, or export your data as CSV.
 ---
 
 ## Overview
 
-Dubbl supports importing data from **QuickBooks**, **Xero**, **FreshBooks**, **Wave**, and any custom CSV format. You can also export all your Dubbl data as CSV files.
+Fixbooks supports importing data from **QuickBooks**, **Xero**, **FreshBooks**, **Wave**, and any custom CSV format. You can also export all your Fixbooks data as CSV files.
 
 ### Supported entity types
 
@@ -72,11 +72,11 @@ Import entities in this order to resolve dependencies correctly:
 
 ## Column mapping reference
 
-When you select a source system, Dubbl automatically maps column headers from that system to the correct fields. For example:
+When you select a source system, Fixbooks automatically maps column headers from that system to the correct fields. For example:
 
 ### Accounts
 
-| Dubbl Field | QuickBooks | Xero | FreshBooks | Wave |
+| Fixbooks Field | QuickBooks | Xero | FreshBooks | Wave |
 |------------|------------|------|------------|------|
 | code | Account #, Account Number | Code, *Code | Account Number | Account Number |
 | name | Account Name, Account | Name, *Name | Account Name | Account Name |
@@ -84,7 +84,7 @@ When you select a source system, Dubbl automatically maps column headers from th
 
 ### Contacts
 
-| Dubbl Field | QuickBooks | Xero | FreshBooks | Wave |
+| Fixbooks Field | QuickBooks | Xero | FreshBooks | Wave |
 |------------|------------|------|------------|------|
 | name | Customer, Vendor, Display Name | Contact Name, *Contact Name | Organization, Client Name | Customer Name, Vendor Name |
 | email | Email, Main Email | Email, Email Address | Email | Email |
@@ -117,7 +117,7 @@ The following MCP tools are available for programmatic import/export:
 ## Troubleshooting
 
 ### Date formats
-Dubbl accepts dates in `YYYY-MM-DD`, `MM/DD/YYYY`, and `DD-MMM-YYYY` formats. If your dates aren't being recognized, ensure they match one of these patterns.
+Fixbooks accepts dates in `YYYY-MM-DD`, `MM/DD/YYYY`, and `DD-MMM-YYYY` formats. If your dates aren't being recognized, ensure they match one of these patterns.
 
 ### Money precision
 All amounts are stored as integer cents internally. When importing, provide decimal values (e.g. `125.50`). When exporting, you'll receive decimal strings.
@@ -129,4 +129,4 @@ If an import fails with "Contact not found" or "Account not found", ensure the r
 The import process does not check for duplicates. If you run an import twice, you may get duplicate records. Use the import history table to track what has been imported.
 
 ### Account type mapping
-Account types from other systems are automatically mapped to Dubbl types (asset, liability, equity, revenue, expense). For example, QuickBooks "Bank" and "Other Current Asset" both map to "asset".
+Account types from other systems are automatically mapped to Fixbooks types (asset, liability, equity, revenue, expense). For example, QuickBooks "Bank" and "Other Current Asset" both map to "asset".

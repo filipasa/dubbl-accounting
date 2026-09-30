@@ -115,7 +115,7 @@ const XERO_ACCOUNT_TYPE_MAP: Record<string, string> = {
 };
 
 /**
- * Normalize account type strings from various sources to Dubbl types.
+ * Normalize account type strings from various sources to Fixbooks types.
  */
 export function normalizeAccountType(value: string, source: SourceSystem): string {
   const lower = value.toLowerCase().trim();
@@ -135,7 +135,7 @@ export function normalizeAccountType(value: string, source: SourceSystem): strin
 }
 
 /**
- * Normalize contact type to Dubbl enum.
+ * Normalize contact type to Fixbooks enum.
  */
 export function normalizeContactType(value: string): "customer" | "supplier" | "both" {
   const lower = value.toLowerCase().trim();

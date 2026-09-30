@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="public/logo.svg" alt="dubbl logo" width="80" height="64" />
+  <img src="public/logo.svg" alt="fixbooks logo" width="80" height="64" />
 </p>
-<h1 align="center">dubbl</h1>
+<h1 align="center">fixbooks</h1>
 <p align="center">Open source, double-entry bookkeeping for modern teams.</p>
 
 <p align="center">
   <a href="/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" /></a>
-  <a href="https://github.com/dubbl-org/dubbl/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/dubbl-org/dubbl" /></a>
-  <a href="https://github.com/dubbl-org/dubbl/pulls"><img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" /></a>
+  <a href="https://github.com/fixbooks/fixbooks/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/fixbooks/fixbooks" /></a>
+  <a href="https://github.com/fixbooks/fixbooks/pulls"><img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" /></a>
 </p>
 
 ---
 
-dubbl is a full-featured, open-source alternative to Xero and QuickBooks. It is API-first, developer-friendly, and built for teams that want full control over their financial data.
+fixbooks is a full-featured, open-source alternative to Xero and QuickBooks. It is API-first, developer-friendly, and built for teams that want full control over their financial data.
 
 ## Features
 
@@ -47,8 +47,8 @@ dubbl is a full-featured, open-source alternative to Xero and QuickBooks. It is 
 
 ```bash
 # Clone the repository
-git clone https://github.com/dubbl-org/dubbl.git
-cd dubbl
+git clone https://github.com/fixbooks/fixbooks.git
+cd fixbooks
 
 # Install dependencies
 pnpm install
@@ -61,7 +61,7 @@ Edit `.env` with your configuration:
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/dubbl
+DATABASE_URL=postgresql://user:password@localhost:5432/fixbooks
 
 # Auth
 AUTH_SECRET=your-random-secret-here
@@ -76,7 +76,7 @@ TRIGGER_PROJECT_REF=proj_...
 TRIGGER_SECRET_KEY=tr_dev_...
 
 # S3 Storage (optional)
-S3_BUCKET=dubbl-uploads
+S3_BUCKET=fixbooks-uploads
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
@@ -101,11 +101,11 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-If you ran the seed script, log in with `demo@dubbl.dev` / `password123`.
+If you ran the seed script, log in with `demo@fixbooks.dev` / `password123`.
 
 ### Background Jobs
 
-Dubbl uses Trigger.dev for scheduled maintenance and delayed retries. For production, set `TRIGGER_PROJECT_REF` and `TRIGGER_SECRET_KEY`, then deploy the tasks:
+Fixbooks uses Trigger.dev for scheduled maintenance and delayed retries. For production, set `TRIGGER_PROJECT_REF` and `TRIGGER_SECRET_KEY`, then deploy the tasks:
 
 ```bash
 pnpm trigger:deploy
@@ -123,23 +123,23 @@ Without Trigger.dev, scheduled backups, bookkeeping maintenance, invoicing maint
 
 ## Self-Hosting
 
-See the [Self-Hosting Guide](https://dubbl.dev/docs/self-hosting) for instructions on deploying dubbl with Docker.
+See the [Self-Hosting Guide](https://fixbooks.dev/docs/self-hosting) for instructions on deploying fixbooks with Docker.
 
 ## MCP Server
 
-dubbl includes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server that lets any MCP-compatible AI agent interact with your accounting data. The MCP server uses Streamable HTTP transport with OAuth 2.1 authentication and is available on all plans.
+fixbooks includes a built-in [Model Context Protocol](https://modelcontextprotocol.io) server that lets any MCP-compatible AI agent interact with your accounting data. The MCP server uses Streamable HTTP transport with OAuth 2.1 authentication and is available on all plans.
 
 Works with Claude Desktop, Claude Code, Cursor, Windsurf, VS Code Copilot, and any other MCP-enabled agent. Just point your client at:
 
 ```
-https://dubbl.dev/api/mcp
+https://fixbooks.dev/api/mcp
 ```
 
-See the [MCP documentation](https://dubbl.dev/docs/guides/mcp) for setup instructions for each client.
+See the [MCP documentation](https://fixbooks.dev/docs/guides/mcp) for setup instructions for each client.
 
 ## Documentation
 
-Full documentation is available at [dubbl.dev/docs](https://dubbl.dev/docs) or by running the app locally and visiting `/docs`.
+Full documentation is available at [fixbooks.dev/docs](https://fixbooks.dev/docs) or by running the app locally and visiting `/docs`.
 
 ## Contributing
 
@@ -148,7 +148,7 @@ We welcome contributions of all kinds: bug fixes, features, documentation, and t
 - Open an issue to report bugs or request features
 - Submit a pull request with your changes
 - Help keep tax information accurate by reporting outdated rules
-- See the [Contributing Guide](https://dubbl.dev/docs/contributing) for details
+- See the [Contributing Guide](https://fixbooks.dev/docs/contributing) for details
 
 ## License
 

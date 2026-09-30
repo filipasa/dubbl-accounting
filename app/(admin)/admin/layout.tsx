@@ -110,7 +110,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className="hidden md:flex w-60 shrink-0 flex-col border-r bg-sidebar">
           <div className="flex h-14 items-center gap-2.5 px-5">
             <Logo className="h-5 w-auto" />
-            <span className="text-[14px] font-semibold tracking-tight">dubbl</span>
+            <span className="text-[14px] font-semibold tracking-tight">fixbooks</span>
             <span className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-400">
               Admin
             </span>

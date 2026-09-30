@@ -2,10 +2,10 @@ import { useEffect } from "react";
 
 /**
  * Sets the browser tab title for client-component dashboard pages.
- * Format: "Section · Page · dubbl"
+ * Format: "Section · Page · fixbooks"
  */
 export function useDocumentTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} · dubbl`;
+    document.title = `${title} · fixbooks`;
   }, [title]);
 }

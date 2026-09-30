@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms governing your use of the dubbl hosted service, operated by Mindroot Ltd.",
+    "Terms governing your use of the fixbooks hosted service, operated by Mindroot Ltd.",
 };
 
 const sections: LegalSection[] = [
@@ -19,7 +19,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          The dubbl hosted service at dubbl.dev is operated by:
+          The fixbooks hosted service at fixbooks.dev is operated by:
         </p>
         <p>
           <strong>Mindroot Ltd</strong>
@@ -28,7 +28,7 @@ const sections: LegalSection[] = [
           <br />
           Registered office: 71-75 Shelton Street, London, England, WC2H 9JQ
           <br />
-          Contact: <a href="mailto:team@dubbl.dev">team@dubbl.dev</a>
+          Contact: <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>
         </p>
         <p>
           This information is provided in compliance with the Electronic Commerce
@@ -43,8 +43,8 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          dubbl is a double-entry bookkeeping platform available as both a hosted
-          SaaS at dubbl.dev and an open-source project that can be self-hosted.
+          fixbooks is a double-entry bookkeeping platform available as both a hosted
+          SaaS at fixbooks.dev and an open-source project that can be self-hosted.
           These Terms govern your use of the <strong>hosted service</strong>{" "}
           only.
         </p>
@@ -72,7 +72,7 @@ const sections: LegalSection[] = [
         </ul>
         <p>
           You must notify us immediately at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a> if you suspect
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> if you suspect
           unauthorised access to your account.
         </p>
       </>
@@ -84,7 +84,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          dubbl offers a free tier and paid subscription plans. Details of
+          fixbooks offers a free tier and paid subscription plans. Details of
           current plans and pricing are available on our website.
         </p>
         <ul>
@@ -119,13 +119,13 @@ const sections: LegalSection[] = [
       <>
         <Callout icon={BookOpen} title="Open Source Distinction">
           <p>
-            The dubbl source code is licensed under the{" "}
+            The fixbooks source code is licensed under the{" "}
             <strong>Apache License 2.0</strong>. You are free to self-host,
             modify, and distribute the code under that licence.
           </p>
           <p>
             These Terms of Service apply <strong>only</strong> to the hosted
-            service at dubbl.dev. Self-hosted instances are governed solely by
+            service at fixbooks.dev. Self-hosted instances are governed solely by
             the Apache 2.0 licence.
           </p>
         </Callout>
@@ -202,11 +202,11 @@ const sections: LegalSection[] = [
       <>
         <ul>
           <li>
-            The dubbl <strong>source code</strong> is licensed under the Apache
+            The fixbooks <strong>source code</strong> is licensed under the Apache
             License 2.0.
           </li>
           <li>
-            The dubbl <strong>brand</strong>, logos, service design, and hosted
+            The fixbooks <strong>brand</strong>, logos, service design, and hosted
             infrastructure are owned by Mindroot Ltd and are not covered by the
             open-source licence.
           </li>
@@ -229,11 +229,11 @@ const sections: LegalSection[] = [
           <a href="/privacy">Privacy Policy</a>.
         </p>
         <p>
-          For bookkeeping data you enter into the service, dubbl acts as a{" "}
+          For bookkeeping data you enter into the service, fixbooks acts as a{" "}
           <strong>data processor</strong> on your behalf. You remain the data
           controller for that data. If you require a formal Data Processing
           Agreement (DPA), please contact us at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a>.
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
         </p>
       </>
     ),
@@ -285,7 +285,7 @@ const sections: LegalSection[] = [
         <p>
           If the digital content is faulty or does not meet these standards, you
           may be entitled to a repair, replacement, or price reduction. Contact
-          us at <a href="mailto:team@dubbl.dev">team@dubbl.dev</a> to report
+          us at <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> to report
           any issues.
         </p>
       </>
@@ -325,7 +325,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           If a dispute arises, we encourage you to contact us first at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a> so we can attempt
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> so we can attempt
           to resolve the matter informally.
         </p>
         <p>
@@ -410,7 +410,7 @@ export default function TermsPage() {
     <LegalPageLayout
       badge="Legal"
       title="Terms of Service"
-      subtitle="The terms governing your use of the dubbl hosted service."
+      subtitle="The terms governing your use of the fixbooks hosted service."
       lastUpdated="2 March 2026"
       sections={sections}
     />

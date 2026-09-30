@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     return new NextResponse(json, {
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="dubbl-snapshot-${date}.json"`,
+        "Content-Disposition": `attachment; filename="fixbooks-snapshot-${date}.json"`,
       },
     });
   } catch (err) {

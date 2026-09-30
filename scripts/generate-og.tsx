@@ -389,9 +389,9 @@ const html = `<!DOCTYPE html>
   <!-- ===================== CENTER BRANDING ===================== -->
   <div class="center-block">
     <img src="${logoDataUri}" class="logo-mark" />
-    <div class="wordmark">dubbl</div>
+    <div class="wordmark">fixbooks</div>
     <div class="tagline">Business management for modern teams</div>
-    <div class="url-badge">dubbl.dev</div>
+    <div class="url-badge">fixbooks.dev</div>
   </div>
 
   <!-- Bottom pills -->

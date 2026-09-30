@@ -6,7 +6,7 @@ import { ok, error, handleError } from "@/lib/api/response";
 import { logAudit } from "@/lib/api/audit";
 import { generateTotpSecret, buildOtpAuthUri } from "@/lib/auth/totp";
 
-const ISSUER = "dubbl";
+const ISSUER = "fixbooks";
 
 /**
  * POST /api/v1/auth/2fa/enroll

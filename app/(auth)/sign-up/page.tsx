@@ -119,7 +119,7 @@ export default function SignUpPage() {
           Create your account
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Get started with dubbl for free
+          Get started with fixbooks for free
         </p>
       </motion.div>
 

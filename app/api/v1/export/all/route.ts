@@ -263,7 +263,7 @@ export async function GET(request: Request) {
     return new NextResponse(zipData.buffer as ArrayBuffer, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": "attachment; filename=dubbl-export.zip",
+        "Content-Disposition": "attachment; filename=fixbooks-export.zip",
       },
     });
   } catch (err) {

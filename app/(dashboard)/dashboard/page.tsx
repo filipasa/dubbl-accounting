@@ -318,10 +318,10 @@ export default function DashboardPage() {
 
     let activeRange = getPeriodRange("ytd");
     try {
-      const saved = localStorage.getItem("dubbl_dashboard_period") as DashboardPeriodKey | null;
+      const saved = (localStorage.getItem("fixbooks_dashboard_period") || localStorage.getItem("dubbl_dashboard_period")) as DashboardPeriodKey | null;
       if (saved === "custom") {
-        const savedStart = localStorage.getItem("dubbl_dashboard_custom_start");
-        const savedEnd = localStorage.getItem("dubbl_dashboard_custom_end");
+        const savedStart = localStorage.getItem("fixbooks_dashboard_custom_start") || localStorage.getItem("dubbl_dashboard_custom_start");
+        const savedEnd = localStorage.getItem("fixbooks_dashboard_custom_end") || localStorage.getItem("dubbl_dashboard_custom_end");
         if (savedStart && savedEnd) {
           activeRange = {
             startDate: savedStart,
@@ -458,10 +458,10 @@ export default function DashboardPage() {
     setPeriodKey(key);
     setPeriodRange(range);
     try {
-      localStorage.setItem("dubbl_dashboard_period", key);
+      localStorage.setItem("fixbooks_dashboard_period", key);
       if (key === "custom") {
-        localStorage.setItem("dubbl_dashboard_custom_start", range.startDate);
-        localStorage.setItem("dubbl_dashboard_custom_end", range.endDate);
+        localStorage.setItem("fixbooks_dashboard_custom_start", range.startDate);
+        localStorage.setItem("fixbooks_dashboard_custom_end", range.endDate);
       }
     } catch {}
 

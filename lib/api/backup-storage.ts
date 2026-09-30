@@ -15,7 +15,7 @@ const s3 = new S3Client({
   forcePathStyle: true,
 });
 
-const bucket = process.env.S3_BUCKET || "dubbl";
+const bucket = process.env.S3_BUCKET || "fixbooks";
 
 export async function uploadBackup(key: string, data: string): Promise<number> {
   const body = Buffer.from(data, "utf-8");

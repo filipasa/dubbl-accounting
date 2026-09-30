@@ -46,7 +46,7 @@ export async function generateMetadata(props: {
   if (!page) notFound();
 
   return {
-    title: `${page.data.title} · Dubbl Docs`,
+    title: `${page.data.title} · FixBooks Docs`,
     description: page.data.description,
   };
 }

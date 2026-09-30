@@ -1,11 +1,11 @@
 ---
 title: MCP Server
-description: Connect AI agents to dubbl via the Model Context Protocol.
+description: Connect AI agents to fixbooks via the Model Context Protocol.
 ---
 
 ## What is MCP?
 
-The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI coding agents and assistants interact with external tools and data sources. dubbl's built-in MCP server gives any MCP-compatible agent direct access to your accounting data -- creating entries, managing invoices, generating reports, and more.
+The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI coding agents and assistants interact with external tools and data sources. fixbooks's built-in MCP server gives any MCP-compatible agent direct access to your accounting data -- creating entries, managing invoices, generating reports, and more.
 
 ## Prerequisites
 
@@ -14,9 +14,9 @@ The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open s
 
 ## Connecting Your Agent
 
-Any MCP-compatible agent can connect to dubbl's MCP server. The server uses Streamable HTTP transport at `/api/mcp` and OAuth 2.1 for authentication. Most agents handle the OAuth flow automatically -- they will open a browser window for you to sign in and authorize access on first connect.
+Any MCP-compatible agent can connect to fixbooks's MCP server. The server uses Streamable HTTP transport at `/api/mcp` and OAuth 2.1 for authentication. Most agents handle the OAuth flow automatically -- they will open a browser window for you to sign in and authorize access on first connect.
 
-The examples below use `https://dubbl.dev/api/mcp`. If you are self-hosting, replace `dubbl.dev` with your own domain.
+The examples below use `https://fixbooks.dev/api/mcp`. If you are self-hosting, replace `fixbooks.dev` with your own domain.
 
 ### Claude Desktop
 
@@ -25,8 +25,8 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "dubbl": {
-      "url": "https://dubbl.dev/api/mcp"
+    "fixbooks": {
+      "url": "https://fixbooks.dev/api/mcp"
     }
   }
 }
@@ -35,7 +35,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 ### Claude Code
 
 ```bash
-claude mcp add dubbl --transport streamable-http https://dubbl.dev/api/mcp
+claude mcp add fixbooks --transport streamable-http https://fixbooks.dev/api/mcp
 ```
 
 ### Cursor
@@ -45,8 +45,8 @@ Go to **Cursor Settings > MCP** and add a new server, or add to `.cursor/mcp.jso
 ```json
 {
   "mcpServers": {
-    "dubbl": {
-      "url": "https://dubbl.dev/api/mcp"
+    "fixbooks": {
+      "url": "https://fixbooks.dev/api/mcp"
     }
   }
 }
@@ -61,8 +61,8 @@ Go to **Windsurf Settings > Cascade > MCP** and click **View raw config**, or ed
 ```json
 {
   "mcpServers": {
-    "dubbl": {
-      "serverUrl": "https://dubbl.dev/api/mcp"
+    "fixbooks": {
+      "serverUrl": "https://fixbooks.dev/api/mcp"
     }
   }
 }
@@ -75,9 +75,9 @@ Add to `.vscode/mcp.json` in your workspace (available in VS Code 1.99+):
 ```json
 {
   "servers": {
-    "dubbl": {
+    "fixbooks": {
       "type": "http",
-      "url": "https://dubbl.dev/api/mcp"
+      "url": "https://fixbooks.dev/api/mcp"
     }
   }
 }
@@ -89,9 +89,9 @@ Or add to your user `settings.json` to make it available across all workspaces:
 {
   "mcp": {
     "servers": {
-      "dubbl": {
+      "fixbooks": {
         "type": "http",
-        "url": "https://dubbl.dev/api/mcp"
+        "url": "https://fixbooks.dev/api/mcp"
       }
     }
   }
@@ -103,14 +103,14 @@ Or add to your user `settings.json` to make it available across all workspaces:
 Any agent that supports the MCP Streamable HTTP transport can connect. Point it at:
 
 ```
-https://dubbl.dev/api/mcp
+https://fixbooks.dev/api/mcp
 ```
 
 The client will discover OAuth endpoints automatically via the `/.well-known/oauth-authorization-server` metadata endpoint.
 
 ## OAuth Flow
 
-dubbl uses OAuth 2.1 with PKCE for MCP authentication:
+fixbooks uses OAuth 2.1 with PKCE for MCP authentication:
 
 1. The MCP client discovers OAuth endpoints via `/.well-known/oauth-authorization-server` on the MCP endpoint
 2. The client registers dynamically at `/api/mcp/oauth/register`
@@ -305,7 +305,7 @@ For example, in Claude Desktop config:
 ```json
 {
   "mcpServers": {
-    "dubbl-local": {
+    "fixbooks-local": {
       "url": "http://localhost:3000/api/mcp"
     }
   }
@@ -317,7 +317,7 @@ Or in Cursor's `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "dubbl-local": {
+    "fixbooks-local": {
       "url": "http://localhost:3000/api/mcp"
     }
   }

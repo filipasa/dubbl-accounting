@@ -1,6 +1,6 @@
 ---
 title: Developer Guide
-description: Architecture overview and conventions for contributing to dubbl.
+description: Architecture overview and conventions for contributing to fixbooks.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -19,7 +19,7 @@ import { Steps, Step } from "fumadocs-ui/components/steps";
 ## Project Structure
 
 ```
-dubbl/
+fixbooks/
 ├── app/                    # Next.js App Router
 │   ├── (landing)/          # Public landing pages
 │   ├── (auth)/             # Sign in, sign up, OAuth consent
@@ -56,8 +56,8 @@ dubbl/
     ### Clone and install
 
     ```bash
-    git clone https://github.com/dubbl-org/dubbl.git
-    cd dubbl && pnpm install
+    git clone https://github.com/fixbooks/fixbooks.git
+    cd fixbooks && pnpm install
     ```
   </Step>
   <Step>
@@ -193,7 +193,7 @@ Check permissions with `requireRole(ctx, "manage:invoices")`.
 
 ## MCP Server
 
-The MCP server lets AI agents interact with dubbl via the [Model Context Protocol](https://modelcontextprotocol.io). See the [MCP guide](/docs/guides/mcp) for user-facing docs.
+The MCP server lets AI agents interact with fixbooks via the [Model Context Protocol](https://modelcontextprotocol.io). See the [MCP guide](/docs/guides/mcp) for user-facing docs.
 
 ### Architecture
 

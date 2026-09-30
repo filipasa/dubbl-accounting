@@ -1,6 +1,6 @@
 ---
 title: Self-Hosting
-description: Deploy Dubbl with Docker Compose for production use.
+description: Deploy Fixbooks with Docker Compose for production use.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -9,7 +9,7 @@ import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
 ## Docker Compose
 
-The easiest way to self-host Dubbl is with Docker Compose.
+The easiest way to self-host Fixbooks is with Docker Compose.
 
 ```yaml title="docker-compose.yml"
 services:
@@ -18,7 +18,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://dubbl:dubbl@db:5432/dubbl
+      DATABASE_URL: postgresql://fixbooks:fixbooks@db:5432/fixbooks
       AUTH_SECRET: change-me-in-production
       AUTH_URL: https://your-domain.com
     depends_on:
@@ -27,9 +27,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: dubbl
-      POSTGRES_PASSWORD: dubbl
-      POSTGRES_DB: dubbl
+      POSTGRES_USER: fixbooks
+      POSTGRES_PASSWORD: fixbooks
+      POSTGRES_DB: fixbooks
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -93,7 +93,7 @@ volumes:
 
 ## Authentication
 
-Dubbl supports three authentication methods:
+Fixbooks supports three authentication methods:
 
 - **Email & Password** - Works out of the box, no additional setup needed
 - **Google OAuth** - Requires `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
@@ -159,7 +159,7 @@ Organization-level emails (invoices, reminders, statements) use per-org SMTP con
 
 ## Background Jobs
 
-Dubbl uses Trigger.dev for scheduled maintenance and delayed retries. Set `TRIGGER_PROJECT_REF` and `TRIGGER_SECRET_KEY` in production before accepting traffic.
+Fixbooks uses Trigger.dev for scheduled maintenance and delayed retries. Set `TRIGGER_PROJECT_REF` and `TRIGGER_SECRET_KEY` in production before accepting traffic.
 
 Scheduled tasks are defined in `trigger/scheduled.ts`:
 
@@ -184,7 +184,7 @@ pnpm trigger:deploy
 
 ## Database
 
-Dubbl uses PostgreSQL. Minimum version: **15**.
+Fixbooks uses PostgreSQL. Minimum version: **15**.
 
 The schema is managed by Drizzle ORM. To apply schema changes:
 
@@ -214,7 +214,7 @@ File uploads (receipts, attachments) require S3-compatible storage:
 
 ## Reverse Proxy
 
-For production, place Dubbl behind a reverse proxy:
+For production, place Fixbooks behind a reverse proxy:
 
 <Tabs items={["Nginx", "Caddy"]}>
   <Tab value="Nginx">
@@ -247,10 +247,10 @@ Back up your PostgreSQL database regularly:
 
 ```bash
 # Dump database
-docker compose exec db pg_dump -U dubbl dubbl > backup.sql
+docker compose exec db pg_dump -U fixbooks fixbooks > backup.sql
 
 # Restore
-docker compose exec -T db psql -U dubbl dubbl < backup.sql
+docker compose exec -T db psql -U fixbooks fixbooks < backup.sql
 ```
 
 <Callout type="warn">

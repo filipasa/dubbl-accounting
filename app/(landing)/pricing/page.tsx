@@ -493,7 +493,7 @@ export default function PricingPage() {
                   Self-host with zero limits
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  dubbl is Apache 2.0 licensed. Self-hosted instances unlock
+                  fixbooks is Apache 2.0 licensed. Self-hosted instances unlock
                   every feature with no user caps and no telemetry. Cloud plans
                   fund development.
                 </p>
@@ -503,7 +503,7 @@ export default function PricingPage() {
                 asChild
               >
                 <a
-                  href="https://github.com/dubbl-org/dubbl"
+                  href="https://github.com/fixbooks/fixbooks"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

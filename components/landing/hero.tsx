@@ -618,7 +618,7 @@ export function Hero() {
               </Link>
 
               <a
-                href="https://github.com/dubbl-org/dubbl"
+                href="https://github.com/fixbooks/fixbooks"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(

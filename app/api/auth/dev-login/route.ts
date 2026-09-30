@@ -6,13 +6,13 @@ import bcrypt from "bcryptjs";
 
 // Dev login supports both the quick dev user AND the full demo user from seed.ts
 const DEV_USER = {
-  email: "dev@dubbl.local",
+  email: "dev@fixbooks.local",
   name: "Dev User",
   password: "devdevdev",
 };
 
 const DEMO_USER = {
-  email: "demo@dubbl.dev",
+  email: "demo@fixbooks.dev",
   password: "password123",
 };
 

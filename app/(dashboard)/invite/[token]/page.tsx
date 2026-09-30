@@ -100,7 +100,7 @@ export default function InviteAcceptPage() {
           {/* Logo */}
           <div className="flex items-center gap-2.5 mb-8">
             <Logo className="h-7 w-9" />
-            <span className="text-lg font-bold tracking-tight text-emerald-600">dubbl</span>
+            <span className="text-lg font-bold tracking-tight text-emerald-600">fixbooks</span>
           </div>
 
           {state === "loading" && (

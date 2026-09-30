@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How dubbl (Mindroot Ltd) collects, uses, and protects your personal data under the UK GDPR.",
+    "How fixbooks (Mindroot Ltd) collects, uses, and protects your personal data under the UK GDPR.",
 };
 
 const sections: LegalSection[] = [
@@ -19,7 +19,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          The data controller for personal data processed through dubbl.dev is:
+          The data controller for personal data processed through fixbooks.dev is:
         </p>
         <p>
           <strong>Mindroot Ltd</strong>
@@ -32,7 +32,7 @@ const sections: LegalSection[] = [
         </p>
         <p>
           For data protection enquiries, contact us at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a>.
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
         </p>
       </>
     ),
@@ -78,7 +78,7 @@ const sections: LegalSection[] = [
         <ul>
           <li>
             <strong>Service delivery</strong> ·providing, maintaining, and
-            improving the dubbl platform.
+            improving the fixbooks platform.
           </li>
           <li>
             <strong>Payments</strong> ·processing subscriptions and invoices
@@ -235,7 +235,7 @@ const sections: LegalSection[] = [
         </Callout>
         <p>
           To exercise any of these rights, contact us at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a>. We will respond
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>. We will respond
           within 30 days. If we need to extend this period, we will notify you
           with reasons.
         </p>
@@ -269,7 +269,7 @@ const sections: LegalSection[] = [
         </p>
         <p>
           We encourage you to contact us first at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a> so we can try to
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> so we can try to
           resolve your concern directly.
         </p>
       </>
@@ -313,7 +313,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           This privacy policy applies exclusively to the hosted service at{" "}
-          <strong>dubbl.dev</strong>. If you self-host dubbl using our
+          <strong>fixbooks.dev</strong>. If you self-host fixbooks using our
           open-source code, you are responsible for your own data processing,
           privacy policy, and compliance with applicable data protection laws.
         </p>
@@ -326,10 +326,10 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          dubbl is not directed at individuals under the age of 16. We do not
+          fixbooks is not directed at individuals under the age of 16. We do not
           knowingly collect personal data from children. If you believe we have
           inadvertently collected data from a child, please contact us at{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a> and we will
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a> and we will
           promptly delete it.
         </p>
       </>
@@ -356,7 +356,7 @@ const sections: LegalSection[] = [
         <p>
           No system is 100% secure. If you discover a security vulnerability,
           please report it to{" "}
-          <a href="mailto:team@dubbl.dev">team@dubbl.dev</a>.
+          <a href="mailto:team@fixbooks.dev">team@fixbooks.dev</a>.
         </p>
       </>
     ),
@@ -386,7 +386,7 @@ export default function PrivacyPage() {
     <LegalPageLayout
       badge="Legal"
       title="Privacy Policy"
-      subtitle="How we collect, use, and protect your personal data at dubbl."
+      subtitle="How we collect, use, and protect your personal data at fixbooks."
       lastUpdated="2 March 2026"
       sections={sections}
     />
