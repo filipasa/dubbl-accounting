@@ -78,4 +78,5 @@ export interface WhatsAppConfig {
   openaiApiKey: string;
   fixbooksToken: string;
   fixbooksUrl: string;
+  appUrl: string;
 }

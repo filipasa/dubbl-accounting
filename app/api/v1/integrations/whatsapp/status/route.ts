@@ -14,13 +14,7 @@ export async function GET() {
   const config = getWhatsAppConfig();
   const isConfigured = Boolean(config.accessToken && config.phoneNumberId);
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000");
-
-  const webhookUrl = `${appUrl}/api/v1/integrations/whatsapp/webhook`;
+  const webhookUrl = `${config.appUrl}/api/v1/integrations/whatsapp/webhook`;
 
   // Fetch recent message logs
   let recentLogs: any[] = [];

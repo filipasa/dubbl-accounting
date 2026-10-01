@@ -11,11 +11,16 @@ export function getWhatsAppConfig(): WhatsAppConfig {
 
   let appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL
+    (process.env.NODE_ENV === "production" || process.env.VERCEL
+      ? "https://www.fixbooks.io"
+      : process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
 
-  if (appUrl.startsWith("http://fixbooks.io") || appUrl.startsWith("https://fixbooks.io")) {
+  if (
+    appUrl.includes("fixbooks.io") ||
+    appUrl.includes("dubbl-accounting.vercel.app")
+  ) {
     appUrl = "https://www.fixbooks.io";
   }
 
@@ -37,6 +42,7 @@ export function getWhatsAppConfig(): WhatsAppConfig {
       process.env.DUBBL_TOKEN ||
       "",
     fixbooksUrl: `${appUrl}/api/mcp`,
+    appUrl,
   };
 }
 
