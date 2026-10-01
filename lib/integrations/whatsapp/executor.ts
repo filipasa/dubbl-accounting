@@ -316,7 +316,7 @@ export async function createQuoteAction(
     reference: params.reference || `QTE-${Date.now().toString().slice(-4)}`,
     notes:
       params.notes ||
-      (params.customerAddress ? `Address: ${params.customerAddress}` : "Created via WhatsApp Bot"),
+      (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
     lines: formattedLines,
   });
 
@@ -404,7 +404,7 @@ export async function createInvoiceAction(
     reference: params.reference || `INV-${Date.now().toString().slice(-4)}`,
     notes:
       params.notes ||
-      (params.customerAddress ? `Address: ${params.customerAddress}` : "Created via WhatsApp Bot"),
+      (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
     lines: formattedLines,
   });
 

@@ -36,9 +36,14 @@ export async function GET(
       orderBy: desc(invoice.issueDate),
     });
 
+    const orgCurrency = access.organization?.defaultCurrency || "GBP";
+    const contactCurrency = access.contact?.currencyCode;
+    const invoiceCurrency = invoices.find((i) => i.currencyCode)?.currencyCode;
+    const currencyCode = invoiceCurrency || contactCurrency || orgCurrency || "GBP";
+
     // Build statement with running balance
     let runningBalance = 0;
-    const statementLines = invoices.map(inv => {
+    const statementLines = invoices.map((inv) => {
       runningBalance += inv.amountDue;
       return {
         date: inv.issueDate,
@@ -48,12 +53,14 @@ export async function GET(
         balance: inv.amountDue,
         runningBalance,
         status: inv.status,
+        currencyCode: inv.currencyCode || currencyCode,
       };
     });
 
     return NextResponse.json({
       contact: { id: access.contactId, name: access.contact.name },
       organization: { name: access.organization.name },
+      currencyCode,
       lines: statementLines,
       totalOutstanding: runningBalance,
     });

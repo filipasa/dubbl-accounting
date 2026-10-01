@@ -22,12 +22,7 @@ interface Payment {
   currencyCode: string;
 }
 
-function formatMoney(cents: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
-}
+import { formatMoney } from "@/lib/money";
 
 export default function PortalPaymentsPage() {
   const { token } = useParams<{ token: string }>();

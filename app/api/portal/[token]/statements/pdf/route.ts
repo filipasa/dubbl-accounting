@@ -107,7 +107,7 @@ export async function GET(
 
     // Fetch org name
     const orgRow = await db
-      .select({ name: organization.name })
+      .select({ name: organization.name, baseCurrency: organization.defaultCurrency })
       .from(organization)
       .where(eq(organization.id, organizationId))
       .limit(1);
@@ -412,7 +412,7 @@ export async function GET(
 
     // Serialize the contact ledger into the shared Statement shape and render a
     // PDF via the same @react-pdf path used by other report exports.
-    const currency = c.currencyCode || "USD";
+    const currency = c.currencyCode || orgRow[0]?.baseCurrency || "GBP";
 
     const statement: Statement = {
       title: `Statement — ${c.name}`,

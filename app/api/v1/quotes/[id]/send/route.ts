@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
+import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
@@ -30,7 +31,7 @@ const sendBodySchema = z.object({
   recipientEmail: z.string().email(),
   subject: z.string().min(1),
   templateProps: templatePropsSchema,
-  attachPdf: z.boolean().default(false),
+  attachPdf: z.boolean().default(true),
 });
 
 export async function POST(
@@ -48,6 +49,7 @@ export async function POST(
         eq(quote.organizationId, ctx.organizationId),
         notDeleted(quote.deletedAt)
       ),
+      with: { lines: true, contact: true },
     });
 
     if (!found) return notFound("Quote");
@@ -62,7 +64,7 @@ export async function POST(
     const emailParsed = sendBodySchema.safeParse(rawBody);
 
     if (emailParsed.success) {
-      const { recipientEmail, subject, templateProps } = emailParsed.data;
+      const { recipientEmail, subject, templateProps, attachPdf } = emailParsed.data;
 
       // Generate portal access URL for the quote
       if (found.contactId) {
@@ -85,7 +87,7 @@ export async function POST(
             .returning();
           token = created;
         }
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
         templateProps.viewUrl = `${APP_URL}/portal/${token.token}/quotes`;
         templateProps.buttonLabel = "View quote";
       }
@@ -95,6 +97,53 @@ export async function POST(
         where: eq(organization.id, ctx.organizationId),
       });
 
+      let pdfBuffer: Buffer | undefined;
+      let pdfFilename: string | undefined;
+
+      if (attachPdf) {
+        try {
+          const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+          const orgInfo = await buildSenderSnapshot(ctx.organizationId);
+          const contactInfo = found.contact ? buildRecipientSnapshot(found.contact) : { name: "Unknown" };
+
+          const buf = await renderInvoicePdf(
+            {
+              invoiceNumber: found.quoteNumber,
+              issueDate: found.issueDate,
+              dueDate: found.expiryDate || found.issueDate,
+              lines: found.lines.map((l) => ({
+                description: l.description,
+                quantity: l.quantity,
+                unitPrice: l.unitPrice,
+                taxAmount: l.taxAmount,
+                amount: l.amount,
+              })),
+              subtotal: found.subtotal,
+              taxTotal: found.taxTotal,
+              total: found.total,
+              currencyCode: found.currencyCode || org?.defaultCurrency || "GBP",
+              reference: found.reference,
+              notes: found.notes,
+            },
+            orgInfo,
+            contactInfo,
+            {},
+            {
+              title: "Quote",
+              numberLabel: "Quote number",
+              partyLabel: "Quote for",
+              amountLabel: "Total",
+              dateLabel: found.expiryDate ? "Valid until" : null,
+              summaryNoun: found.expiryDate ? "valid until" : null,
+            }
+          );
+          pdfBuffer = Buffer.from(buf);
+          pdfFilename = `quote-${found.quoteNumber}.pdf`;
+        } catch (pdfErr) {
+          console.error("[Quote Send] Failed to render PDF:", pdfErr);
+        }
+      }
+
       await sendDocumentEmail({
         orgId: ctx.organizationId,
         userId: ctx.userId,
@@ -103,7 +152,9 @@ export async function POST(
         recipientEmail,
         subject,
         body: html,
-        attachPdf: false,
+        attachPdf: Boolean(pdfBuffer),
+        pdfBuffer,
+        pdfFilename,
         replyTo: org?.contactEmail || undefined,
       });
     }

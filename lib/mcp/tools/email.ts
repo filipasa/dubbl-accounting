@@ -102,7 +102,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   invoiceNumber: inv.invoiceNumber,
                   issueDate: inv.issueDate,
                   dueDate: inv.dueDate,
-                  currencyCode: "USD",
+                  currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
                   lines: inv.lines.map((l) => ({
                     description: l.description,
                     quantity: l.quantity,
@@ -226,7 +226,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   invoiceNumber: inv.invoiceNumber,
                   issueDate: inv.issueDate,
                   dueDate: inv.dueDate,
-                  currencyCode: "USD",
+                  currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
                   lines: inv.lines.map((l) => ({
                     description: l.description,
                     quantity: l.quantity,

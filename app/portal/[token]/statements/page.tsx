@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 interface StatementLine {
   date: string;
@@ -22,27 +23,23 @@ interface StatementLine {
   balance: number;
   runningBalance: number;
   status: string;
-}
-
-function formatMoney(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
+  currencyCode?: string;
 }
 
 export default function PortalStatementsPage() {
   const { token } = useParams<{ token: string }>();
   const [lines, setLines] = useState<StatementLine[]>([]);
   const [totalOutstanding, setTotalOutstanding] = useState(0);
+  const [currencyCode, setCurrencyCode] = useState("GBP");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/v1/portal/${token}/statements`)
-      .then(r => r.json())
-      .then(data => {
+      .then((r) => r.json())
+      .then((data) => {
         setLines(data.lines || []);
         setTotalOutstanding(data.totalOutstanding || 0);
+        if (data.currencyCode) setCurrencyCode(data.currencyCode);
       })
       .finally(() => setLoading(false));
   }, [token]);
@@ -68,7 +65,7 @@ export default function PortalStatementsPage() {
           </a>
           <div className="text-right">
             <p className="text-sm text-gray-500">Total Outstanding</p>
-            <p className="text-xl font-bold">{formatMoney(totalOutstanding)}</p>
+            <p className="text-xl font-bold">{formatMoney(totalOutstanding, currencyCode)}</p>
           </div>
         </div>
       </div>
@@ -97,9 +94,15 @@ export default function PortalStatementsPage() {
                 <TableRow key={i}>
                   <TableCell className="text-sm">{line.date}</TableCell>
                   <TableCell className="text-sm">{line.description}</TableCell>
-                  <TableCell className="text-sm text-right">{formatMoney(line.amount)}</TableCell>
-                  <TableCell className="text-sm text-right">{formatMoney(line.paid)}</TableCell>
-                  <TableCell className="text-sm text-right font-medium">{formatMoney(line.balance)}</TableCell>
+                  <TableCell className="text-sm text-right">
+                    {formatMoney(line.amount, line.currencyCode || currencyCode)}
+                  </TableCell>
+                  <TableCell className="text-sm text-right">
+                    {formatMoney(line.paid, line.currencyCode || currencyCode)}
+                  </TableCell>
+                  <TableCell className="text-sm text-right font-medium">
+                    {formatMoney(line.balance, line.currencyCode || currencyCode)}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={line.status === "paid" ? "default" : "secondary"} className="text-xs">
                       {line.status}

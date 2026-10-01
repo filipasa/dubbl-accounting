@@ -102,12 +102,15 @@ export async function POST(
           const org = await db.query.organization.findFirst({
             where: eq(organization.id, ctx.organizationId),
           });
+          const orgInfo = (found.senderSnapshot as any) || (await buildSenderSnapshot(ctx.organizationId));
+          const contactInfo = (found.recipientSnapshot as any) || (found.contact ? buildRecipientSnapshot(found.contact) : { name: "Unknown" });
+
           const buf = await renderInvoicePdf(
             {
               invoiceNumber: found.invoiceNumber,
               issueDate: found.issueDate,
               dueDate: found.dueDate,
-              currencyCode: "USD",
+              currencyCode: found.currencyCode || org?.defaultCurrency || "GBP",
               lines: found.lines.map((l) => ({
                 description: l.description,
                 quantity: l.quantity,
@@ -118,10 +121,13 @@ export async function POST(
               subtotal: found.subtotal,
               taxTotal: found.taxTotal,
               total: found.total,
+              amountPaid: found.amountPaid,
+              amountDue: found.amountDue,
+              reference: found.reference,
               notes: found.notes,
             },
-            { name: org?.name || "" },
-            found.contact ? { name: found.contact.name } : { name: "Unknown" },
+            orgInfo,
+            contactInfo,
             {}
           );
           pdfBuffer = Buffer.from(buf);
