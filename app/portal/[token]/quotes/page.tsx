@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 interface Quote {
   id: string;
@@ -29,6 +30,7 @@ export default function PortalQuotesPage() {
   const { token } = useParams<{ token: string }>();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   const loadQuotes = () => {
     fetch(`/api/v1/portal/${token}/quotes`)
@@ -40,8 +42,13 @@ export default function PortalQuotesPage() {
   useEffect(() => { loadQuotes(); }, [token]);
 
   const handleAccept = async (id: string) => {
-    await fetch(`/api/v1/portal/${token}/quotes/${id}/accept`, { method: "POST" });
-    loadQuotes();
+    setAcceptingId(id);
+    try {
+      await fetch(`/api/v1/portal/${token}/quotes/${id}/accept`, { method: "POST" });
+      loadQuotes();
+    } finally {
+      setAcceptingId(null);
+    }
   };
 
   if (loading) {
@@ -84,11 +91,29 @@ export default function PortalQuotesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {q.status === "sent" && (
-                      <Button size="sm" variant="outline" onClick={() => handleAccept(q.id)}>
-                        Accept
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      <a
+                        href={`/api/portal/${token}/quotes/${q.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                          <Download className="size-3" />
+                          PDF
+                        </Button>
+                      </a>
+                      {q.status === "sent" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          disabled={acceptingId === q.id}
+                          onClick={() => handleAccept(q.id)}
+                        >
+                          {acceptingId === q.id ? "Accepting..." : "Accept"}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
