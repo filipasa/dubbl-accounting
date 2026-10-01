@@ -104,7 +104,7 @@ export function SendDocumentDialog({
   const typeLabel = documentTypeLabels[documentType] || "Document";
   const renderRoute = documentRenderRoute[documentType];
   const canPreviewDocument = Boolean(renderRoute && documentId);
-  const showAttachPdf = documentType === "invoice";
+  const showAttachPdf = true;
   const isInvoice = documentType === "invoice";
   const amountFormatted = amountDue != null ? formatMoney(amountDue) : undefined;
   const dueDateFormatted = formatDateDisplay(dueDate);
@@ -131,7 +131,7 @@ export function SendDocumentDialog({
     if (open) {
       setRecipientEmail(contactEmail || "");
       setPersonalMessage("");
-      setAttachPdf(documentType === "invoice");
+      setAttachPdf(true);
       setPreviewing(false);
       setPreviewHtml("");
       setDocPreviewing(false);

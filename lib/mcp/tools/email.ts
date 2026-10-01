@@ -125,6 +125,54 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
           } catch {
             // PDF generation failed
           }
+        } else if (params.attachPdf && params.documentType === "quote") {
+          try {
+            const { quote } = await import("@/lib/db/schema");
+            const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+            const q = await db.query.quote.findFirst({
+              where: and(
+                eq(quote.id, params.documentId),
+                eq(quote.organizationId, ctx.organizationId)
+              ),
+              with: { lines: true, contact: true },
+            });
+            if (q) {
+              const buf = await renderInvoicePdf(
+                {
+                  invoiceNumber: q.quoteNumber,
+                  issueDate: q.issueDate,
+                  dueDate: q.expiryDate || q.issueDate,
+                  currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
+                  lines: q.lines.map((l) => ({
+                    description: l.description,
+                    quantity: l.quantity,
+                    unitPrice: l.unitPrice,
+                    taxAmount: l.taxAmount,
+                    amount: l.amount,
+                  })),
+                  subtotal: q.subtotal,
+                  taxTotal: q.taxTotal,
+                  total: q.total,
+                  notes: q.notes,
+                },
+                { name: org?.name || "" },
+                q.contact ? { name: q.contact.name } : { name: "Unknown" },
+                {},
+                {
+                  title: "Quote",
+                  numberLabel: "Quote number",
+                  partyLabel: "Quote for",
+                  amountLabel: "Total",
+                  dateLabel: q.expiryDate ? "Valid until" : null,
+                  summaryNoun: q.expiryDate ? "valid until" : null,
+                }
+              );
+              pdfBuffer = Buffer.from(buf);
+              pdfFilename = `quote-${q.quoteNumber}.pdf`;
+            }
+          } catch {
+            // PDF generation failed
+          }
         }
 
         const result = await sendDocumentEmail({
@@ -245,6 +293,51 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
               );
               pdfBuffer = Buffer.from(buf);
               pdfFilename = `invoice-${inv.invoiceNumber}.pdf`;
+            }
+          } catch {
+            // PDF generation failed
+          }
+        } else if (logEntry.attachPdf && logEntry.documentType === "quote") {
+          try {
+            const { quote } = await import("@/lib/db/schema");
+            const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+            const q = await db.query.quote.findFirst({
+              where: eq(quote.id, logEntry.documentId),
+              with: { lines: true, contact: true },
+            });
+            if (q) {
+              const buf = await renderInvoicePdf(
+                {
+                  invoiceNumber: q.quoteNumber,
+                  issueDate: q.issueDate,
+                  dueDate: q.expiryDate || q.issueDate,
+                  currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
+                  lines: q.lines.map((l) => ({
+                    description: l.description,
+                    quantity: l.quantity,
+                    unitPrice: l.unitPrice,
+                    taxAmount: l.taxAmount,
+                    amount: l.amount,
+                  })),
+                  subtotal: q.subtotal,
+                  taxTotal: q.taxTotal,
+                  total: q.total,
+                  notes: q.notes,
+                },
+                { name: org?.name || "" },
+                q.contact ? { name: q.contact.name } : { name: "Unknown" },
+                {},
+                {
+                  title: "Quote",
+                  numberLabel: "Quote number",
+                  partyLabel: "Quote for",
+                  amountLabel: "Total",
+                  dateLabel: q.expiryDate ? "Valid until" : null,
+                  summaryNoun: q.expiryDate ? "valid until" : null,
+                }
+              );
+              pdfBuffer = Buffer.from(buf);
+              pdfFilename = `quote-${q.quoteNumber}.pdf`;
             }
           } catch {
             // PDF generation failed
