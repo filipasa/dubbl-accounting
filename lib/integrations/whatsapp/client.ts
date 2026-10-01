@@ -188,3 +188,40 @@ export async function markWhatsAppMessageRead(messageId: string): Promise<boolea
     return false;
   }
 }
+
+/**
+ * Retrieves WhatsApp business phone number profile from Meta Graph API
+ */
+export async function getWhatsAppBusinessProfile(): Promise<{
+  displayPhoneNumber?: string;
+  verifiedName?: string;
+  qualityRating?: string;
+} | null> {
+  const config = getWhatsAppConfig();
+
+  if (!config.accessToken || !config.phoneNumberId) {
+    return null;
+  }
+
+  try {
+    const url = `https://graph.facebook.com/v21.0/${config.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    return {
+      displayPhoneNumber: data.display_phone_number,
+      verifiedName: data.verified_name,
+      qualityRating: data.quality_rating,
+    };
+  } catch {
+    return null;
+  }
+}

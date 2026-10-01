@@ -4,6 +4,7 @@ import {
   getTelegramConfig,
   getTelegramMe,
   getTelegramWebhookInfo,
+  setTelegramWebhook,
 } from "@/lib/integrations/telegram/client";
 import { db } from "@/lib/db";
 import { telegramMessageLog } from "@/lib/db/schema";
@@ -29,6 +30,24 @@ export async function GET() {
   }
 
   const webhookUrl = `${config.appUrl}/api/v1/integrations/telegram/webhook`;
+  let autoSynced = false;
+
+  // Silent self-healing: automatically register/update webhook if missing or mismatched
+  if (isConfigured && (!webhookInfo?.url || webhookInfo.url !== webhookUrl)) {
+    try {
+      const syncResult = await setTelegramWebhook({
+        url: webhookUrl,
+        secretToken: config.secretToken,
+      });
+      if (syncResult.ok) {
+        autoSynced = true;
+        webhookInfo = await getTelegramWebhookInfo();
+        console.log(`[Telegram Auto-Sync] Automatically synced webhook to: ${webhookUrl}`);
+      }
+    } catch (syncErr) {
+      console.warn("[Telegram Auto-Sync] Failed to auto-register webhook:", syncErr);
+    }
+  }
 
   // Fetch recent message logs
   let recentLogs: any[] = [];
@@ -64,6 +83,7 @@ export async function GET() {
     hasBotToken: Boolean(config.botToken),
     hasGeminiKey: Boolean(config.geminiApiKey),
     hasOpenAiKey: Boolean(config.openaiApiKey),
+    autoSynced,
     recentLogs,
   });
 }

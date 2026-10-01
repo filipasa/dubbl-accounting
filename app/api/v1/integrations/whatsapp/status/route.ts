@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getWhatsAppConfig } from "@/lib/integrations/whatsapp/client";
+import {
+  getWhatsAppConfig,
+  getWhatsAppBusinessProfile,
+} from "@/lib/integrations/whatsapp/client";
 import { db } from "@/lib/db";
 import { whatsappMessageLog } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
@@ -13,6 +16,11 @@ export async function GET() {
 
   const config = getWhatsAppConfig();
   const isConfigured = Boolean(config.accessToken && config.phoneNumberId);
+
+  let businessProfile = null;
+  if (isConfigured) {
+    businessProfile = await getWhatsAppBusinessProfile();
+  }
 
   const webhookUrl = `${config.appUrl}/api/v1/integrations/whatsapp/webhook`;
 
@@ -41,6 +49,8 @@ export async function GET() {
   return NextResponse.json({
     isConfigured,
     phoneNumberId: config.phoneNumberId ? `${config.phoneNumberId.slice(0, 4)}••••${config.phoneNumberId.slice(-4)}` : null,
+    businessProfile,
+    displayPhoneNumber: businessProfile?.displayPhoneNumber || null,
     verifyToken: config.verifyToken,
     webhookUrl,
     allowedNumbers: config.allowedNumbers,
