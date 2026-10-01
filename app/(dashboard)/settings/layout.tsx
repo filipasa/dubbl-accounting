@@ -7,7 +7,7 @@ import {
   Settings, Users, CreditCard, Key, ScrollText, Target,
   Bell, BellRing, GitBranch, Tags, Shield, ShieldCheck,
   ListFilter, Webhook, CheckCircle2, Zap, PaintbrushVertical, ArrowLeftRight,
-  Trash2, Database, PackageCheck, MessageSquare,
+  Trash2, Database, PackageCheck, MessageSquare, Bot,
 } from "lucide-react";
 import { BlurReveal } from "@/components/ui/blur-reveal";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/settings/integrations/stripe", label: "Stripe", icon: Zap },
       { href: "/settings/whatsapp", label: "WhatsApp Bot", icon: MessageSquare },
+      { href: "/settings/telegram", label: "Telegram Bot", icon: Bot },
     ],
   },
   {

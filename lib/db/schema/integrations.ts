@@ -262,3 +262,38 @@ export const whatsappMessageLogRelations = relations(
   })
 );
 
+// Telegram Message Log (audit + deduplication for Telegram Bot API)
+export const telegramMessageLog = pgTable(
+  "telegram_message_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .references(() => organization.id, { onDelete: "cascade" }),
+    updateId: integer("update_id"), // Telegram update_id
+    messageId: integer("message_id"), // Telegram message_id
+    chatId: text("chat_id").notNull(),
+    senderUsername: text("sender_username"),
+    senderName: text("sender_name"),
+    direction: text("direction").notNull().default("inbound"), // "inbound" | "outbound"
+    messageBody: text("message_body"),
+    toolName: text("tool_name"), // e.g. "create_quote", "create_invoice"
+    status: text("status").notNull().default("received"), // "received" | "processed" | "sent" | "failed"
+    errorMessage: text("error_message"),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("telegram_msg_log_update_idx").on(table.updateId),
+  ]
+);
+
+export const telegramMessageLogRelations = relations(
+  telegramMessageLog,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [telegramMessageLog.organizationId],
+      references: [organization.id],
+    }),
+  })
+);
+
