@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import Link from "next/link";
 
@@ -30,6 +31,7 @@ interface SalesReceiptDetail {
     quantity: number;
     unitPrice: number;
     amount: number;
+    taxRate?: { name: string; rate: number } | null;
   }[];
 }
 
@@ -136,7 +138,7 @@ export default function SalesReceiptDetailPage() {
         <div className="border-t bg-muted/30 px-4 py-2 text-right flex flex-wrap justify-end gap-x-4 gap-y-1">
           <span className="text-sm font-medium">Subtotal: {formatMoney(sr.subtotal, sr.currencyCode)}</span>
           {sr.taxTotal > 0 && (
-            <span className="text-sm">Tax: {formatMoney(sr.taxTotal, sr.currencyCode)}</span>
+            <span className="text-sm">{resolveTaxLabel(sr.lines, sr.taxTotal) || "Tax"}: {formatMoney(sr.taxTotal, sr.currencyCode)}</span>
           )}
           <span className="text-sm font-bold">Total: {formatMoney(sr.total, sr.currencyCode)}</span>
         </div>

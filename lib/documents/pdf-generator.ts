@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/money";
+import { resolveTaxLabel } from "./tax-label";
 
 interface TemplateSettings {
   logoUrl?: string | null;
@@ -30,6 +31,7 @@ interface LineItem {
   taxAmount: number;
   amount: number;
   imageUrl?: string | null;
+  taxRate?: { name: string; rate?: number | null } | null;
 }
 
 interface InvoiceData {
@@ -44,6 +46,7 @@ interface InvoiceData {
   lines: LineItem[];
   subtotal: number;
   taxTotal: number;
+  taxLabel?: string | null;
   total: number;
   amountPaid?: number;
   amountDue?: number;
@@ -151,6 +154,7 @@ export interface DocumentData {
   lines: LineItem[];
   subtotal: number;
   taxTotal: number;
+  taxLabel?: string | null;
   total: number;
   amountPaid?: number;
   amountDue?: number;
@@ -223,10 +227,11 @@ export function generateDocumentHtml(
     )
     .join("");
 
+  const effectiveTaxLabel = doc.taxLabel || resolveTaxLabel(doc.lines, doc.taxTotal) || "Tax";
   const taxRow =
     template.showTaxBreakdown !== false && doc.taxTotal > 0
       ? `<tr>
-          <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Tax</td>
+          <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(effectiveTaxLabel)}</td>
           <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(doc.taxTotal, doc.currencyCode)}</td>
         </tr>`
       : "";
@@ -482,10 +487,11 @@ export function generateInvoiceHtml(
     )
     .join("");
 
+  const effectiveTaxLabel = invoice.taxLabel || resolveTaxLabel(invoice.lines, invoice.taxTotal) || "Tax";
   const taxRow =
     template.showTaxBreakdown !== false && invoice.taxTotal > 0
       ? `<tr>
-          <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Tax</td>
+          <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(effectiveTaxLabel)}</td>
           <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(invoice.taxTotal, invoice.currencyCode)}</td>
         </tr>`
       : "";

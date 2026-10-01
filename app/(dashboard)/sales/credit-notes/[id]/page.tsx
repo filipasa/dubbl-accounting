@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney, centsToDecimal } from "@/lib/money";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
@@ -53,7 +54,7 @@ interface CreditNoteDetail {
     unitPrice: number;
     amount: number;
     account: { code: string; name: string } | null;
-    taxRate: number | null;
+    taxRate?: { id: string; name: string; rate: number } | null;
   }[];
 }
 
@@ -315,7 +316,7 @@ export default function CreditNoteDetailPage() {
         <div className="border-t bg-muted/30 px-4 py-2 text-right flex flex-wrap justify-end gap-x-4 gap-y-1">
           <span className="text-sm font-medium">Subtotal: {formatMoney(cn.subtotal)}</span>
           {cn.taxTotal > 0 && (
-            <span className="text-sm">Tax: {formatMoney(cn.taxTotal)}</span>
+            <span className="text-sm">{resolveTaxLabel(cn.lines, cn.taxTotal) || "Tax"}: {formatMoney(cn.taxTotal)}</span>
           )}
           <span className="text-sm font-bold">Total: {formatMoney(cn.total)}</span>
         </div>

@@ -47,6 +47,7 @@ import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog"
 import { EmailHistory } from "@/components/dashboard/email-history";
 import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
 import { formatContactAddress } from "@/lib/documents/address";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import Link from "next/link";
 
 interface InvoiceDetail {
@@ -1039,7 +1040,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 {inv.taxTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
+                    <span className="text-muted-foreground">{resolveTaxLabel(inv.lines, inv.taxTotal) || "Tax"}</span>
                     <span className="font-mono tabular-nums">{formatMoney(inv.taxTotal, inv.currencyCode)}</span>
                   </div>
                 )}

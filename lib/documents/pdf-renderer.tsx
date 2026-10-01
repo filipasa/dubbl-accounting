@@ -14,6 +14,7 @@ import {
   Link,
   Image,
 } from "@react-pdf/renderer";
+import { resolveTaxLabel } from "./tax-label";
 
 export interface OrgInfo {
   name: string;
@@ -42,6 +43,7 @@ export interface PdfLineItem {
   taxAmount: number;
   amount: number;
   imageUrl?: string | null;
+  taxRate?: { name: string; rate?: number | null } | null;
 }
 
 export interface PdfInvoiceData {
@@ -51,6 +53,7 @@ export interface PdfInvoiceData {
   lines: PdfLineItem[];
   subtotal: number;
   taxTotal: number;
+  taxLabel?: string | null;
   total: number;
   amountPaid?: number;
   amountDue?: number;
@@ -211,6 +214,7 @@ export interface PdfDocumentLabels {
   numberLabel?: string;
   partyLabel?: string;
   amountLabel?: string;
+  taxLabel?: string;
   // Label for the second-date metadata row. Defaults to "Date due" (invoice).
   // Pass null to hide the row entirely (e.g. credit/debit notes have no due date).
   dateLabel?: string | null;
@@ -232,6 +236,7 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
   const accent = template.accentColor || "#10b981";
   const taxLabel = getTaxIdLabel(org.countryCode);
   const title = labels?.title ?? getInvoiceTitle(org.countryCode, !!org.taxId);
+  const appliedTaxLabel = inv.taxLabel || labels?.taxLabel || resolveTaxLabel(inv.lines, inv.taxTotal) || "Tax";
   const amountDue = inv.amountDue ?? inv.total;
   const amountPaid = inv.amountPaid ?? 0;
   const hasDiscount = inv.lines.some((l) => l.discountPercent && l.discountPercent > 0);
@@ -383,7 +388,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
             </View>
             {template.showTaxBreakdown !== false && inv.taxTotal > 0 && (
               <View style={s.totalRow}>
-                <Text style={s.totalLabel}>Tax</Text>
+                <Text style={s.totalLabel}>{appliedTaxLabel}</Text>
                 <Text style={s.totalValue}>{fmtMoney(inv.taxTotal, inv.currencyCode)}</Text>
               </View>
             )}

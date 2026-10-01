@@ -6,6 +6,7 @@ import { notDeleted } from "@/lib/db/soft-delete";
 import { renderInvoicePdf } from "@/lib/documents/pdf-renderer";
 import type { SenderSnapshot, RecipientSnapshot } from "@/lib/documents/snapshots";
 import { formatContactAddress } from "@/lib/documents/snapshots";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,9 @@ export async function GET(
       with: {
         organization: true,
         contact: true,
-        lines: true,
+        lines: {
+          with: { taxRate: true },
+        },
       },
     });
 
@@ -63,6 +66,7 @@ export async function GET(
     }
 
     const contactAddress = recipient?.address ?? formatContactAddress(inv.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null);
+    const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
 
     const pdfBuffer = await renderInvoicePdf(
       {
@@ -75,9 +79,11 @@ export async function GET(
           unitPrice: l.unitPrice,
           taxAmount: l.taxAmount,
           amount: l.amount,
+          taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
         })),
         subtotal: inv.subtotal,
         taxTotal: inv.taxTotal,
+        taxLabel,
         total: inv.total,
         amountPaid: inv.amountPaid,
         amountDue: inv.amountDue,

@@ -7,6 +7,7 @@ import { wrapTool } from "@/lib/mcp/errors";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { formatMoney } from "@/lib/money";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import type { AuthContext } from "@/lib/api/auth-context";
 
 export function registerEmailTools(server: McpServer, ctx: AuthContext) {
@@ -94,9 +95,15 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                 eq(invoice.id, params.documentId),
                 eq(invoice.organizationId, ctx.organizationId)
               ),
-              with: { lines: true, contact: true },
+              with: {
+                lines: {
+                  with: { taxRate: true },
+                },
+                contact: true,
+              },
             });
             if (inv) {
+              const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
               const buf = await renderInvoicePdf(
                 {
                   invoiceNumber: inv.invoiceNumber,
@@ -109,9 +116,11 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
                     amount: l.amount,
+                    taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
                   })),
                   subtotal: inv.subtotal,
                   taxTotal: inv.taxTotal,
+                  taxLabel,
                   total: inv.total,
                   notes: inv.notes,
                 },
@@ -134,9 +143,15 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                 eq(quote.id, params.documentId),
                 eq(quote.organizationId, ctx.organizationId)
               ),
-              with: { lines: true, contact: true },
+              with: {
+                lines: {
+                  with: { taxRate: true },
+                },
+                contact: true,
+              },
             });
             if (q) {
+              const taxLabel = resolveTaxLabel(q.lines, q.taxTotal);
               const buf = await renderInvoicePdf(
                 {
                   invoiceNumber: q.quoteNumber,
@@ -149,9 +164,11 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
                     amount: l.amount,
+                    taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
                   })),
                   subtotal: q.subtotal,
                   taxTotal: q.taxTotal,
+                  taxLabel,
                   total: q.total,
                   notes: q.notes,
                 },
@@ -163,6 +180,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   numberLabel: "Quote number",
                   partyLabel: "Quote for",
                   amountLabel: "Total",
+                  taxLabel: taxLabel ?? undefined,
                   dateLabel: q.expiryDate ? "Valid until" : null,
                   summaryNoun: q.expiryDate ? "valid until" : null,
                 }
@@ -266,9 +284,15 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
             const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
             const inv = await db.query.invoice.findFirst({
               where: eq(invoice.id, logEntry.documentId),
-              with: { lines: true, contact: true },
+              with: {
+                lines: {
+                  with: { taxRate: true },
+                },
+                contact: true,
+              },
             });
             if (inv) {
+              const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
               const buf = await renderInvoicePdf(
                 {
                   invoiceNumber: inv.invoiceNumber,
@@ -281,9 +305,11 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
                     amount: l.amount,
+                    taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
                   })),
                   subtotal: inv.subtotal,
                   taxTotal: inv.taxTotal,
+                  taxLabel,
                   total: inv.total,
                   notes: inv.notes,
                 },
@@ -303,9 +329,15 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
             const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
             const q = await db.query.quote.findFirst({
               where: eq(quote.id, logEntry.documentId),
-              with: { lines: true, contact: true },
+              with: {
+                lines: {
+                  with: { taxRate: true },
+                },
+                contact: true,
+              },
             });
             if (q) {
+              const taxLabel = resolveTaxLabel(q.lines, q.taxTotal);
               const buf = await renderInvoicePdf(
                 {
                   invoiceNumber: q.quoteNumber,
@@ -318,9 +350,11 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
                     amount: l.amount,
+                    taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
                   })),
                   subtotal: q.subtotal,
                   taxTotal: q.taxTotal,
+                  taxLabel,
                   total: q.total,
                   notes: q.notes,
                 },
@@ -332,6 +366,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   numberLabel: "Quote number",
                   partyLabel: "Quote for",
                   amountLabel: "Total",
+                  taxLabel: taxLabel ?? undefined,
                   dateLabel: q.expiryDate ? "Valid until" : null,
                   summaryNoun: q.expiryDate ? "valid until" : null,
                 }

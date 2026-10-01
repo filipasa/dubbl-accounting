@@ -25,6 +25,7 @@ import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
 import { EmailHistory } from "@/components/dashboard/email-history";
 import { formatContactAddress } from "@/lib/documents/address";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import Link from "next/link";
 
 interface QuoteDetail {
@@ -305,10 +306,12 @@ export default function QuoteDetailPage() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-mono tabular-nums">{formatMoney(q.subtotal, q.currencyCode || "GBP")}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span className="font-mono tabular-nums">{formatMoney(q.taxTotal || 0, q.currencyCode || "GBP")}</span>
-              </div>
+              {(q.taxTotal || 0) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{resolveTaxLabel(q.lines, q.taxTotal) || "Tax"}</span>
+                  <span className="font-mono tabular-nums">{formatMoney(q.taxTotal || 0, q.currencyCode || "GBP")}</span>
+                </div>
+              )}
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AccountPicker } from "./account-picker";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 export interface LineItem {
   description: string;
@@ -320,6 +321,13 @@ export function LineItemsEditor({
   const subtotal = lines.reduce((sum, l) => sum + lineAmount(l), 0);
   const taxTotal = lines.reduce((sum, l) => sum + lineTax(l), 0);
   const total = subtotal + taxTotal;
+  const editorTaxLabel = resolveTaxLabel(
+    lines.map((l) => ({
+      taxAmount: lineTax(l),
+      taxRate: l.taxRateId ? taxRates.find((t) => t.id === l.taxRateId) : null,
+    })),
+    taxTotal
+  ) || "Tax";
 
   return (
     <div className="space-y-3">
@@ -433,10 +441,12 @@ export function LineItemsEditor({
               <span className="text-muted-foreground">Subtotal</span>
               <span>{subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between gap-6">
-              <span className="text-muted-foreground">Tax</span>
-              <span>{taxTotal.toFixed(2)}</span>
-            </div>
+            {taxTotal > 0 && (
+              <div className="flex justify-between gap-6">
+                <span className="text-muted-foreground">{editorTaxLabel}</span>
+                <span>{taxTotal.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between gap-6 font-semibold">
               <span>Total</span>
               <span>{total.toFixed(2)}</span>

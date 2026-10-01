@@ -8,6 +8,7 @@ import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
@@ -49,7 +50,12 @@ export async function POST(
         eq(quote.organizationId, ctx.organizationId),
         notDeleted(quote.deletedAt)
       ),
-      with: { lines: true, contact: true },
+      with: {
+        lines: {
+          with: { taxRate: true },
+        },
+        contact: true,
+      },
     });
 
     if (!found) return notFound("Quote");
@@ -105,6 +111,7 @@ export async function POST(
           const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
           const orgInfo = await buildSenderSnapshot(ctx.organizationId);
           const contactInfo = found.contact ? buildRecipientSnapshot(found.contact) : { name: "Unknown" };
+          const taxLabel = resolveTaxLabel(found.lines, found.taxTotal);
 
           const buf = await renderInvoicePdf(
             {
@@ -117,9 +124,11 @@ export async function POST(
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
                 amount: l.amount,
+                taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
               })),
               subtotal: found.subtotal,
               taxTotal: found.taxTotal,
+              taxLabel,
               total: found.total,
               currencyCode: found.currencyCode || org?.defaultCurrency || "GBP",
               reference: found.reference,
@@ -133,6 +142,7 @@ export async function POST(
               numberLabel: "Quote number",
               partyLabel: "Quote for",
               amountLabel: "Total",
+              taxLabel: taxLabel ?? undefined,
               dateLabel: found.expiryDate ? "Valid until" : null,
               summaryNoun: found.expiryDate ? "valid until" : null,
             }

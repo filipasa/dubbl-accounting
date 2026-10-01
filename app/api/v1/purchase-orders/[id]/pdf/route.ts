@@ -7,6 +7,7 @@ import { notDeleted } from "@/lib/db/soft-delete";
 import { notFound, handleError } from "@/lib/api/response";
 import { generatePurchaseOrderHtml, type DocumentData } from "@/lib/documents/pdf-generator";
 import { formatContactAddress } from "@/lib/documents/snapshots";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 export async function GET(
   request: Request,
@@ -25,7 +26,9 @@ export async function GET(
         notDeleted(purchaseOrder.deletedAt)
       ),
       with: {
-        lines: true,
+        lines: {
+          with: { taxRate: true },
+        },
         contact: true,
       },
     });
@@ -61,6 +64,8 @@ export async function GET(
       found.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null
     );
 
+    const taxLabel = resolveTaxLabel(found.lines, found.taxTotal);
+
     const docData: DocumentData = {
       documentNumber: found.poNumber,
       issueDate: found.issueDate,
@@ -75,9 +80,11 @@ export async function GET(
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
         amount: l.amount,
+        taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
       })),
       subtotal: found.subtotal,
       taxTotal: found.taxTotal,
+      taxLabel,
       total: found.total,
       currencyCode: found.currencyCode,
       reference: found.reference,
@@ -96,6 +103,7 @@ export async function GET(
           lines: docData.lines,
           subtotal: docData.subtotal,
           taxTotal: docData.taxTotal,
+          taxLabel,
           total: docData.total,
           currencyCode: docData.currencyCode,
           reference: docData.reference,
@@ -114,6 +122,7 @@ export async function GET(
           numberLabel: "PO number",
           partyLabel: "Supplier",
           amountLabel: "Order total",
+          taxLabel: taxLabel ?? undefined,
           // A PO isn't "due" — show the delivery date (when set) and the order total.
           dateLabel: docData.secondDate ? "Delivery date" : null,
           summaryNoun: null,

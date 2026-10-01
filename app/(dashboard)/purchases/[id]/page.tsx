@@ -19,6 +19,7 @@ import { formatMoney, minorUnitsToDecimal } from "@/lib/money";
 import { DualAmount } from "@/components/ui/dual-amount";
 import { RateNote, type RateInfo } from "@/components/ui/rate-note";
 import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import Link from "next/link";
 
 interface BillDetail {
@@ -28,7 +29,7 @@ interface BillDetail {
   contactId: string;
   notes: string | null; contact: { name: string } | null;
   rejectionReason: string | null;
-  lines: { id: string; description: string; quantity: number; unitPrice: number; amount: number; goodsReceiptLineId: string | null; account: { code: string; name: string } | null }[];
+  lines: { id: string; description: string; quantity: number; unitPrice: number; amount: number; goodsReceiptLineId: string | null; account: { code: string; name: string } | null; taxRate?: { id: string; name: string; rate: number } | null }[];
 }
 
 interface BaseAmounts {
@@ -417,7 +418,7 @@ export default function BillDetailPage() {
                 </div>
                 {b.taxTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
+                    <span className="text-muted-foreground">{resolveTaxLabel(b.lines, b.taxTotal) || "Tax"}</span>
                     <span className="font-mono tabular-nums">{formatMoney(b.taxTotal, b.currencyCode)}</span>
                   </div>
                 )}

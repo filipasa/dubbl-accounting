@@ -22,7 +22,9 @@ export async function GET(
       ),
       with: {
         contact: true,
-        lines: true,
+        lines: {
+          with: { taxRate: true },
+        },
         bankAccount: true,
         depositAccount: true,
         journalEntry: true,

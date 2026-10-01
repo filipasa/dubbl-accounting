@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError, notFound } from "@/lib/api/response";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 export async function POST(
   request: Request,
@@ -39,10 +40,16 @@ export async function POST(
 
         const inv = await db.query.invoice.findFirst({
           where: eq(invoice.id, logEntry.documentId),
-          with: { lines: true, contact: true },
+          with: {
+            lines: {
+              with: { taxRate: true },
+            },
+            contact: true,
+          },
         });
 
         if (inv) {
+          const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
           const buf = await renderInvoicePdf(
             {
               invoiceNumber: inv.invoiceNumber,
@@ -55,9 +62,11 @@ export async function POST(
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
                 amount: l.amount,
+                taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
               })),
               subtotal: inv.subtotal,
               taxTotal: inv.taxTotal,
+              taxLabel,
               total: inv.total,
               amountPaid: inv.amountPaid,
               amountDue: inv.amountDue,
@@ -81,10 +90,16 @@ export async function POST(
 
         const q = await db.query.quote.findFirst({
           where: eq(quote.id, logEntry.documentId),
-          with: { lines: true, contact: true },
+          with: {
+            lines: {
+              with: { taxRate: true },
+            },
+            contact: true,
+          },
         });
 
         if (q) {
+          const taxLabel = resolveTaxLabel(q.lines, q.taxTotal);
           const buf = await renderInvoicePdf(
             {
               invoiceNumber: q.quoteNumber,
@@ -97,9 +112,11 @@ export async function POST(
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
                 amount: l.amount,
+                taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
               })),
               subtotal: q.subtotal,
               taxTotal: q.taxTotal,
+              taxLabel,
               total: q.total,
               reference: q.reference,
               notes: q.notes,
@@ -112,6 +129,7 @@ export async function POST(
               numberLabel: "Quote number",
               partyLabel: "Quote for",
               amountLabel: "Total",
+              taxLabel: taxLabel ?? undefined,
               dateLabel: q.expiryDate ? "Valid until" : null,
               summaryNoun: q.expiryDate ? "valid until" : null,
             }

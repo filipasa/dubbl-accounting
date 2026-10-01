@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney, decimalToMinorUnits, minorUnitsToDecimal } from "@/lib/money";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
@@ -53,7 +54,7 @@ interface DebitNoteDetail {
     unitPrice: number;
     amount: number;
     account: { code: string; name: string } | null;
-    taxRate: number | null;
+    taxRate?: { id: string; name: string; rate: number } | null;
   }[];
 }
 
@@ -323,7 +324,7 @@ export default function DebitNoteDetailPage() {
         <div className="border-t bg-muted/30 px-4 py-2 text-right flex flex-wrap justify-end gap-x-4 gap-y-1">
           <span className="text-sm font-medium">Subtotal: {formatMoney(dn.subtotal, dn.currencyCode)}</span>
           {dn.taxTotal > 0 && (
-            <span className="text-sm">Tax: {formatMoney(dn.taxTotal, dn.currencyCode)}</span>
+            <span className="text-sm">{resolveTaxLabel(dn.lines, dn.taxTotal) || "Tax"}: {formatMoney(dn.taxTotal, dn.currencyCode)}</span>
           )}
           <span className="text-sm font-bold">Total: {formatMoney(dn.total, dn.currencyCode)}</span>
         </div>

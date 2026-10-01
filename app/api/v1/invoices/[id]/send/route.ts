@@ -9,6 +9,7 @@ import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { createInvoiceJournalEntry, createCogsJournalEntry, assertBaseRateAvailable } from "@/lib/api/journal-automation";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
@@ -51,7 +52,12 @@ export async function POST(
         eq(invoice.organizationId, ctx.organizationId),
         notDeleted(invoice.deletedAt)
       ),
-      with: { lines: true, contact: true },
+      with: {
+        lines: {
+          with: { taxRate: true },
+        },
+        contact: true,
+      },
     });
 
     if (!found) return notFound("Invoice");
@@ -117,9 +123,11 @@ export async function POST(
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
                 amount: l.amount,
+                taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
               })),
               subtotal: found.subtotal,
               taxTotal: found.taxTotal,
+              taxLabel: resolveTaxLabel(found.lines, found.taxTotal),
               total: found.total,
               amountPaid: found.amountPaid,
               amountDue: found.amountDue,
