@@ -228,3 +228,37 @@ export const stripeFinancialAccountRelations = relations(
     }),
   })
 );
+
+// WhatsApp Message Log (audit + deduplication for Meta Cloud API)
+export const whatsappMessageLog = pgTable(
+  "whatsapp_message_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .references(() => organization.id, { onDelete: "cascade" }),
+    messageId: text("message_id"), // Meta wamid
+    senderPhone: text("sender_phone").notNull(),
+    recipientPhone: text("recipient_phone"),
+    direction: text("direction").notNull().default("inbound"), // "inbound" | "outbound"
+    messageBody: text("message_body"),
+    toolName: text("tool_name"), // e.g. "create_quote", "create_invoice"
+    status: text("status").notNull().default("received"), // "received" | "processed" | "sent" | "failed"
+    errorMessage: text("error_message"),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_msg_log_wamid_idx").on(table.messageId),
+  ]
+);
+
+export const whatsappMessageLogRelations = relations(
+  whatsappMessageLog,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [whatsappMessageLog.organizationId],
+      references: [organization.id],
+    }),
+  })
+);
+
