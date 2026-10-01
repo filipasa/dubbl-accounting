@@ -132,44 +132,90 @@ export async function listAllTaxRates(ctx: AuthContext) {
 }
 
 /**
- * Resolves a tax rate UUID from percentage or rate name (e.g. 20, "20%", "standard")
+ * Resolves a tax rate UUID from percentage or rate name (e.g. 20, "20%", "VAT", "standard").
+ * For sales invoices and quotes, prefers sales/both tax rates and never picks purchase-only
+ * reverse-charge rates unless reverse charge was explicitly requested.
  */
 export async function resolveTaxRateId(
   ctx: AuthContext,
-  taxRateInput?: number | string | null
+  taxRateInput?: number | string | null,
+  documentType: "sales" | "purchase" = "sales"
 ): Promise<string | undefined> {
   if (taxRateInput == null || taxRateInput === "") return undefined;
   const taxRates = await listAllTaxRates(ctx);
   if (!taxRates || taxRates.length === 0) return undefined;
 
+  const activeRates = taxRates.filter((t: any) => t.isActive !== false);
+  const relevantRates = activeRates.filter((t: any) =>
+    documentType === "sales" ? t.type !== "purchase" : t.type !== "sales"
+  );
+  const pool = relevantRates.length > 0 ? relevantRates : activeRates;
+
+  const str = String(taxRateInput).trim().toLowerCase();
+  const isExplicitReverseCharge = str.includes("reverse");
+
+  // 1. Direct name match if string provided
+  if (str) {
+    const exactName = pool.find((t: any) => t.name?.toLowerCase() === str);
+    if (exactName) return exactName.id;
+  }
+
+  // 2. Parse number if present (e.g. 20, "20", "20%")
   const num = typeof taxRateInput === "number" ? taxRateInput : parseFloat(taxRateInput);
   if (!isNaN(num)) {
     const basisPoints = Math.round(num * 100);
-    const match = taxRates.find((t: any) => t.rate === basisPoints && t.isActive !== false);
-    if (match) return match.id;
+    const matchingRates = pool.filter((t: any) => t.rate === basisPoints);
+
+    if (matchingRates.length > 0) {
+      // Filter out reverse charge unless explicitly requested
+      const nonReverse = matchingRates.filter((t: any) =>
+        isExplicitReverseCharge ? true : t.kind !== "reverse_charge" && !t.name?.toLowerCase().includes("reverse")
+      );
+      const candidates = nonReverse.length > 0 ? nonReverse : matchingRates;
+
+      // Priority:
+      // a) Name includes "vat" (if input includes "vat" or standard UK)
+      if (str.includes("vat")) {
+        const vatMatch = candidates.find((t: any) => t.name?.toLowerCase().includes("vat"));
+        if (vatMatch) return vatMatch.id;
+      }
+      // b) Default rate
+      const defaultMatch = candidates.find((t: any) => t.isDefault);
+      if (defaultMatch) return defaultMatch.id;
+      // c) Standard kind
+      const standardMatch = candidates.find((t: any) => t.kind === "standard");
+      if (standardMatch) return standardMatch.id;
+
+      return candidates[0].id;
+    }
   }
 
-  const str = String(taxRateInput).toLowerCase();
-  if (str.includes("20")) {
-    const match = taxRates.find((t: any) => t.rate === 2000);
-    if (match) return match.id;
-  }
-  if (str.includes("5")) {
-    const match = taxRates.find((t: any) => t.rate === 500);
-    if (match) return match.id;
-  }
+  // 3. Fallback name/keyword match
   if (str.includes("zero") || str === "0" || str.includes("0%")) {
-    const match = taxRates.find(
+    const match = pool.find(
       (t: any) => t.rate === 0 && (t.name?.toLowerCase().includes("zero") || t.kind === "zero")
     );
     if (match) return match.id;
   }
   if (str.includes("exempt")) {
-    const match = taxRates.find((t: any) => t.kind === "exempt");
+    const match = pool.find((t: any) => t.kind === "exempt" || t.name?.toLowerCase().includes("exempt"));
+    if (match) return match.id;
+  }
+  if (str.includes("vat")) {
+    const match = pool.find(
+      (t: any) =>
+        t.name?.toLowerCase().includes("vat") &&
+        (isExplicitReverseCharge ? true : t.kind !== "reverse_charge")
+    );
     if (match) return match.id;
   }
 
-  const byName = taxRates.find((t: any) => t.name?.toLowerCase().includes(str));
+  const byName = pool.find((t: any) => {
+    if (!isExplicitReverseCharge && (t.kind === "reverse_charge" || t.name?.toLowerCase().includes("reverse"))) {
+      return false;
+    }
+    return t.name?.toLowerCase().includes(str);
+  });
   return byName?.id;
 }
 
