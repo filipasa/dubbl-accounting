@@ -80,6 +80,29 @@ export function verifyWebhookSignature(
 }
 
 /**
+ * Converts rich HTML into WhatsApp-native markdown formatting and strips all HTML tags.
+ */
+export function htmlToWhatsAppMarkdown(text: string): string {
+  if (!text) return "";
+  let formatted = text
+    .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "\n*$1*\n")
+    .replace(/<(b|strong)>(.*?)<\/(b|strong)>/gi, "*$2*")
+    .replace(/<(i|em)>(.*?)<\/(i|em)>/gi, "_$2_")
+    .replace(/<(s|strike|del)>(.*?)<\/(s|strike|del)>/gi, "~$2~")
+    .replace(/<code>(.*?)<\/code>/gi, "`$1`")
+    .replace(/<pre>(.*?)<\/pre>/gi, "```$1```")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<div[^>]*>/gi, "")
+    .replace(/<hr\s*\/?>/gi, "\n---\n");
+
+  formatted = formatted.replace(/<\/?[a-z0-9_-]+(?:\s+[^>]*?)?>/gi, "");
+  return formatted.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
  * Sends a text message to a WhatsApp user via Meta Cloud API
  */
 export async function sendWhatsAppTextMessage({
@@ -105,13 +128,13 @@ export async function sendWhatsAppTextMessage({
     throw new Error(`Invalid recipient phone number: ${to}`);
   }
 
-  // Meta Graph API text message payload (chunking if text > 4096 chars)
+  const cleanedText = htmlToWhatsAppMarkdown(text);
   const maxChars = 4000;
   const chunks: string[] = [];
-  if (text.length <= maxChars) {
-    chunks.push(text);
+  if (cleanedText.length <= maxChars) {
+    chunks.push(cleanedText);
   } else {
-    let remaining = text;
+    let remaining = cleanedText;
     while (remaining.length > 0) {
       chunks.push(remaining.slice(0, maxChars));
       remaining = remaining.slice(maxChars);

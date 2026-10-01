@@ -76,6 +76,47 @@ export function verifyTelegramSecretToken(
 }
 
 /**
+ * Sanitizes and converts rich HTML into Telegram-supported HTML tags.
+ * Replaces headings with bold, converts <br>/<p> into newlines, and strips unsupported tags.
+ */
+export function sanitizeTelegramHtml(text: string): string {
+  if (!text) return "";
+  let cleaned = text
+    .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, "\n<b>$1</b>\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<div[^>]*>/gi, "")
+    .replace(/<hr\s*\/?>/gi, "\n---\n");
+
+  // Keep only Telegram-allowed tags
+  const allowed = new Set([
+    "b",
+    "strong",
+    "i",
+    "em",
+    "u",
+    "ins",
+    "s",
+    "strike",
+    "del",
+    "span",
+    "tg-spoiler",
+    "a",
+    "code",
+    "pre",
+    "blockquote",
+  ]);
+
+  cleaned = cleaned.replace(/<\/?([a-z0-9_-]+)(?:\s+[^>]*?)?>/gi, (match, tag) => {
+    return allowed.has(tag.toLowerCase()) ? match : "";
+  });
+
+  return cleaned.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
  * Dispatches message to Telegram Bot API
  */
 export async function sendTelegramMessage({
@@ -97,14 +138,15 @@ export async function sendTelegramMessage({
     );
   }
 
+  const processedText = parseMode === "HTML" ? sanitizeTelegramHtml(text) : text;
   const maxChars = 4000;
   const chunks: string[] = [];
 
-  if (text.length <= maxChars) {
-    chunks.push(text);
+  if (processedText.length <= maxChars) {
+    chunks.push(processedText);
   } else {
     let current = "";
-    for (const paragraph of text.split("\n\n")) {
+    for (const paragraph of processedText.split("\n\n")) {
       if ((current + "\n\n" + paragraph).length > maxChars) {
         if (current) chunks.push(current.trim());
         current = paragraph;

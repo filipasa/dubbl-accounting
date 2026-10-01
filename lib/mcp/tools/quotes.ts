@@ -365,6 +365,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
       contactId: z.string().describe("Customer contact UUID"),
       issueDate: z.string().describe("Issue date (YYYY-MM-DD)"),
       expiryDate: z.string().describe("Expiry date (YYYY-MM-DD)"),
+      quoteNumber: z.string().optional().describe("Explicit quote number (e.g. 'QTE-00007'). If omitted, auto-generated."),
       reference: z.string().optional().describe("External reference"),
       notes: z.string().optional().describe("Notes"),
       currencyCode: z
@@ -422,12 +423,14 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
       wrapTool(ctx, async () => {
         requireRole(ctx, "manage:invoices");
 
-        const quoteNumber = await getNextNumber(
-          ctx.organizationId,
-          "quote",
-          "quote_number",
-          "QTE"
-        );
+        const quoteNumber =
+          params.quoteNumber?.trim() ||
+          (await getNextNumber(
+            ctx.organizationId,
+            "quote",
+            "quote_number",
+            "QTE"
+          ));
 
         const taxRateIds = params.lines.map((l) => l.taxRateId).filter(Boolean) as string[];
         const ratesMap = await preloadTaxRates(taxRateIds);

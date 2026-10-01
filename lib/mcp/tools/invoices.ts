@@ -145,6 +145,10 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
         .string()
         .optional()
         .describe("Due date (YYYY-MM-DD). If omitted, auto-calculated from contact payment terms or org default."),
+      invoiceNumber: z
+        .string()
+        .optional()
+        .describe("Explicit invoice number (e.g. '146233' or 'INV-00014'). If omitted, auto-generated."),
       reference: z
         .string()
         .optional()
@@ -250,12 +254,14 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
           dueDate = d.toISOString().split("T")[0];
         }
 
-        const invoiceNumber = await getNextNumber(
-          ctx.organizationId,
-          "invoice",
-          "invoice_number",
-          "INV"
-        );
+        const invoiceNumber =
+          params.invoiceNumber?.trim() ||
+          (await getNextNumber(
+            ctx.organizationId,
+            "invoice",
+            "invoice_number",
+            "INV"
+          ));
 
         const taxRateIds = params.lines.map((l) => l.taxRateId).filter(Boolean) as string[];
         const ratesMap = await preloadTaxRates(taxRateIds);

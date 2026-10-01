@@ -76,6 +76,22 @@ const TOOL_DEFINITIONS = [
           type: "STRING",
           description: "Currency code (default: GBP)",
         },
+        quoteNumber: {
+          type: "STRING",
+          description: "Optional custom quote number if specified by user (e.g. QTE-00007)",
+        },
+        issueDate: {
+          type: "STRING",
+          description: "Date of issue (e.g. 09/08/2026 or 2026-08-09). Defaults to today if not provided.",
+        },
+        expiryDate: {
+          type: "STRING",
+          description: "Quote expiry date (e.g. 09/09/2026 or 2026-09-09)",
+        },
+        reference: {
+          type: "STRING",
+          description: "Customer PO number or reference",
+        },
         notes: {
           type: "STRING",
           description: "Optional notes or specifications",
@@ -124,7 +140,7 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 250 for £250)",
+                description: "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50)",
               },
             },
             required: ["description", "unitPrice"],
@@ -138,9 +154,21 @@ const TOOL_DEFINITIONS = [
           type: "STRING",
           description: "Currency code (default: GBP)",
         },
+        invoiceNumber: {
+          type: "STRING",
+          description: "Explicit invoice number specified by user (e.g. '146233' or 'INV-00014')",
+        },
+        issueDate: {
+          type: "STRING",
+          description: "Date of issue (e.g. '09/08/2026' or '2026-08-09'). Defaults to today if not provided.",
+        },
         dueDate: {
           type: "STRING",
-          description: "Due date (YYYY-MM-DD)",
+          description: "Due date (e.g. '09/08/2026' or '2026-08-09')",
+        },
+        reference: {
+          type: "STRING",
+          description: "Customer PO number or order reference (e.g. '146233')",
         },
         notes: {
           type: "STRING",
@@ -435,18 +463,27 @@ CRITICAL INSTRUCTIONS:
    - When the user asks for an "Invoice" or "Bill", execute the \`create_invoice\` tool.
 2. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
    - NEVER create multiple separate quotes or invoices for a single transaction.
-   - When the user provides multiple items, materials, or fees (such as products, delivery fees, installation), put ALL items into the \`lines\` array of ONE single quote or invoice.
+   - When the user provides multiple items, materials, or fees (such as products, delivery fees, installation, shipping), put ALL items into the \`lines\` array of ONE single quote or invoice.
    - Example \`lines\` array:
      [
        { "description": "1x frameless door with concealed design", "quantity": 1, "unitPrice": 580 },
        { "description": "Delivery Fee", "quantity": 1, "unitPrice": 90 }
      ]
 3. CUSTOMER DETAILS & TAX:
-   - If the user provides an address, email, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, and taxRatePercent.
-4. NOTES:
-   - NEVER put "Created via Telegram Bot" or any bot/integration branding into the notes field. Leave notes empty unless the user specifically provides customer/order notes.
+   - If the customer details include both a person name and a business/company name (e.g. "ILIE Sula" and "Zamos Construction LTD"), use the business name for customerName (e.g. "Zamos Construction LTD" or "Zamos Construction LTD (ILIE Sula)").
+   - If the user provides an address, email, phone, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, customerPhone, and taxRatePercent.
+4. INVOICE NUMBERS & DATES:
+   - If user provides an explicit invoice number (e.g. "Invoice Number: 146233"), ALWAYS pass it into the "invoiceNumber" argument.
+   - If user provides dates (e.g. "Date of issue: 09/08/2026", "Date due: 09/08/2026"), pass them into "issueDate" and "dueDate". Note that dates in the UK are DD/MM/YYYY.
+5. NOTES:
+   - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
+   - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
 
-When confirming the created quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis. Use HTML tags <b>, <i>, <code> where appropriate.`;
+TELEGRAM FORMATTING RULES:
+- ONLY use Telegram-supported HTML tags: <b>bold</b>, <i>italic</i>, and <code>code</code>.
+- NEVER use <h3>, <h2>, <h1>, <p>, <br>, <div>, or markdown (no ###, no ---).
+- For section titles or totals, use bold text with an emoji, e.g. <b>Total: £685.00</b>.
+When confirming the created quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis.`;
 
   const candidateModels = [
     "gemini-2.5-flash",

@@ -173,16 +173,124 @@ export async function resolveTaxRateId(
   return byName?.id;
 }
 
-function parseAddressString(rawAddress: string) {
+/**
+ * Normalizes user-supplied date strings (DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD) to ISO YYYY-MM-DD.
+ */
+export function normalizeDateInput(dateStr?: string | null): string | undefined {
+  if (!dateStr) return undefined;
+  const trimmed = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const ukMatch = /^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/.exec(trimmed);
+  if (ukMatch) {
+    const day = ukMatch[1].padStart(2, "0");
+    const month = ukMatch[2].padStart(2, "0");
+    const year = ukMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split("T")[0];
+  }
+  return undefined;
+}
+
+/**
+ * Intelligently cleans customer name when both individual and company are provided.
+ */
+export function cleanCustomerName(name: string): string {
+  if (!name) return "Customer";
+  if (name.includes(",") || name.includes("\n")) {
+    const parts = name.split(/[\r\n,]+/).map((s) => s.trim()).filter(Boolean);
+    const companyPart = parts.find((p) =>
+      /\b(ltd|limited|llc|inc|corp|corporation|plc|group|holdings|services|construction|builders)\b/i.test(p)
+    );
+    const personPart = parts.find((p) => p !== companyPart);
+    if (companyPart && personPart) {
+      return `${companyPart} (${personPart})`;
+    }
+    if (companyPart) return companyPart;
+  }
+  return name.trim();
+}
+
+/**
+ * Robust address parser handling UK & international street, city, postal code, and country.
+ */
+export function parseAddressString(rawAddress: string): {
+  addressLine?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+} {
   if (!rawAddress) return {};
-  const parts = rawAddress.split(/[\r\n,]+/).map((p) => p.trim()).filter(Boolean);
+  let parts = rawAddress
+    .split(/[\r\n,]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
   if (parts.length === 0) return {};
-  if (parts.length === 1) return { addressLine: parts[0] };
-  if (parts.length === 2) return { addressLine: parts[0], city: parts[1] };
-  const postalCode = parts[parts.length - 1];
-  const city = parts[parts.length - 2];
-  const addressLine = parts.slice(0, parts.length - 2).join(", ");
-  return { addressLine, city, postalCode };
+
+  let country: string | undefined;
+  let postalCode: string | undefined;
+  let city: string | undefined;
+
+  // 1. Check for Country at the end of the address
+  const lastPart = parts[parts.length - 1];
+  const isCountry =
+    /^(united kingdom(\s*\(uk\))?|uk|great britain|england|scotland|wales|northern ireland|united states(\s*\(usa\))?|usa|us|ireland|france|germany|spain|italy|australia|canada)$/i.test(
+      lastPart
+    );
+  if (isCountry && parts.length > 1) {
+    country = lastPart.replace(/\s*\(uk\)/i, "").replace(/\s*\(usa\)/i, "").trim();
+    if (/^uk$/i.test(country)) country = "United Kingdom";
+    if (/^us$/i.test(country)) country = "United States";
+    parts = parts.slice(0, parts.length - 1);
+  }
+
+  // 2. Check for UK Postcode or postal code pattern
+  const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$/i;
+  const genericPostalRegex = /^[A-Z0-9]{2,4}\s*[A-Z0-9]{2,4}$/i;
+
+  let postCodeIdx = -1;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (ukPostcodeRegex.test(parts[i]) || genericPostalRegex.test(parts[i])) {
+      postCodeIdx = i;
+      postalCode = parts[i];
+      break;
+    }
+  }
+
+  if (postCodeIdx !== -1) {
+    const beforePostCode = parts.slice(0, postCodeIdx);
+    const afterPostCode = parts.slice(postCodeIdx + 1);
+    parts = [...beforePostCode, ...afterPostCode];
+  }
+
+  // 3. What remains in parts:
+  let addressLine: string | undefined;
+  if (parts.length === 1) {
+    if (!postalCode) {
+      addressLine = parts[0];
+    } else {
+      if (/\d/.test(parts[0])) {
+        addressLine = parts[0];
+      } else {
+        city = parts[0];
+      }
+    }
+  } else if (parts.length >= 2) {
+    city = parts[parts.length - 1];
+    addressLine = parts.slice(0, parts.length - 1).join(", ");
+  }
+
+  return {
+    ...(addressLine ? { addressLine } : {}),
+    ...(city ? { city } : {}),
+    ...(postalCode ? { postalCode } : {}),
+    ...(country ? { country } : {}),
+  };
 }
 
 /**
@@ -197,14 +305,17 @@ export async function resolveContact(
     customerPhone?: string;
   }
 ) {
-  const contacts = await listAllContacts(ctx, params.customerName);
+  const effectiveName = cleanCustomerName(params.customerName);
+  const contacts = await listAllContacts(ctx, effectiveName);
   let found = contacts.find(
-    (c: any) => c.name?.toLowerCase() === params.customerName.toLowerCase()
+    (c: any) =>
+      c.name?.toLowerCase() === effectiveName.toLowerCase() ||
+      c.name?.toLowerCase() === params.customerName.toLowerCase()
   );
 
   if (!found && contacts.length > 0) {
     found = contacts.find((c: any) =>
-      c.name?.toLowerCase().includes(params.customerName.toLowerCase())
+      c.name?.toLowerCase().includes(effectiveName.toLowerCase())
     );
   }
 
@@ -212,7 +323,7 @@ export async function resolveContact(
 
   if (!found) {
     const newContactRes = await executeMcpTool(ctx, "create_contact", {
-      name: params.customerName,
+      name: effectiveName,
       type: "customer",
       currencyCode: "GBP",
       ...(params.customerEmail ? { email: params.customerEmail } : {}),
@@ -220,6 +331,7 @@ export async function resolveContact(
       ...(parsedAddr.addressLine ? { addressLine: parsedAddr.addressLine } : {}),
       ...(parsedAddr.city ? { city: parsedAddr.city } : {}),
       ...(parsedAddr.postalCode ? { postalCode: parsedAddr.postalCode } : {}),
+      ...(parsedAddr.country ? { country: parsedAddr.country } : {}),
     });
     return newContactRes.contact;
   }
@@ -235,6 +347,7 @@ export async function resolveContact(
       ...(parsedAddr.addressLine ? { addressLine: parsedAddr.addressLine } : {}),
       ...(parsedAddr.city ? { city: parsedAddr.city } : {}),
       ...(parsedAddr.postalCode ? { postalCode: parsedAddr.postalCode } : {}),
+      ...(parsedAddr.country ? { country: parsedAddr.country } : {}),
     }).catch(() => {});
   }
 
@@ -263,7 +376,9 @@ export async function createQuoteAction(
     quantity?: number;
     taxRatePercent?: number | string;
     currencyCode?: string;
+    issueDate?: string;
     expiryDate?: string;
+    quoteNumber?: string;
     reference?: string;
     notes?: string;
   }
@@ -302,7 +417,7 @@ export async function createQuoteAction(
 
   const formattedLines = rawLines.map((l) => {
     const rawPrice = Number(l.unitPrice || 0);
-    // Integer cents/pence
+    // Integer cents/pence for create_quote MCP tool
     const centsPrice = Math.round(rawPrice * 100);
     return {
       description: l.description,
@@ -313,20 +428,21 @@ export async function createQuoteAction(
     };
   });
 
-  const today = new Date().toISOString().split("T")[0];
+  const issueDate =
+    normalizeDateInput(params.issueDate) ||
+    new Date().toISOString().split("T")[0];
   const calculatedExpiry =
-    params.expiryDate ||
+    normalizeDateInput(params.expiryDate) ||
     new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
 
   const res = await executeMcpTool(ctx, "create_quote", {
     contactId: contact.id,
     currencyCode: currency,
-    issueDate: today,
+    issueDate,
     expiryDate: calculatedExpiry,
-    reference: params.reference || `QTE-${Date.now().toString().slice(-4)}`,
-    notes:
-      sanitizeNotes(params.notes) ||
-      (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
+    ...(params.quoteNumber ? { quoteNumber: params.quoteNumber.trim() } : {}),
+    ...(params.reference ? { reference: params.reference.trim() } : {}),
+    notes: sanitizeNotes(params.notes) || undefined,
     lines: formattedLines,
   });
 
@@ -352,7 +468,9 @@ export async function createInvoiceAction(
     quantity?: number;
     taxRatePercent?: number | string;
     currencyCode?: string;
+    issueDate?: string;
     dueDate?: string;
+    invoiceNumber?: string;
     reference?: string;
     notes?: string;
   }
@@ -389,32 +507,37 @@ export async function createInvoiceAction(
     }
   }
 
+  // create_invoice MCP tool expects unitPrice in decimal (pounds), not integer pence
   const formattedLines = rawLines.map((l) => {
     const rawPrice = Number(l.unitPrice || 0);
-    const centsPrice = Math.round(rawPrice * 100);
     return {
       description: l.description,
       quantity: Number(l.quantity || 1),
-      unitPrice: centsPrice,
+      unitPrice: rawPrice,
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     };
   });
 
-  const today = new Date().toISOString().split("T")[0];
+  const issueDate =
+    normalizeDateInput(params.issueDate) ||
+    new Date().toISOString().split("T")[0];
   const calculatedDue =
-    params.dueDate ||
+    normalizeDateInput(params.dueDate) ||
     new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
 
   const res = await executeMcpTool(ctx, "create_invoice", {
     contactId: contact.id,
     currencyCode: currency,
-    issueDate: today,
+    issueDate,
     dueDate: calculatedDue,
-    reference: params.reference || `INV-${Date.now().toString().slice(-4)}`,
-    notes:
-      sanitizeNotes(params.notes) ||
-      (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
+    ...(params.invoiceNumber ? { invoiceNumber: params.invoiceNumber.trim() } : {}),
+    ...(params.reference
+      ? { reference: params.reference.trim() }
+      : params.invoiceNumber
+      ? { reference: params.invoiceNumber.trim() }
+      : {}),
+    notes: sanitizeNotes(params.notes) || undefined,
     lines: formattedLines,
   });
 
