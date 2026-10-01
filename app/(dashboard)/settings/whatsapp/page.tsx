@@ -31,12 +31,9 @@ import {
   Send,
   Loader2,
   RefreshCw,
-  ExternalLink,
   ShieldCheck,
-  Sparkles,
   Smartphone,
   Server,
-  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -264,81 +261,7 @@ export default function WhatsAppSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Environment Credentials Checklist */}
-      <Card className="border-border shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Environment Variables</CardTitle>
-          </div>
-          <CardDescription>
-            Configure these variables in your Vercel Project Settings &gt; Environment Variables.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">WHATSAPP_ACCESS_TOKEN</span>
-                <p className="text-xs text-muted-foreground">System User or App Access Token</p>
-              </div>
-              {status?.hasAccessToken ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Configured
-                </Badge>
-              ) : (
-                <Badge variant="destructive">Missing</Badge>
-              )}
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">WHATSAPP_PHONE_NUMBER_ID</span>
-                <p className="text-xs text-muted-foreground">
-                  {status?.phoneNumberId ? `ID: ${status.phoneNumberId}` : "From Meta WhatsApp API Setup"}
-                </p>
-              </div>
-              {status?.hasPhoneNumberId ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Configured
-                </Badge>
-              ) : (
-                <Badge variant="destructive">Missing</Badge>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">WHATSAPP_APP_SECRET</span>
-                <p className="text-xs text-muted-foreground">For HMAC-SHA256 signature validation</p>
-              </div>
-              {status?.hasAppSecret ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Secured
-                </Badge>
-              ) : (
-                <Badge variant="secondary">Optional</Badge>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">GEMINI_API_KEY</span>
-                <p className="text-xs text-muted-foreground">Google AI for quote extraction & chat</p>
-              </div>
-              {status?.hasGeminiKey ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Active
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-amber-600">
-                  Commands only
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Live Test Message Sender */}
       <Card className="border-border shadow-sm">
@@ -486,67 +409,6 @@ export default function WhatsAppSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Step by Step Meta Guide */}
-      <Card className="border-border shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Quick Setup Guide</CardTitle>
-          </div>
-          <CardDescription>
-            How to get Meta credentials in 3 minutes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                1. Create Meta Developer App
-              </span>
-              <p>
-                Go to{" "}
-                <a
-                  href="https://developers.facebook.com/apps/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline inline-flex items-center gap-0.5"
-                >
-                  Meta Developer Portal <ExternalLink className="h-3 w-3" />
-                </a>
-                , create an app with type <strong>Other</strong> &gt; <strong>Business</strong>, and add the <strong>WhatsApp</strong> product.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                2. Configure Webhook
-              </span>
-              <p>
-                Under WhatsApp &gt; Configuration, click <strong>Edit</strong> on Webhook. Paste the Callback URL and Verify Token from above. Save and subscribe to <strong>messages</strong>.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                3. Copy Phone Number ID & Token
-              </span>
-              <p>
-                Go to WhatsApp &gt; API Setup. Copy your <strong>Phone Number ID</strong> and <strong>Temporary Access Token</strong> (or create a permanent System User token in Business Manager).
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                4. Add Vercel Environment Variables
-              </span>
-              <p>
-                Set <code className="text-xs bg-muted px-1 py-0.5 rounded">WHATSAPP_ACCESS_TOKEN</code> and{" "}
-                <code className="text-xs bg-muted px-1 py-0.5 rounded">WHATSAPP_PHONE_NUMBER_ID</code> on Vercel. That&apos;s it!
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

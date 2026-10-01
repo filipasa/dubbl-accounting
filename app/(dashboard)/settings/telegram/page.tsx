@@ -31,9 +31,7 @@ import {
   RefreshCw,
   ExternalLink,
   ShieldCheck,
-  Sparkles,
   Server,
-  KeyRound,
   Bot,
   Zap,
 } from "lucide-react";
@@ -324,75 +322,7 @@ export default function TelegramSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Environment Credentials Checklist */}
-      <Card className="border-border shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Environment Variables</CardTitle>
-          </div>
-          <CardDescription>
-            Configure these variables in your Vercel Project Settings &gt; Environment Variables.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">TELEGRAM_BOT_TOKEN</span>
-                <p className="text-xs text-muted-foreground">From @BotFather (e.g. 123456:ABC...)</p>
-              </div>
-              {status?.hasBotToken ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Configured
-                </Badge>
-              ) : (
-                <Badge variant="destructive">Missing</Badge>
-              )}
-            </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">TELEGRAM_SECRET_TOKEN</span>
-                <p className="text-xs text-muted-foreground">For secret-token header verification</p>
-              </div>
-              <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                Active
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">GEMINI_API_KEY</span>
-                <p className="text-xs text-muted-foreground">Google AI for quote extraction & chat</p>
-              </div>
-              {status?.hasGeminiKey ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300">
-                  Active
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-amber-600">
-                  Commands only
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="space-y-0.5">
-                <span className="font-mono text-xs font-semibold">TELEGRAM_ALLOWED_USERS</span>
-                <p className="text-xs text-muted-foreground">
-                  {status?.allowedUsers && status.allowedUsers.length > 0
-                    ? `Whitelisted: ${status.allowedUsers.map((u) => `@${u}`).join(", ")}`
-                    : "Public / All users allowed"}
-                </p>
-              </div>
-              <Badge variant="secondary">
-                {status?.allowedUsers?.length ? "Restricted" : "Open"}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Live Test Message Sender */}
       <Card className="border-border shadow-sm">
@@ -544,67 +474,6 @@ export default function TelegramSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* 30-Second Quick Setup Guide */}
-      <Card className="border-border shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">30-Second Quick Setup Guide</CardTitle>
-          </div>
-          <CardDescription>
-            How to create and connect your Telegram Bot.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                1. Open @BotFather on Telegram
-              </span>
-              <p>
-                Search for{" "}
-                <a
-                  href="https://t.me/BotFather"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline inline-flex items-center gap-0.5"
-                >
-                  @BotFather <ExternalLink className="h-3 w-3" />
-                </a>{" "}
-                and send the command <code>/newbot</code>.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                2. Choose Name & Username
-              </span>
-              <p>
-                Enter a name (e.g. <i>Fixbooks Bot</i>) and a username ending in <code>_bot</code> (e.g. <i>my_company_bookkeeper_bot</i>).
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                3. Add Token to Vercel
-              </span>
-              <p>
-                Copy the HTTP API token provided by BotFather and set it as{" "}
-                <code className="text-xs bg-muted px-1 py-0.5 rounded">TELEGRAM_BOT_TOKEN</code> in your Vercel Environment Variables.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                4. Click "Register Webhook"
-              </span>
-              <p>
-                Click the <strong>Register Webhook with Telegram</strong> button at the top of this page. Your bot is immediately live!
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
