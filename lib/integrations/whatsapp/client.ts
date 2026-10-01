@@ -9,11 +9,15 @@ export function getWhatsAppConfig(): WhatsAppConfig {
     .map((n) => n.trim().replace(/[^0-9]/g, ""))
     .filter(Boolean);
 
-  const appUrl =
+  let appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000");
+
+  if (appUrl.startsWith("http://fixbooks.io") || appUrl.startsWith("https://fixbooks.io")) {
+    appUrl = "https://www.fixbooks.io";
+  }
 
   return {
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",

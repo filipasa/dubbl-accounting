@@ -41,8 +41,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: any) {
     console.error("[Telegram Test Message] Failed:", err);
+    let errorMessage = err.message || "Failed to send test Telegram message";
+    if (
+      errorMessage.includes("Forbidden") ||
+      errorMessage.includes("can't initiate conversation") ||
+      errorMessage.includes("bot can't initiate")
+    ) {
+      errorMessage =
+        "Telegram Privacy Restriction: Bots cannot initiate conversations with users. Please open Telegram, search for your bot, and tap 'Start' (or send /start). Then try sending this test message again.";
+    }
     return NextResponse.json(
-      { error: err.message || "Failed to send test Telegram message" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

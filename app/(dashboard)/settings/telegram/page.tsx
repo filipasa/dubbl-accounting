@@ -174,6 +174,18 @@ export default function TelegramSettingsPage() {
     status?.webhookInfo?.url && status?.webhookInfo?.url === status?.webhookUrl
   );
 
+  // Extract unique recent chat IDs
+  const recentChats = Array.from(
+    new Map(
+      (status?.recentLogs || [])
+        .filter((l) => l.chatId)
+        .map((l) => [
+          l.chatId,
+          { chatId: l.chatId, username: l.senderUsername, name: l.senderName },
+        ])
+    ).values()
+  ).slice(0, 5);
+
   return (
     <div className="space-y-8 max-w-5xl pb-16">
       {/* Header */}
@@ -335,7 +347,30 @@ export default function TelegramSettingsPage() {
             Send a live verification message to confirm outbound Telegram Bot API connectivity.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-5">
+          {/* Important Telegram Privacy Rule Banner */}
+          <div className="rounded-lg bg-sky-500/10 border border-sky-200 dark:border-sky-900/50 p-4 text-xs text-sky-900 dark:text-sky-200 space-y-2">
+            <div className="font-semibold flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-sm">
+                <Bot className="h-4 w-4 text-sky-600" />
+                Step 1: Start chat with your bot in Telegram
+              </span>
+              {status?.botUser?.username && (
+                <a
+                  href={`https://t.me/${status.botUser.username}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-sky-600 text-white font-medium hover:bg-sky-700 transition-colors"
+                >
+                  Open @{status.botUser.username} <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+            <p className="text-muted-foreground dark:text-sky-300">
+              Telegram privacy rules prevent bots from initiating messages with users out of the blue. You must open your bot in Telegram and tap <strong>Start</strong> (or send <code>/start</code>). Once started, enter your Chat ID below or chat directly with the bot!
+            </p>
+          </div>
+
           <form onSubmit={handleSendTestMessage} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -347,8 +382,23 @@ export default function TelegramSettingsPage() {
                   onChange={(e) => setTestChatId(e.target.value)}
                   disabled={sendingTest}
                 />
+                {recentChats.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs text-muted-foreground">
+                    <span>Recent chats:</span>
+                    {recentChats.map((c) => (
+                      <button
+                        key={c.chatId}
+                        type="button"
+                        onClick={() => setTestChatId(c.chatId)}
+                        className="px-2 py-0.5 rounded border bg-background hover:bg-muted font-mono transition-colors text-foreground text-xs"
+                      >
+                        {c.username ? `@${c.username}` : c.chatId}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  To find your Telegram Chat ID, text <code>/start</code> to{" "}
+                  To find your personal numeric ID, message <code>/start</code> to{" "}
                   <a
                     href="https://t.me/userinfobot"
                     target="_blank"
