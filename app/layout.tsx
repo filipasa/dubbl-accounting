@@ -22,7 +22,7 @@ const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://fixbooks.dev";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
 
 export const metadata: Metadata = {
   title: {

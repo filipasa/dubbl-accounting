@@ -101,7 +101,7 @@ export default function ApiKeysPage() {
     } finally { setDeletingId(null); }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_URL || "https://fixbooks.dev";
+  const baseUrl = process.env.NEXT_PUBLIC_URL || "https://www.fixbooks.io";
   const curlExample = `curl -X GET ${baseUrl}/api/v1/invoices \\
   -H "Authorization: Bearer dk_live_..."`;
 

@@ -423,7 +423,7 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
             <Text style={s.footerText}>{summaryText}</Text>
             {footerText && <Text style={s.footerText}>{footerText}</Text>}
           </View>
-          <Link src="https://fixbooks.dev" style={{ textDecoration: "none" }}>
+          <Link src="https://www.fixbooks.io" style={{ textDecoration: "none" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               <Svg viewBox="0 0 40 32" width={10} height={8}>
                 <Path d="M18 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10h-8V4z" fill="#d1d5db" />

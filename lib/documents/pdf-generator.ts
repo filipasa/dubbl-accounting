@@ -373,7 +373,7 @@ export function generateDocumentHtml(
   <!-- Footer -->
   <div style="margin-top:40px;padding-top:8px;border-top:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
     <span style="font-size:10px;color:#6b7280;">${footerSummary}</span>
-    <a href="https://fixbooks.dev" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+    <a href="https://www.fixbooks.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
       <svg viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="9">
         <path d="M18 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10h-8V4z" fill="#d1d5db"/>
         <path d="M4 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10H4V4z" fill="#9ca3af"/>
@@ -611,7 +611,7 @@ export function generateInvoiceHtml(
   <!-- Footer -->
   <div style="margin-top:40px;padding-top:8px;border-top:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
     <span style="font-size:10px;color:#6b7280;">${invoice.invoiceNumber} · ${formatMoney(amountDue, invoice.currencyCode)} due ${invoice.dueDate}</span>
-    <a href="https://fixbooks.dev" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+    <a href="https://www.fixbooks.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
       <svg viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="9">
         <path d="M18 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10h-8V4z" fill="#d1d5db"/>
         <path d="M4 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10H4V4z" fill="#9ca3af"/>

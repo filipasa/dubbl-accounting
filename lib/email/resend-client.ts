@@ -21,8 +21,18 @@ export async function sendPlatformEmail(options: EmailOptions) {
 
   const resend = new Resend(apiKey);
 
+  let fromAddress =
+    options.from ||
+    process.env.EMAIL_FROM ||
+    process.env.RESEND_FROM ||
+    "Fixbooks <noreply@fixbooks.io>";
+
+  if (fromAddress.includes("@fixbooks.dev")) {
+    fromAddress = fromAddress.replace(/@fixbooks\.dev/g, "@fixbooks.io");
+  }
+
   await resend.emails.send({
-    from: options.from || "fixbooks <noreply@fixbooks.dev>",
+    from: fromAddress,
     to: options.to,
     subject: options.subject,
     html: options.html,

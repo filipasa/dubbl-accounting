@@ -52,7 +52,7 @@ export async function sendDocumentEmail(options: SendDocumentEmailOptions): Prom
         to: options.recipientEmail,
         subject: options.subject,
         html: options.body,
-        from: "fixbooks <invoices@fixbooks.dev>",
+        from: process.env.EMAIL_FROM || "Fixbooks <noreply@fixbooks.io>",
         replyTo: options.replyTo || undefined,
         attachments,
       });

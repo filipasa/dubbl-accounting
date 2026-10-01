@@ -1,5 +1,5 @@
-const DEFAULT_SITE_URL = "https://fixbooks.dev";
-const DEFAULT_APP_URL = "https://fixbooks.dev";
+const DEFAULT_SITE_URL = "https://www.fixbooks.io";
+const DEFAULT_APP_URL = "https://www.fixbooks.io";
 
 function trimTrailingSlash(url: string) {
   return url.replace(/\/+$/, "");
