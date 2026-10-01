@@ -17,6 +17,16 @@ import type { AuthContext } from "@/lib/api/auth-context";
 import { checkInvoiceCompliance } from "@/lib/documents/compliance";
 import { checkApprovalRequired, createApprovalRequest, processApprovalAction } from "@/lib/approvals/engine";
 
+function cleanNotes(notes?: string | null): string | null {
+  if (!notes) return null;
+  const cleaned = notes
+    .replace(/created\s+via\s+([a-z0-9_-]+\s+)?bot/gi, "")
+    .replace(/created\s+via\s+(whatsapp|telegram)/gi, "")
+    .replace(/(whatsapp|telegram)\s+bot/gi, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
   server.tool(
     "list_invoices",
@@ -286,7 +296,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             issueDate: params.issueDate,
             dueDate,
             reference: params.reference ?? null,
-            notes: params.notes ?? null,
+            notes: cleanNotes(params.notes),
             subtotal,
             taxTotal,
             total,
@@ -1026,6 +1036,9 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
         }
 
         const { invoiceId, lines: replacementLines, ...fields } = params;
+        if (fields.notes !== undefined) {
+          fields.notes = cleanNotes(fields.notes);
+        }
         const patch: Record<string, unknown> = { updatedAt: new Date() };
         for (const [key, value] of Object.entries(fields)) {
           if (value !== undefined) patch[key] = value;

@@ -8,6 +8,16 @@ import { isNull } from "drizzle-orm";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
 
+function sanitizeNotes(notes?: string | null): string | undefined {
+  if (!notes) return undefined;
+  const cleaned = notes
+    .replace(/created\s+via\s+([a-z0-9_-]+\s+)?bot/gi, "")
+    .replace(/created\s+via\s+(whatsapp|telegram)/gi, "")
+    .replace(/(whatsapp|telegram)\s+bot/gi, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
 /**
  * Resolves the AuthContext for the WhatsApp bot.
  * Tries WHATSAPP_FIXBOOKS_TOKEN / DUBBL_TOKEN first,
@@ -315,7 +325,7 @@ export async function createQuoteAction(
     expiryDate: calculatedExpiry,
     reference: params.reference || `QTE-${Date.now().toString().slice(-4)}`,
     notes:
-      params.notes ||
+      sanitizeNotes(params.notes) ||
       (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
     lines: formattedLines,
   });
@@ -403,7 +413,7 @@ export async function createInvoiceAction(
     dueDate: calculatedDue,
     reference: params.reference || `INV-${Date.now().toString().slice(-4)}`,
     notes:
-      params.notes ||
+      sanitizeNotes(params.notes) ||
       (params.customerAddress ? `Address: ${params.customerAddress}` : undefined),
     lines: formattedLines,
   });

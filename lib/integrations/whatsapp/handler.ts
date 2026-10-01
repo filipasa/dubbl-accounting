@@ -440,6 +440,8 @@ CRITICAL INSTRUCTIONS:
      ]
 3. CUSTOMER DETAILS & TAX:
    - If the user provides an address, email, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, and taxRatePercent.
+4. NOTES:
+   - NEVER put "Created via WhatsApp Bot" or any bot/integration branding into the notes field. Leave notes empty unless the user specifically provides customer/order notes.
 
 When confirming the created quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis. Keep messages polite, concise, and clean.`;
 

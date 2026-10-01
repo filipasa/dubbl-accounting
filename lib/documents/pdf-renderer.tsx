@@ -258,9 +258,20 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
     total: fmtMoney(inv.total, inv.currencyCode), currency: inv.currencyCode,
   };
 
+function stripBotMentions(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const cleaned = text
+    .replace(/created\s+via\s+([a-z0-9_-]+\s+)?bot/gi, "")
+    .replace(/created\s+via\s+(whatsapp|telegram)/gi, "")
+    .replace(/(whatsapp|telegram)\s+bot/gi, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
   const bankDetailsText = template.bankDetails ? replacePlaceholders(template.bankDetails, vars) : null;
   const paymentInstructionsText = template.paymentInstructions ? replacePlaceholders(template.paymentInstructions, vars) : null;
-  const notesText = (template.notes || inv.notes) ? replacePlaceholders(template.notes || inv.notes || "", vars) : null;
+  const rawNotes = (template.notes || inv.notes) ? replacePlaceholders(template.notes || inv.notes || "", vars) : null;
+  const notesText = stripBotMentions(rawNotes);
   const footerText = template.footerHtml
     ? replacePlaceholders(template.footerHtml, vars).replace(/<[^>]*>/g, "")
     : null;

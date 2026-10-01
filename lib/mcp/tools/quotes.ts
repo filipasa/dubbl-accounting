@@ -20,6 +20,16 @@ import { decimalToMinorUnits } from "@/lib/money";
 import { wrapTool } from "@/lib/mcp/errors";
 import type { AuthContext } from "@/lib/api/auth-context";
 
+function cleanNotes(notes?: string | null): string | null {
+  if (!notes) return null;
+  const cleaned = notes
+    .replace(/created\s+via\s+([a-z0-9_-]+\s+)?bot/gi, "")
+    .replace(/created\s+via\s+(whatsapp|telegram)/gi, "")
+    .replace(/(whatsapp|telegram)\s+bot/gi, "")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
   server.tool(
     "convert_quote_to_invoice",
@@ -509,7 +519,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             issueDate: params.issueDate,
             expiryDate: params.expiryDate,
             reference: params.reference || null,
-            notes: params.notes || null,
+            notes: cleanNotes(params.notes),
             subtotal,
             taxTotal,
             total,
@@ -571,6 +581,9 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
         }
 
         const { quoteId, lines: replacementLines, ...fields } = params;
+        if (fields.notes !== undefined) {
+          fields.notes = cleanNotes(fields.notes);
+        }
         const patch: Record<string, unknown> = { updatedAt: new Date() };
         for (const [key, value] of Object.entries(fields)) {
           if (value !== undefined) patch[key] = value;

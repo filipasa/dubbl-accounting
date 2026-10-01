@@ -265,9 +265,14 @@ export function generateDocumentHtml(
       </div>`
     : "";
 
-  const notesText = template.notes || doc.notes
+  const rawNotesText = template.notes || doc.notes
     ? replaceTemplatePlaceholders(template.notes || doc.notes || "", templateVars)
     : "";
+  const notesText = rawNotesText
+    .replace(/created\s+via\s+([a-z0-9_-]+\s+)?bot/gi, "")
+    .replace(/created\s+via\s+(whatsapp|telegram)/gi, "")
+    .replace(/(whatsapp|telegram)\s+bot/gi, "")
+    .trim();
   const notesSection = notesText
     ? `<div style="margin-top:16px;font-size:12px;color:#6b7280;">${escapeHtml(notesText)}</div>`
     : "";
