@@ -11,6 +11,7 @@ import { toBaseAmounts } from "@/lib/currency/base-amount";
 import { decimalToMinorUnits } from "@/lib/money";
 import { preloadTaxRates, calcTax } from "@/lib/api/tax-calculator";
 import { currencyCodeSchema } from "@/lib/currency/zod";
+import { isAdjustmentLine } from "@/lib/documents/line-adjustments";
 import { z } from "zod";
 
 const lineSchema = z.object({
@@ -65,6 +66,55 @@ export async function GET(
     });
 
     if (!found) return notFound("Invoice");
+
+    // If draft invoice has adjustment lines (discount/shipping) created without taxRateId,
+    // heal them using the primary product line's taxRate so VAT is computed on the net total.
+    if (found.status === "draft" && found.lines.length > 0) {
+      const primaryTaxRate = found.lines
+        .map((l) => l.taxRate)
+        .find((tr) => tr && tr.rate > 0);
+
+      if (primaryTaxRate) {
+        const needsHealing = found.lines.some(
+          (l) => isAdjustmentLine(l) && !l.taxRateId
+        );
+
+        if (needsHealing) {
+          let updatedTaxTotal = 0;
+          for (const line of found.lines) {
+            if (isAdjustmentLine(line) && !line.taxRateId) {
+              const taxAmount = calcTax(line.amount, primaryTaxRate.rate);
+              await db
+                .update(invoiceLine)
+                .set({ taxRateId: primaryTaxRate.id, taxAmount })
+                .where(eq(invoiceLine.id, line.id));
+              line.taxRateId = primaryTaxRate.id;
+              line.taxAmount = taxAmount;
+              line.taxRate = primaryTaxRate;
+            }
+            updatedTaxTotal += line.taxAmount;
+          }
+
+          const newTaxTotal = Math.max(0, updatedTaxTotal);
+          const newTotal = found.subtotal + newTaxTotal;
+          const newAmountDue = Math.max(0, newTotal - (found.amountPaid ?? 0));
+
+          await db
+            .update(invoice)
+            .set({
+              taxTotal: newTaxTotal,
+              total: newTotal,
+              amountDue: newAmountDue,
+              updatedAt: new Date(),
+            })
+            .where(eq(invoice.id, found.id));
+
+          found.taxTotal = newTaxTotal;
+          found.total = newTotal;
+          found.amountDue = newAmountDue;
+        }
+      }
+    }
 
     // Fetch payments allocated to this invoice
     const allocations = await db.query.paymentAllocation.findMany({

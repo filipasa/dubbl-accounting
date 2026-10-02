@@ -1040,19 +1040,19 @@ export default function InvoiceDetailPage() {
                     {formatMoney(hasAdjustments ? itemsSubtotal : inv.subtotal, inv.currencyCode)}
                   </span>
                 </div>
-                {discountLines.map((d, idx) => (
-                  <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
-                    <span>{d.description}</span>
-                    <span className="font-mono tabular-nums">
-                      -{formatMoney(Math.abs(d.amount), inv.currencyCode)}
-                    </span>
-                  </div>
-                ))}
                 {shippingLines.map((s, idx) => (
                   <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
                     <span>{s.description}</span>
                     <span className="font-mono tabular-nums">
                       +{formatMoney(Math.abs(s.amount), inv.currencyCode)}
+                    </span>
+                  </div>
+                ))}
+                {discountLines.map((d, idx) => (
+                  <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                    <span>{d.description}</span>
+                    <span className="font-mono tabular-nums">
+                      -{formatMoney(Math.abs(d.amount), inv.currencyCode)}
                     </span>
                   </div>
                 ))}

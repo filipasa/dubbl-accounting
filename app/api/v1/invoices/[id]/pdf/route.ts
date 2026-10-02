@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, documentTemplate, organization } from "@/lib/db/schema";
+import { invoice, invoiceLine, documentTemplate, organization } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { notDeleted } from "@/lib/db/soft-delete";
@@ -9,6 +9,8 @@ import { generateInvoiceHtml } from "@/lib/documents/pdf-generator";
 import type { SenderSnapshot, RecipientSnapshot } from "@/lib/documents/snapshots";
 import { formatContactAddress } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { isAdjustmentLine } from "@/lib/documents/line-adjustments";
+import { calcTax } from "@/lib/api/tax-calculator";
 import { randomBytes } from "crypto";
 import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
 import { calculateCommercialCardFee } from "@/lib/money";
@@ -37,6 +39,55 @@ export async function GET(
     });
 
     if (!inv) return notFound("Invoice");
+
+    // If draft invoice has adjustment lines (discount/shipping) created without taxRateId,
+    // heal them using the primary product line's taxRate so VAT is computed on the net total.
+    if (inv.status === "draft" && inv.lines.length > 0) {
+      const primaryTaxRate = inv.lines
+        .map((l) => l.taxRate)
+        .find((tr) => tr && tr.rate > 0);
+
+      if (primaryTaxRate) {
+        const needsHealing = inv.lines.some(
+          (l) => isAdjustmentLine(l) && !l.taxRateId
+        );
+
+        if (needsHealing) {
+          let updatedTaxTotal = 0;
+          for (const line of inv.lines) {
+            if (isAdjustmentLine(line) && !line.taxRateId) {
+              const taxAmount = calcTax(line.amount, primaryTaxRate.rate);
+              await db
+                .update(invoiceLine)
+                .set({ taxRateId: primaryTaxRate.id, taxAmount })
+                .where(eq(invoiceLine.id, line.id));
+              line.taxRateId = primaryTaxRate.id;
+              line.taxAmount = taxAmount;
+              line.taxRate = primaryTaxRate;
+            }
+            updatedTaxTotal += line.taxAmount;
+          }
+
+          const newTaxTotal = Math.max(0, updatedTaxTotal);
+          const newTotal = inv.subtotal + newTaxTotal;
+          const newAmountDue = Math.max(0, newTotal - (inv.amountPaid ?? 0));
+
+          await db
+            .update(invoice)
+            .set({
+              taxTotal: newTaxTotal,
+              total: newTotal,
+              amountDue: newAmountDue,
+              updatedAt: new Date(),
+            })
+            .where(eq(invoice.id, inv.id));
+
+          inv.taxTotal = newTaxTotal;
+          inv.total = newTotal;
+          inv.amountDue = newAmountDue;
+        }
+      }
+    }
 
     const template = await db.query.documentTemplate.findFirst({
       where: and(
