@@ -629,17 +629,11 @@ function InvoiceDrawer({ open, onClose }: { open: boolean; onClose: () => void }
       shortDescription: l.shortDescription || null,
     }));
 
-    if (discount && discountAmount > 0) {
-      finalLines.push({
-        description: discount.type === "percent" ? `Discount (${discount.value}%)` : "Discount",
-        quantity: 1,
-        unitPrice: -discountAmount,
-        accountId: defaultRevenueAccountId,
-        taxRateId: null,
-        imageUrl: null,
-        shortDescription: null,
-      });
-    }
+    const applicableTaxRateId =
+      discount?.taxRateId ||
+      shipping?.taxRateId ||
+      lines.find((l) => Boolean(l.taxRateId))?.taxRateId ||
+      null;
 
     if (shipping && shippingAmount > 0) {
       finalLines.push({
@@ -647,7 +641,19 @@ function InvoiceDrawer({ open, onClose }: { open: boolean; onClose: () => void }
         quantity: 1,
         unitPrice: shippingAmount,
         accountId: defaultRevenueAccountId,
-        taxRateId: null,
+        taxRateId: applicableTaxRateId,
+        imageUrl: null,
+        shortDescription: null,
+      });
+    }
+
+    if (discount && discountAmount > 0) {
+      finalLines.push({
+        description: discount.type === "percent" ? `Discount (${discount.value}%)` : "Discount",
+        quantity: 1,
+        unitPrice: -discountAmount,
+        accountId: defaultRevenueAccountId,
+        taxRateId: applicableTaxRateId,
         imageUrl: null,
         shortDescription: null,
       });
@@ -1250,10 +1256,14 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
   const [lines, setLines] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "", accountId: "", taxRateId: "" },
   ]);
+  const [discount, setDiscount] = useState<AdjustmentState | null>(null);
+  const [shipping, setShipping] = useState<AdjustmentState | null>(null);
 
   useEffect(() => {
     if (!open) {
       setContactId(""); setReference(""); setNotes("");
+      setDiscount(null);
+      setShipping(null);
       setIssueDate(new Date().toISOString().split("T")[0]);
       const d = new Date(); d.setDate(d.getDate() + 30);
       setExpiryDate(d.toISOString().split("T")[0]);
@@ -1268,6 +1278,67 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
 
+    const subtotal = lines.reduce((sum, l) => {
+      const q = parseFloat(l.quantity) || 0;
+      const p = parseFloat(l.unitPrice) || 0;
+      return sum + q * p;
+    }, 0);
+
+    const discountVal = parseFloat(discount?.value || "0") || 0;
+    const discountAmount = discount && discountVal > 0
+      ? discount.type === "percent"
+        ? Math.round((subtotal * discountVal) / 100 * 100) / 100
+        : discountVal
+      : 0;
+
+    const shippingVal = parseFloat(shipping?.value || "0") || 0;
+    const shippingAmount = shipping && shippingVal > 0
+      ? shipping.type === "percent"
+        ? Math.round((subtotal * shippingVal) / 100 * 100) / 100
+        : shippingVal
+      : 0;
+
+    const defaultRevenueAccountId = lines.find((l) => l.accountId)?.accountId || null;
+    const applicableTaxRateId =
+      discount?.taxRateId ||
+      shipping?.taxRateId ||
+      lines.find((l) => Boolean(l.taxRateId))?.taxRateId ||
+      null;
+
+    const finalLines = lines.map((l) => ({
+      description: l.description,
+      quantity: parseFloat(l.quantity) || 1,
+      unitPrice: parseFloat(l.unitPrice) || 0,
+      accountId: l.accountId || null,
+      taxRateId: l.taxRateId || null,
+      imageUrl: l.imageUrl || null,
+      shortDescription: l.shortDescription || null,
+    }));
+
+    if (shipping && shippingAmount > 0) {
+      finalLines.push({
+        description: shipping.type === "percent" ? `Shipping (${shipping.value}%)` : "Shipping",
+        quantity: 1,
+        unitPrice: shippingAmount,
+        accountId: defaultRevenueAccountId,
+        taxRateId: applicableTaxRateId,
+        imageUrl: null,
+        shortDescription: null,
+      });
+    }
+
+    if (discount && discountAmount > 0) {
+      finalLines.push({
+        description: discount.type === "percent" ? `Discount (${discount.value}%)` : "Discount",
+        quantity: 1,
+        unitPrice: -discountAmount,
+        accountId: defaultRevenueAccountId,
+        taxRateId: applicableTaxRateId,
+        imageUrl: null,
+        shortDescription: null,
+      });
+    }
+
     try {
       const res = await fetch("/api/v1/quotes", {
         method: "POST",
@@ -1276,15 +1347,7 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
           contactId, issueDate, expiryDate,
           reference: reference || null,
           notes: notes || null,
-          lines: lines.map((l) => ({
-            description: l.description,
-            quantity: parseFloat(l.quantity) || 1,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            accountId: l.accountId || null,
-            taxRateId: l.taxRateId || null,
-            imageUrl: l.imageUrl || null,
-            shortDescription: l.shortDescription || null,
-          })),
+          lines: finalLines,
         }),
       });
       if (!res.ok) {
@@ -1344,7 +1407,17 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 
             <div className="space-y-4">
               <SectionLabel>Line Items</SectionLabel>
-              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" defaultToStandardRate={true} />
+              <LineItemsEditor
+                lines={lines}
+                onChange={setLines}
+                accountTypeFilter={["revenue"]}
+                taxContext="sales"
+                defaultToStandardRate={true}
+                discount={discount}
+                onDiscountChange={setDiscount}
+                shipping={shipping}
+                onShippingChange={setShipping}
+              />
             </div>
 
             <div className="h-px bg-border" />

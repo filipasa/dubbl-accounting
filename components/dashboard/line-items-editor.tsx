@@ -45,6 +45,7 @@ interface TaxRateOption {
 export interface AdjustmentState {
   type: "percent" | "fixed";
   value: string;
+  taxRateId?: string | null;
 }
 
 export interface LineItemsEditorProps {
@@ -352,6 +353,40 @@ export function LineItemsEditor({
     return Math.round((lineAmount(line) * 100 * rate.rate) / 10000) / 100;
   }
 
+  // Applicable tax rate for discount and shipping adjustments:
+  // Find the primary non-zero tax rate used by the item lines
+  const applicableTaxRate = lines
+    .map((l) => taxRates.find((t) => t.id === l.taxRateId))
+    .find((t) => t && t.rate > 0) || null;
+
+  function handleDiscountChange(next: AdjustmentState | null) {
+    if (!next) {
+      setDiscount(null);
+    } else {
+      setDiscount({ ...next, taxRateId: applicableTaxRate?.id || null });
+    }
+  }
+
+  function handleShippingChange(next: AdjustmentState | null) {
+    if (!next) {
+      setShipping(null);
+    } else {
+      setShipping({ ...next, taxRateId: applicableTaxRate?.id || null });
+    }
+  }
+
+  // Keep adjustments' taxRateId aligned whenever applicable tax rate changes
+  useEffect(() => {
+    if (applicableTaxRate?.id) {
+      if (activeDiscount && activeDiscount.taxRateId !== applicableTaxRate.id) {
+        setDiscount({ ...activeDiscount, taxRateId: applicableTaxRate.id });
+      }
+      if (activeShipping && activeShipping.taxRateId !== applicableTaxRate.id) {
+        setShipping({ ...activeShipping, taxRateId: applicableTaxRate.id });
+      }
+    }
+  }, [applicableTaxRate?.id]);
+
   const subtotal = lines.reduce((sum, l) => sum + lineAmount(l), 0);
 
   const discountVal = parseFloat(activeDiscount?.value || "0") || 0;
@@ -368,8 +403,16 @@ export function LineItemsEditor({
       : shippingVal
     : 0;
 
-  const taxTotal = lines.reduce((sum, l) => sum + lineTax(l), 0);
-  const total = Math.max(0, subtotal - discountAmount + shippingAmount + taxTotal);
+  const itemsTax = lines.reduce((sum, l) => sum + lineTax(l), 0);
+  const discountTax = (applicableTaxRate && discountAmount > 0)
+    ? Math.round((discountAmount * 100 * applicableTaxRate.rate) / 10000) / 100
+    : 0;
+  const shippingTax = (applicableTaxRate && shippingAmount > 0)
+    ? Math.round((shippingAmount * 100 * applicableTaxRate.rate) / 10000) / 100
+    : 0;
+
+  const taxTotal = Math.max(0, Math.round((itemsTax - discountTax + shippingTax) * 100) / 100);
+  const total = Math.max(0, Math.round((subtotal - discountAmount + shippingAmount + taxTotal) * 100) / 100);
   const editorTaxLabel = resolveTaxLabel(
     lines.map((l) => ({
       taxAmount: lineTax(l),
@@ -491,71 +534,6 @@ export function LineItemsEditor({
               <span>{subtotal.toFixed(2)}</span>
             </div>
 
-            {/* Discount row if added */}
-            {activeDiscount && (
-              <div className="flex items-center justify-between gap-2 py-0.5 font-sans">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Discount</span>
-                  <div className="flex items-center rounded-md border border-border bg-background shadow-2xs overflow-hidden h-7">
-                    <input
-                      type="number"
-                      step={activeDiscount.type === "percent" ? "1" : "0.01"}
-                      min="0"
-                      value={activeDiscount.value}
-                      onChange={(e) =>
-                        setDiscount({ ...activeDiscount, value: e.target.value })
-                      }
-                      placeholder="0"
-                      className="w-14 px-1.5 py-0.5 text-xs text-right font-mono bg-transparent outline-none focus:ring-0 tabular-nums"
-                    />
-                    <div className="flex border-l border-border bg-muted/40">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDiscount({ ...activeDiscount, type: "percent" })
-                        }
-                        className={cn(
-                          "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
-                          activeDiscount.type === "percent"
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        title="Percentage (%)"
-                      >
-                        %
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDiscount({ ...activeDiscount, type: "fixed" })
-                        }
-                        className={cn(
-                          "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
-                          activeDiscount.type === "fixed"
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        title={`Amount (${symbol})`}
-                      >
-                        {symbol}
-                      </button>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDiscount(null)}
-                    className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors cursor-pointer"
-                    title="Remove discount"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-                <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  -{discountAmount.toFixed(2)}
-                </span>
-              </div>
-            )}
-
             {/* Shipping row if added */}
             {activeShipping && (
               <div className="flex items-center justify-between gap-2 py-0.5 font-sans">
@@ -568,7 +546,7 @@ export function LineItemsEditor({
                       min="0"
                       value={activeShipping.value}
                       onChange={(e) =>
-                        setShipping({ ...activeShipping, value: e.target.value })
+                        handleShippingChange({ ...activeShipping, value: e.target.value })
                       }
                       placeholder="0"
                       className="w-14 px-1.5 py-0.5 text-xs text-right font-mono bg-transparent outline-none focus:ring-0 tabular-nums"
@@ -577,7 +555,7 @@ export function LineItemsEditor({
                       <button
                         type="button"
                         onClick={() =>
-                          setShipping({ ...activeShipping, type: "fixed" })
+                          handleShippingChange({ ...activeShipping, type: "fixed" })
                         }
                         className={cn(
                           "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
@@ -592,7 +570,7 @@ export function LineItemsEditor({
                       <button
                         type="button"
                         onClick={() =>
-                          setShipping({ ...activeShipping, type: "percent" })
+                          handleShippingChange({ ...activeShipping, type: "percent" })
                         }
                         className={cn(
                           "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
@@ -608,7 +586,7 @@ export function LineItemsEditor({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShipping(null)}
+                    onClick={() => handleShippingChange(null)}
                     className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors cursor-pointer"
                     title="Remove shipping"
                   >
@@ -621,30 +599,95 @@ export function LineItemsEditor({
               </div>
             )}
 
+            {/* Discount row if added */}
+            {activeDiscount && (
+              <div className="flex items-center justify-between gap-2 py-0.5 font-sans">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Discount</span>
+                  <div className="flex items-center rounded-md border border-border bg-background shadow-2xs overflow-hidden h-7">
+                    <input
+                      type="number"
+                      step={activeDiscount.type === "percent" ? "1" : "0.01"}
+                      min="0"
+                      value={activeDiscount.value}
+                      onChange={(e) =>
+                        handleDiscountChange({ ...activeDiscount, value: e.target.value })
+                      }
+                      placeholder="0"
+                      className="w-14 px-1.5 py-0.5 text-xs text-right font-mono bg-transparent outline-none focus:ring-0 tabular-nums"
+                    />
+                    <div className="flex border-l border-border bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDiscountChange({ ...activeDiscount, type: "percent" })
+                        }
+                        className={cn(
+                          "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                          activeDiscount.type === "percent"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title="Percentage (%)"
+                      >
+                        %
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDiscountChange({ ...activeDiscount, type: "fixed" })
+                        }
+                        className={cn(
+                          "px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                          activeDiscount.type === "fixed"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title={`Amount (${symbol})`}
+                      >
+                        {symbol}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDiscountChange(null)}
+                    className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors cursor-pointer"
+                    title="Remove discount"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+                <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  -{discountAmount.toFixed(2)}
+                </span>
+              </div>
+            )}
+
             {/* Action buttons under Subtotal when discount and/or shipping not yet added */}
             {shouldAllowAdjustments && (!activeDiscount || !activeShipping) && (
               <div className="flex items-center justify-end gap-2.5 py-0.5 font-sans">
-                {!activeDiscount && (
+                {!activeShipping && (
                   <button
                     type="button"
-                    onClick={() => setDiscount({ type: "percent", value: "" })}
+                    onClick={() => handleShippingChange({ type: "fixed", value: "" })}
                     className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline transition-colors cursor-pointer"
                   >
                     <Plus className="size-3" />
-                    Discount
+                    Shipping
                   </button>
                 )}
                 {!activeDiscount && !activeShipping && (
                   <span className="text-muted-foreground/30 text-xs">•</span>
                 )}
-                {!activeShipping && (
+                {!activeDiscount && (
                   <button
                     type="button"
-                    onClick={() => setShipping({ type: "fixed", value: "" })}
+                    onClick={() => handleDiscountChange({ type: "percent", value: "" })}
                     className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline transition-colors cursor-pointer"
                   >
                     <Plus className="size-3" />
-                    Shipping
+                    Discount
                   </button>
                 )}
               </div>

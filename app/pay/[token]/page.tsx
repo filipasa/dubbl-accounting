@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, Building2, Loader2, AlertCircle, Download, CreditCard } from "lucide-react";
 import { partitionDocumentLines } from "@/lib/documents/line-adjustments";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 function getLocaleForCurrency(currency: string): string {
   const map: Record<string, string> = {
@@ -316,14 +317,6 @@ function PaymentPageContent() {
                       </span>
                     </div>
                   )}
-                  {discountLines.map((d, idx) => (
-                    <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
-                      <span>{d.description}</span>
-                      <span className="font-mono tabular-nums">
-                        -{fmtMoney(Math.abs(d.amount), currency)}
-                      </span>
-                    </div>
-                  ))}
                   {shippingLines.map((s, idx) => (
                     <div key={`s-${idx}`} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                       <span>{s.description}</span>
@@ -332,9 +325,17 @@ function PaymentPageContent() {
                       </span>
                     </div>
                   ))}
+                  {discountLines.map((d, idx) => (
+                    <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                      <span>{d.description}</span>
+                      <span className="font-mono tabular-nums">
+                        -{fmtMoney(Math.abs(d.amount), currency)}
+                      </span>
+                    </div>
+                  ))}
                   {inv.taxTotal != null && inv.taxTotal > 0 && (
                     <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Tax</span>
+                      <span>{resolveTaxLabel(inv.lines, inv.taxTotal) || "Tax"}</span>
                       <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
                         {fmtMoney(inv.taxTotal, currency)}
                       </span>

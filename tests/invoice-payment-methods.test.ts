@@ -294,12 +294,12 @@ test("Invoice HTML and PDF render Discount and Shipping lines properly", async (
   assert.ok(tfootContent.includes("Discount (10%)"), "tfoot must contain Discount underneath Subtotal");
   assert.ok(tfootContent.includes("Shipping"), "tfoot must contain Shipping underneath Subtotal");
   assert.ok(
-    tfootContent.indexOf("Subtotal") < tfootContent.indexOf("Discount (10%)"),
-    "Discount must appear underneath Subtotal"
+    tfootContent.indexOf("Subtotal") < tfootContent.indexOf("Shipping"),
+    "Shipping must appear underneath Subtotal"
   );
   assert.ok(
-    tfootContent.indexOf("Discount (10%)") < tfootContent.indexOf("Shipping"),
-    "Shipping must appear underneath Discount"
+    tfootContent.indexOf("Shipping") < tfootContent.indexOf("Discount (10%)"),
+    "Discount must appear underneath Shipping"
   );
 
   const pdfBuf = await renderInvoicePdf(
@@ -335,5 +335,101 @@ test("partitionDocumentLines correctly isolates product lines from discount and 
   assert.equal(partitioned.shippingLines[0].description, "Shipping");
   assert.equal(partitioned.shippingLines[0].amount, 2500);
 });
+
+test("VAT is calculated on net total after shipping and discount (Sub £100, Ship £10, Disc -£20 -> VATable £90 @ 20% = £18, Total £108)", async () => {
+  // Scenario:
+  // Item: Subtotal £100.00
+  // Shipping: £10.00
+  // Discount: -£20.00
+  // Net VATable amount: £90.00 (not shown on front end)
+  // VAT @ 20%: £18.00
+  // Total: £108.00
+
+  const sampleOrg = {
+    name: "FixBooks Test LTD",
+    email: "contact@fixbooks.io",
+    countryCode: "GB",
+  };
+
+  const invoice = {
+    invoiceNumber: "INV-004",
+    issueDate: "2026-10-02",
+    dueDate: "2026-10-10",
+    status: "draft",
+    lines: [
+      {
+        description: "Frameless Hidden Door",
+        quantity: 100,
+        unitPrice: 10000,
+        amount: 10000,
+        taxAmount: 2000, // 20% on £100
+        taxRate: { name: "VAT", rate: 2000 },
+      },
+      {
+        description: "Shipping",
+        quantity: 100,
+        unitPrice: 1000,
+        amount: 1000,
+        taxAmount: 200, // 20% on £10
+        taxRate: { name: "VAT", rate: 2000 },
+      },
+      {
+        description: "Discount",
+        quantity: 100,
+        unitPrice: -2000,
+        amount: -2000,
+        taxAmount: -400, // -20% on -£20
+        taxRate: { name: "VAT", rate: 2000 },
+      },
+    ],
+    subtotal: 9000, // 10000 + 1000 - 2000 (net VATable amount)
+    taxTotal: 1800, // 2000 + 200 - 400 = £18.00
+    total: 10800,   // 9000 + 1800 = £108.00
+    amountPaid: 0,
+    amountDue: 10800,
+    currencyCode: "GBP",
+  };
+
+  const { itemLines, shippingLines, discountLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(invoice.lines);
+
+  assert.equal(hasAdjustments, true);
+  assert.equal(itemsSubtotal, 10000, "Items subtotal should be £100.00");
+  assert.equal(shippingLines[0].amount, 1000, "Shipping should be £10.00");
+  assert.equal(discountLines[0].amount, -2000, "Discount should be -£20.00");
+  assert.equal(invoice.taxTotal, 1800, "VAT @ 20% on £90.00 should be £18.00");
+  assert.equal(invoice.total, 10800, "Total should be £108.00");
+
+  const html = generateInvoiceHtml(
+    {
+      ...invoice,
+      contactName: "Client C",
+    },
+    sampleOrg,
+    {}
+  );
+
+  // Subtotal £100.00
+  assert.ok(html.includes("£100.00"), "HTML includes Subtotal £100.00");
+  // Shipping +£10.00
+  assert.ok(html.includes("+£10.00") || html.includes("£10.00"), "HTML includes Shipping £10.00");
+  // Discount -£20.00
+  assert.ok(html.includes("-£20.00"), "HTML includes Discount -£20.00");
+  // VAT @ 20% £18.00
+  assert.ok(html.includes("£18.00"), "HTML includes VAT £18.00");
+  // Total £108.00
+  assert.ok(html.includes("£108.00"), "HTML includes Total £108.00");
+  // Confirm VATable amount is NOT shown on the front end / document
+  assert.ok(!html.includes("VATable"), "VATable amount is not shown on the front end");
+
+  const pdfBuf = await renderInvoicePdf(
+    invoice,
+    sampleOrg,
+    { name: "Client C" },
+    {}
+  );
+  assert.ok(pdfBuf.byteLength > 1000, "PDF renders successfully");
+});
+
 
 

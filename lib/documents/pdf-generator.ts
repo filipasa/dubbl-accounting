@@ -410,8 +410,8 @@ export function generateDocumentHtml(
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Subtotal</td>
         <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(hasAdjustments ? itemsSubtotal : doc.subtotal, doc.currencyCode)}</td>
       </tr>
-      ${discountsHtml}
       ${shippingsHtml}
+      ${discountsHtml}
       ${taxRow}
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Total</td>
@@ -705,8 +705,8 @@ export function generateInvoiceHtml(
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Subtotal</td>
         <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(hasAdjustments ? itemsSubtotal : invoice.subtotal, invoice.currencyCode)}</td>
       </tr>
-      ${discountsHtml}
       ${shippingsHtml}
+      ${discountsHtml}
       ${taxRow}
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Total</td>
