@@ -410,15 +410,26 @@ export async function createInvoiceJournalEntry(
 
   const lines: (typeof journalLine.$inferInsert)[] = [];
 
-  // CR Revenue accounts per line
+  const defaultRevenueAccount = await findAccountByCode(ctx.organizationId, "4000", exec);
+
+  // CR Revenue accounts per line (or DR if line.amount < 0, e.g. discount)
   for (const line of invoiceData.lines) {
-    if (line.accountId && line.amount > 0) {
+    const accId = line.accountId || defaultRevenueAccount?.id;
+    if (accId && line.amount > 0) {
       lines.push({
         journalEntryId: entry.id,
-        accountId: line.accountId,
+        accountId: accId,
         description: `Invoice ${invoiceData.invoiceNumber}`,
         debitAmount: 0,
         creditAmount: line.amount,
+      });
+    } else if (accId && line.amount < 0) {
+      lines.push({
+        journalEntryId: entry.id,
+        accountId: accId,
+        description: `Invoice ${invoiceData.invoiceNumber}`,
+        debitAmount: Math.abs(line.amount),
+        creditAmount: 0,
       });
     }
   }
@@ -440,7 +451,7 @@ export async function createInvoiceJournalEntry(
   // DR Accounts Receivable for the sum of the offsetting credit legs, so the
   // entry balances in document currency even if a line lacks an account or the
   // tax account is missing — otherwise FX conversion would scale the imbalance.
-  const arTotal = lines.reduce((s, l) => s + (l.creditAmount ?? 0), 0);
+  const arTotal = lines.reduce((s, l) => s + (l.creditAmount ?? 0) - (l.debitAmount ?? 0), 0);
   if (arTotal > 0) {
     lines.unshift({
       journalEntryId: entry.id,

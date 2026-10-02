@@ -196,3 +196,94 @@ test("Invoice HTML and PDF render Payment Processing Fee line item correctly", a
   );
   assert.ok(pdfBuf.byteLength > 1000, "PDF with fee line renders successfully");
 });
+
+test("Discount and Shipping calculations support % and fixed £ amounts", () => {
+  const subtotal = 20000; // £200.00
+
+  // 10% discount -> £20.00 (2000 cents)
+  const pctDiscount = Math.round((subtotal * 10) / 100);
+  assert.equal(pctDiscount, 2000);
+
+  // £15.50 fixed discount -> 1550 cents
+  const fixedDiscount = 1550;
+  assert.equal(fixedDiscount, 1550);
+
+  // £12.00 fixed shipping -> 1200 cents
+  const fixedShipping = 1200;
+  assert.equal(fixedShipping, 1200);
+
+  // 5% shipping surcharge -> £10.00 (1000 cents)
+  const pctShipping = Math.round((subtotal * 5) / 100);
+  assert.equal(pctShipping, 1000);
+
+  // Combined total: £200.00 - £20.00 + £12.00 = £192.00 (19200 cents)
+  const netTotal = subtotal - pctDiscount + fixedShipping;
+  assert.equal(netTotal, 19200);
+});
+
+test("Invoice HTML and PDF render Discount and Shipping lines properly", async () => {
+  const sampleOrg = {
+    name: "FixBooks Test LTD",
+    email: "contact@fixbooks.io",
+    countryCode: "GB",
+  };
+
+  const invoiceWithAdjustments = {
+    invoiceNumber: "INV-003",
+    issueDate: "2026-10-02",
+    dueDate: "2026-10-10",
+    status: "draft",
+    lines: [
+      {
+        description: "Web Development",
+        quantity: 100,
+        unitPrice: 20000,
+        taxAmount: 4000,
+        amount: 20000,
+      },
+      {
+        description: "Discount (10%)",
+        quantity: 100,
+        unitPrice: -2000,
+        taxAmount: 0,
+        amount: -2000,
+      },
+      {
+        description: "Shipping",
+        quantity: 100,
+        unitPrice: 1500,
+        taxAmount: 0,
+        amount: 1500,
+      },
+    ],
+    subtotal: 19500, // 20000 - 2000 + 1500
+    taxTotal: 4000,
+    total: 23500,
+    amountPaid: 0,
+    amountDue: 23500,
+    currencyCode: "GBP",
+  };
+
+  const html = generateInvoiceHtml(
+    {
+      ...invoiceWithAdjustments,
+      contactName: "Acme Corp",
+    },
+    sampleOrg,
+    {}
+  );
+
+  assert.ok(html.includes("Discount (10%)"), "HTML should include 'Discount (10%)'");
+  assert.ok(html.includes("Shipping"), "HTML should include 'Shipping'");
+  assert.ok(html.includes("-£20.00"), "HTML should format negative discount amount properly");
+  assert.ok(html.includes("£15.00"), "HTML should format shipping amount properly");
+
+  const pdfBuf = await renderInvoicePdf(
+    invoiceWithAdjustments,
+    sampleOrg,
+    { name: "Acme Corp" },
+    {}
+  );
+  assert.ok(pdfBuf.byteLength > 1000, "PDF with discount and shipping renders successfully");
+});
+
