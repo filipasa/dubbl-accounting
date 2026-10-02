@@ -36,15 +36,19 @@ export async function POST(
       .filter(Boolean)
       .join(", ");
 
+    const currencyCode = org?.defaultCurrency || "GBP";
+    const isUK = currencyCode === "GBP" || org?.countryCode?.toUpperCase() === "GB";
+
     const sampleData = {
       invoiceNumber: "INV-0001",
       issueDate: "2026-03-10",
       dueDate: "2026-04-09",
+      dateFormat: org?.dateFormat || null,
       status: "draft",
       contactName: "Sample Customer",
       contactEmail: "customer@example.com",
-      contactAddress: "123 Main St, Suite 100, New York, NY 10001",
-      contactTaxNumber: "US123456789",
+      contactAddress: isUK ? "10 High Street, London, EC1A 1BB" : "123 Main St, Suite 100, New York, NY 10001",
+      contactTaxNumber: isUK ? "GB123456789" : "US123456789",
       lines: [
         { description: "Web Development Services", quantity: 100, unitPrice: 15000, taxAmount: 1500, amount: 15000, taxRate: { name: "VAT", rate: 2000 } },
         { description: "UI/UX Design", quantity: 200, unitPrice: 7500, taxAmount: 1500, amount: 15000, taxRate: { name: "VAT", rate: 2000 } },
@@ -55,7 +59,7 @@ export async function POST(
       total: 33000,
       amountPaid: 0,
       amountDue: 33000,
-      currencyCode: "USD",
+      currencyCode,
       reference: "PO-123",
       notes: null,
     };
@@ -68,6 +72,7 @@ export async function POST(
       phone: org?.contactPhone || null,
       email: org?.contactEmail || null,
       countryCode: org?.countryCode || null,
+      dateFormat: org?.dateFormat || null,
     };
 
     if (format === "pdf") {
@@ -77,6 +82,7 @@ export async function POST(
           invoiceNumber: sampleData.invoiceNumber,
           issueDate: sampleData.issueDate,
           dueDate: sampleData.dueDate,
+          dateFormat: org?.dateFormat || null,
           lines: sampleData.lines,
           subtotal: sampleData.subtotal,
           taxTotal: sampleData.taxTotal,
