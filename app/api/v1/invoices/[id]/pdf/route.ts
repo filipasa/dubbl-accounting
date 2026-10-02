@@ -76,17 +76,21 @@ export async function GET(
     const contactAddress = recipient?.address ?? formatContactAddress(inv.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null);
     const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
 
-    let paymentLinkToken = inv.paymentLinkToken;
-    if (!paymentLinkToken) {
-      paymentLinkToken = randomBytes(24).toString("hex");
-      await db
-        .update(invoice)
-        .set({ paymentLinkToken, updatedAt: new Date() })
-        .where(eq(invoice.id, inv.id));
-    }
+    let paymentUrl: string | undefined;
+    const hasPaymentEnabled = inv.paymentMethods === null || inv.paymentMethods === undefined || inv.paymentMethods.length > 0;
+    if (hasPaymentEnabled) {
+      let paymentLinkToken = inv.paymentLinkToken;
+      if (!paymentLinkToken) {
+        paymentLinkToken = randomBytes(24).toString("hex");
+        await db
+          .update(invoice)
+          .set({ paymentLinkToken, updatedAt: new Date() })
+          .where(eq(invoice.id, inv.id));
+      }
 
-    const baseUrl = resolvePublicBaseUrl(request);
-    const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+      const baseUrl = resolvePublicBaseUrl(request);
+      paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+    }
 
     const invoiceData = {
       invoiceNumber: inv.invoiceNumber,

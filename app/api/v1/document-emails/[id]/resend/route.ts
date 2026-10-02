@@ -60,16 +60,20 @@ export async function POST(
               notDeleted(documentTemplate.deletedAt)
             ),
           });
-          let token = inv.paymentLinkToken;
-          if (!token) {
-            token = randomBytes(24).toString("hex");
-            await db
-              .update(invoice)
-              .set({ paymentLinkToken: token, updatedAt: new Date() })
-              .where(eq(invoice.id, inv.id));
+          let paymentUrl: string | undefined;
+          const hasPaymentEnabled = inv.paymentMethods === null || inv.paymentMethods === undefined || inv.paymentMethods.length > 0;
+          if (hasPaymentEnabled) {
+            let token = inv.paymentLinkToken;
+            if (!token) {
+              token = randomBytes(24).toString("hex");
+              await db
+                .update(invoice)
+                .set({ paymentLinkToken: token, updatedAt: new Date() })
+                .where(eq(invoice.id, inv.id));
+            }
+            const baseUrl = resolvePublicBaseUrl(request);
+            paymentUrl = `${baseUrl}/pay/${token}`;
           }
-          const baseUrl = resolvePublicBaseUrl(request);
-          const paymentUrl = `${baseUrl}/pay/${token}`;
 
           const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
           const buf = await renderInvoicePdf(

@@ -27,14 +27,32 @@ export async function POST(
     return NextResponse.json({ error: "Invoice not payable" }, { status: 400 });
   }
 
+  if (inv.paymentMethods && inv.paymentMethods.length === 0) {
+    return NextResponse.json({ error: "Online payments are not enabled for this invoice" }, { status: 400 });
+  }
+
+  const methods = inv.paymentMethods && inv.paymentMethods.length > 0 ? inv.paymentMethods : ["pay_by_bank"];
+  const hasPayByBank = methods.includes("pay_by_bank");
+  const hasCard = methods.includes("card") || methods.includes("online") || methods.includes("stripe");
+
+  if (!hasPayByBank && !hasCard) {
+    return NextResponse.json({ error: "No payment methods configured for this invoice" }, { status: 400 });
+  }
+
+  const paymentMethodTypes: ("card" | "pay_by_bank")[] = [];
+  if (hasCard) paymentMethodTypes.push("card");
+  if (hasPayByBank) paymentMethodTypes.push("pay_by_bank");
+
   const baseUrl = resolvePublicBaseUrl(request);
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    payment_method_types: ["pay_by_bank"],
-    payment_method_options: {
-      pay_by_bank: {},
-    },
+    payment_method_types: paymentMethodTypes,
+    ...(hasPayByBank ? {
+      payment_method_options: {
+        pay_by_bank: {},
+      },
+    } : {}),
     customer_email: inv.contact?.email || undefined,
     line_items: [
       {

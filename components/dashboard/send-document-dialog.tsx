@@ -2,19 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Send, Paperclip, Eye, Pencil, Mail, Loader2, CreditCard, FileText, ArrowLeft } from "lucide-react";
+import { Send, Paperclip, Eye, Pencil, Mail, Loader2, CreditCard, FileText, ArrowLeft, Building2, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -37,6 +35,7 @@ interface SendDocumentDialogProps {
   amountDue?: number;
   dueDate?: string | null;
   issueDate?: string | null;
+  initialPaymentMethods?: string[] | null;
   sendApiUrl: string;
   onSent: () => void;
 }
@@ -82,6 +81,7 @@ export function SendDocumentDialog({
   amountDue,
   dueDate,
   issueDate,
+  initialPaymentMethods,
   sendApiUrl,
   onSent,
 }: SendDocumentDialogProps) {
@@ -98,8 +98,19 @@ export function SendDocumentDialog({
   const [docPreviewUrl, setDocPreviewUrl] = useState("");
   const [docPreviewLoading, setDocPreviewLoading] = useState(false);
   const [docPreviewError, setDocPreviewError] = useState(false);
-  const [includePaymentLink, setIncludePaymentLink] = useState(false);
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
+    initialPaymentMethods && initialPaymentMethods.length > 0
+      ? initialPaymentMethods
+      : ["pay_by_bank"]
+  );
+  const [paymentPopoverOpen, setPaymentPopoverOpen] = useState(false);
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+
+  function togglePaymentMethod(method: string) {
+    setSelectedPaymentMethods((prev) =>
+      prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method]
+    );
+  }
 
   const typeLabel = documentTypeLabels[documentType] || "Document";
   const renderRoute = documentRenderRoute[documentType];
@@ -121,7 +132,6 @@ export function SendDocumentDialog({
         .then((res) => res.json())
         .then((data) => {
           setStripeConnected(data.connected === true);
-          if (data.connected) setIncludePaymentLink(true);
         })
         .catch(() => setStripeConnected(false));
     }
@@ -136,8 +146,14 @@ export function SendDocumentDialog({
       setPreviewHtml("");
       setDocPreviewing(false);
       setDocPreviewError(false);
+      setSelectedPaymentMethods(
+        initialPaymentMethods && initialPaymentMethods.length > 0
+          ? initialPaymentMethods
+          : ["pay_by_bank"]
+      );
+      setPaymentPopoverOpen(false);
     }
-  }, [open, contactEmail, documentType]);
+  }, [open, contactEmail, documentType, initialPaymentMethods]);
 
   // Revoke the document preview blob URL whenever it changes or on unmount,
   // so we don't leak object URLs.
@@ -151,19 +167,20 @@ export function SendDocumentDialog({
   useEffect(() => {
     if (!open) {
       setStripeConnected(null);
-      setIncludePaymentLink(false);
+      setSelectedPaymentMethods(["pay_by_bank"]);
+      setPaymentPopoverOpen(false);
     }
   }, [open]);
 
   const getPreviewButton = useCallback(() => {
-    if (isInvoice && includePaymentLink) {
+    if (isInvoice && selectedPaymentMethods.length > 0) {
       return { viewUrl: "#", buttonLabel: "Pay invoice" };
     }
     if (documentType === "quote") {
       return { viewUrl: "#", buttonLabel: "View quote" };
     }
     return {};
-  }, [isInvoice, includePaymentLink, documentType]);
+  }, [isInvoice, selectedPaymentMethods, documentType]);
 
   const buildTemplateProps = useCallback((forPreview = false) => ({
     organizationName,
@@ -252,7 +269,12 @@ export function SendDocumentDialog({
           subject: `${typeLabel} ${documentNumber} from ${organizationName}`,
           templateProps: buildTemplateProps(),
           attachPdf,
-          ...(isInvoice ? { includePaymentLink } : {}),
+          ...(isInvoice
+            ? {
+                includePaymentLink: selectedPaymentMethods.length > 0,
+                paymentMethods: selectedPaymentMethods,
+              }
+            : {}),
         }),
       });
 
@@ -457,29 +479,143 @@ export function SendDocumentDialog({
               {isInvoice && (
                 <div className="space-y-2">
                   <Label className="text-xs">Payment</Label>
-                  <Select
-                    value={includePaymentLink ? "stripe" : "none"}
-                    onValueChange={(v) => setIncludePaymentLink(v === "stripe")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No payment link</SelectItem>
-                      <SelectItem value="stripe" disabled={stripeConnected === false}>
-                        <span className="flex items-center gap-2">
-                          <CreditCard className="size-3.5" />
-                          Online payment (Stripe)
-                          {stripeConnected === false && (
-                            <span className="text-muted-foreground"> - not connected</span>
+                  <Popover open={paymentPopoverOpen} onOpenChange={setPaymentPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs ring-offset-background placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-ring text-left cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {selectedPaymentMethods.length === 0 ? (
+                            <span className="text-muted-foreground">No payment link</span>
+                          ) : selectedPaymentMethods.length === 2 ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 text-xs font-medium border border-emerald-200 dark:border-emerald-800">
+                                <Building2 className="size-3" />
+                                Pay by Bank
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-xs font-medium border border-blue-200 dark:border-blue-800">
+                                <CreditCard className="size-3" />
+                                Online payment
+                              </span>
+                            </span>
+                          ) : selectedPaymentMethods.includes("pay_by_bank") ? (
+                            <span className="flex items-center gap-1.5">
+                              <Building2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Pay by Bank (Stripe)</span>
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5">
+                              <CreditCard className="size-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Online payment (Stripe)</span>
+                            </span>
                           )}
                         </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {includePaymentLink && (
+                        <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-(--radix-popover-trigger-width) p-1.5" align="start">
+                      <div className="space-y-1">
+                        {/* Option: Pay by Bank */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => togglePaymentMethod("pay_by_bank")}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              togglePaymentMethod("pay_by_bank");
+                            }
+                          }}
+                          className="flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md hover:bg-muted cursor-pointer text-sm select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox
+                              id="method-pay-by-bank"
+                              checked={selectedPaymentMethods.includes("pay_by_bank")}
+                              onCheckedChange={() => togglePaymentMethod("pay_by_bank")}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <label
+                              htmlFor="method-pay-by-bank"
+                              className="flex items-center gap-2 cursor-pointer font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Building2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                              Pay by Bank (Stripe)
+                            </label>
+                          </div>
+                          {selectedPaymentMethods.includes("pay_by_bank") && (
+                            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                          )}
+                        </div>
+
+                        {/* Option: Online payment */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => togglePaymentMethod("card")}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              togglePaymentMethod("card");
+                            }
+                          }}
+                          className="flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md hover:bg-muted cursor-pointer text-sm select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox
+                              id="method-card"
+                              checked={selectedPaymentMethods.includes("card")}
+                              onCheckedChange={() => togglePaymentMethod("card")}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <label
+                              htmlFor="method-card"
+                              className="flex items-center gap-2 cursor-pointer font-medium"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <CreditCard className="size-3.5 text-blue-600 dark:text-blue-400" />
+                              Online payment (Stripe)
+                            </label>
+                          </div>
+                          {selectedPaymentMethods.includes("card") && (
+                            <Check className="size-3.5 text-blue-600 dark:text-blue-400" />
+                          )}
+                        </div>
+
+                        <div className="border-t border-border my-1" />
+
+                        {/* Clear all / No payment link */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPaymentMethods([]);
+                            setPaymentPopoverOpen(false);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-muted text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                        >
+                          No payment link (clear all)
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {selectedPaymentMethods.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">
-                      A &quot;Pay invoice&quot; button will be included in the email, linking to a Stripe checkout page.
+                      No payment link or QR code will be included on the email or invoice PDF.
+                    </p>
+                  ) : selectedPaymentMethods.includes("pay_by_bank") && selectedPaymentMethods.includes("card") ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      A &quot;Pay invoice&quot; button and QR code will be included, offering both Stripe Pay by Bank and card payments.
+                    </p>
+                  ) : selectedPaymentMethods.includes("pay_by_bank") ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      A &quot;Pay invoice&quot; button and QR code will be included, with Stripe Pay by Bank only.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      A &quot;Pay invoice&quot; button and QR code will be included, with standard Stripe online payment options.
                     </p>
                   )}
                 </div>

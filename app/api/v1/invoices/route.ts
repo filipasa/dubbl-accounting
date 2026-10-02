@@ -63,6 +63,7 @@ const createSchema = z.object({
   invoiceType: z.enum(["standard", "deposit", "retainer"]).default("standard"),
   // For deposit invoices: the deposit percentage in basis points (e.g. 2500 = 25%).
   depositPercent: z.number().int().min(0).max(10000).nullable().optional(),
+  paymentMethods: z.array(z.string()).optional().default(["pay_by_bank"]),
   // When true, create the invoice in 'pending_approval' rather than 'draft' so it
   // enters the approval workflow immediately (and is not posted/sent).
   submitForApproval: z.boolean().optional().default(false),
@@ -349,6 +350,7 @@ export async function POST(request: Request) {
         senderSnapshot,
         recipientSnapshot,
         paymentLinkToken: randomBytes(24).toString("hex"),
+        paymentMethods: parsed.paymentMethods ?? ["pay_by_bank"],
         // Created as the schema default ('draft'); when submitForApproval is set
         // we move it to 'pending_approval' below, but only after confirming an
         // active approval workflow exists and an approval_request is created.

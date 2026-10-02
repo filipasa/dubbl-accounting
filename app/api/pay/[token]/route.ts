@@ -38,6 +38,10 @@ export async function GET(
     return NextResponse.json({ error: "Invoice is not payable" }, { status: 400 });
   }
 
+  if (inv.paymentMethods && inv.paymentMethods.length === 0) {
+    return NextResponse.json({ error: "Online payments are not enabled for this invoice" }, { status: 400 });
+  }
+
   const template = await db.query.documentTemplate.findFirst({
     where: and(
       eq(documentTemplate.organizationId, inv.organizationId),
@@ -48,9 +52,11 @@ export async function GET(
   });
 
   const logoUrl = template?.logoUrl || inv.organization.logo || null;
+  const paymentMethods = inv.paymentMethods && inv.paymentMethods.length > 0 ? inv.paymentMethods : ["pay_by_bank"];
 
   return NextResponse.json({
     status: "pending",
+    paymentMethods,
     invoice: {
       id: inv.id,
       invoiceNumber: inv.invoiceNumber,

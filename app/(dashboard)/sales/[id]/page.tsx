@@ -68,6 +68,7 @@ interface InvoiceDetail {
   currencyCode: string;
   reference: string | null;
   notes: string | null;
+  paymentMethods?: string[] | null;
   contactId: string;
   contact: { name: string; email: string | null; addresses?: any } | null;
   lines: {
@@ -1346,6 +1347,7 @@ export default function InvoiceDetailPage() {
           amountDue={inv.amountDue}
           dueDate={inv.dueDate}
           issueDate={inv.issueDate}
+          initialPaymentMethods={inv.paymentMethods}
           sendApiUrl={`/api/v1/invoices/${id}/send`}
           onSent={handleSendComplete}
         />

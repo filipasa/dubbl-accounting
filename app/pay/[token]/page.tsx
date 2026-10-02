@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle2, Building2, Loader2, AlertCircle, Download } from "lucide-react";
+import { CheckCircle2, Building2, Loader2, AlertCircle, Download, CreditCard } from "lucide-react";
 
 function getLocaleForCurrency(currency: string): string {
   const map: Record<string, string> = {
@@ -50,6 +50,7 @@ interface InvoiceData {
 
 interface PaymentData {
   status: "pending" | "paid";
+  paymentMethods?: string[];
   invoice: InvoiceData | { invoiceNumber: string };
   organization?: { name: string; logoUrl?: string | null };
   contact?: { name: string };
@@ -171,6 +172,24 @@ function PaymentPageContent() {
 
   const inv = data?.invoice as InvoiceData;
   const currency = inv?.currencyCode || "GBP";
+
+  const paymentMethods = data?.paymentMethods || ["pay_by_bank"];
+  const hasBank = paymentMethods.includes("pay_by_bank");
+  const hasCard = paymentMethods.includes("card") || paymentMethods.includes("online") || paymentMethods.includes("stripe");
+
+  let payButtonLabel = "Pay by Bank";
+  let payButtonSubtext = "Instant bank transfer powered by Stripe Open Banking";
+  let PayIcon = Building2;
+
+  if (hasBank && hasCard) {
+    payButtonLabel = "Pay Online or by Bank";
+    payButtonSubtext = "Pay securely via bank transfer or card powered by Stripe";
+    PayIcon = CreditCard;
+  } else if (hasCard) {
+    payButtonLabel = "Pay Online";
+    payButtonSubtext = "Secure online payment powered by Stripe";
+    PayIcon = CreditCard;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/60 dark:bg-gray-950 flex items-center justify-center p-4 sm:p-6 md:p-10 relative overflow-hidden">
@@ -327,12 +346,12 @@ function PaymentPageContent() {
           {paying ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              Redirecting to your bank...
+              {hasBank && !hasCard ? "Redirecting to your bank..." : "Redirecting to checkout..."}
             </>
           ) : (
             <>
-              <Building2 className="h-5 w-5" />
-              Pay by Bank
+              <PayIcon className="h-5 w-5" />
+              {payButtonLabel}
             </>
           )}
         </button>
@@ -349,7 +368,7 @@ function PaymentPageContent() {
 
         <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
           <span className="size-1.5 rounded-full bg-emerald-500" />
-          <span>Instant bank transfer powered by Stripe Open Banking</span>
+          <span>{payButtonSubtext}</span>
         </div>
       </div>
     </div>

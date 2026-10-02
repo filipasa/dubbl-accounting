@@ -36,6 +36,7 @@ const sendBodySchema = z.object({
   templateProps: templatePropsSchema,
   attachPdf: z.boolean().default(true),
   includePaymentLink: z.boolean().default(false),
+  paymentMethods: z.array(z.string()).optional(),
 });
 
 export async function POST(
@@ -80,24 +81,38 @@ export async function POST(
 
     // Send email if requested
     if (emailParsed.success) {
-      const { recipientEmail, subject, templateProps, attachPdf, includePaymentLink } = emailParsed.data;
+      const { recipientEmail, subject, templateProps, attachPdf, includePaymentLink, paymentMethods } = emailParsed.data;
 
-      // Ensure payment link token exists on invoice
+      // Determine final payment methods to store and use
+      const finalPaymentMethods = paymentMethods !== undefined
+        ? paymentMethods
+        : (includePaymentLink ? ["pay_by_bank"] : []);
+
+      const hasPaymentMethods = finalPaymentMethods.length > 0;
+
       let paymentLinkToken = found.paymentLinkToken;
-      if (!paymentLinkToken) {
+      if (hasPaymentMethods && !paymentLinkToken) {
         paymentLinkToken = randomBytes(24).toString("hex");
-        await db
-          .update(invoice)
-          .set({ paymentLinkToken, updatedAt: new Date() })
-          .where(eq(invoice.id, id));
       }
 
-      const baseUrl = resolvePublicBaseUrl(request);
-      const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+      await db
+        .update(invoice)
+        .set({
+          paymentMethods: finalPaymentMethods,
+          ...(paymentLinkToken ? { paymentLinkToken } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(invoice.id, id));
 
-      if (includePaymentLink || !templateProps.viewUrl) {
+      const baseUrl = resolvePublicBaseUrl(request);
+      const paymentUrl = hasPaymentMethods && paymentLinkToken ? `${baseUrl}/pay/${paymentLinkToken}` : undefined;
+
+      if (hasPaymentMethods && paymentUrl) {
         templateProps.viewUrl = paymentUrl;
         templateProps.buttonLabel = "Pay invoice";
+      } else {
+        delete templateProps.viewUrl;
+        delete templateProps.buttonLabel;
       }
 
       // Render the structured email template to HTML

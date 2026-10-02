@@ -69,8 +69,9 @@ export async function GET(
     const contactAddress = recipient?.address ?? formatContactAddress(inv.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null);
     const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
 
+    const hasPaymentEnabled = inv.paymentMethods === null || inv.paymentMethods === undefined || inv.paymentMethods.length > 0;
     const baseUrl = resolvePublicBaseUrl(request);
-    const paymentUrl = `${baseUrl}/pay/${token}`;
+    const paymentUrl = hasPaymentEnabled ? `${baseUrl}/pay/${token}` : undefined;
 
     const pdfBuffer = await renderInvoicePdf(
       {

@@ -100,6 +100,7 @@ export const invoice = pgTable("invoice", {
   senderSnapshot: jsonb("sender_snapshot"),
   recipientSnapshot: jsonb("recipient_snapshot"),
   paymentLinkToken: text("payment_link_token").unique(),
+  paymentMethods: text("payment_methods").array(),
   journalEntryId: uuid("journal_entry_id").references(() => journalEntry.id),
   sentAt: timestamp("sent_at", { mode: "date" }),
   paidAt: timestamp("paid_at", { mode: "date" }),
