@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { quote, organization, portalAccessToken } from "@/lib/db/schema";
+import { quote, organization, portalAccessToken, documentTemplate } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -109,6 +109,14 @@ export async function POST(
       if (attachPdf) {
         try {
           const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+          const template = await db.query.documentTemplate.findFirst({
+            where: and(
+              eq(documentTemplate.organizationId, ctx.organizationId),
+              eq(documentTemplate.type, "quote"),
+              eq(documentTemplate.isDefault, true),
+              notDeleted(documentTemplate.deletedAt)
+            ),
+          });
           const orgInfo = await buildSenderSnapshot(ctx.organizationId);
           const contactInfo = found.contact ? buildRecipientSnapshot(found.contact) : { name: "Unknown" };
           const taxLabel = resolveTaxLabel(found.lines, found.taxTotal);
@@ -137,7 +145,7 @@ export async function POST(
             },
             orgInfo,
             contactInfo,
-            {},
+            template || {},
             {
               title: "Quote",
               numberLabel: "Quote number",

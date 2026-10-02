@@ -66,6 +66,7 @@ export interface PdfInvoiceData {
 }
 
 export interface PdfTemplateSettings {
+  logoUrl?: string | null;
   accentColor?: string | null;
   showTaxBreakdown?: boolean;
   showPaymentTerms?: boolean;
@@ -143,6 +144,40 @@ function resolvePdfImage(url?: string | null): string | null {
   return null;
 }
 
+async function fetchImageAsDataUri(url: string, timeoutMs = 3500): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  if (url.startsWith("/")) {
+    return resolvePdfImage(url);
+  }
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return null;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/png";
+    const arrayBuffer = await res.arrayBuffer();
+    let finalBuffer: Buffer = Buffer.from(arrayBuffer);
+    let finalMime = contentType;
+    if (contentType.includes("webp") || contentType.includes("svg") || contentType.includes("avif")) {
+      try {
+        const sharp = (await import("sharp")).default;
+        finalBuffer = await sharp(finalBuffer).png().toBuffer();
+        finalMime = "image/png";
+      } catch {
+        // Fallback to raw buffer
+      }
+    }
+    return `data:${finalMime};base64,${finalBuffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 // Colors
 const dark = "#111827";
 const gray = "#6b7280";
@@ -153,9 +188,13 @@ const s = StyleSheet.create({
   // Accent bar
   accentBar: { height: 4, marginBottom: 30 },
   // Header
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
+  headerLeft: { flex: 1, marginRight: 20 },
+  logoContainer: { maxWidth: 180, maxHeight: 60, alignItems: "flex-end", justifyContent: "flex-start" },
+  logoImage: { maxWidth: 180, maxHeight: 60, objectFit: "contain" },
   title: { fontSize: 18, fontFamily: "Helvetica-Bold", color: dark, marginBottom: 20 },
   // Metadata
-  metaBlock: { marginBottom: 20 },
+  metaBlock: { marginBottom: 0 },
   metaRow: { flexDirection: "row", marginBottom: 2 },
   metaLabel: { width: 80, fontSize: 9, color: gray },
   metaValue: { fontSize: 9, fontFamily: "Helvetica-Bold" },
@@ -288,35 +327,47 @@ function stripBotMentions(text: string | null | undefined): string | null {
     ? replacePlaceholders(template.footerHtml, vars).replace(/<[^>]*>/g, "")
     : null;
 
+  const resolvedLogo = resolvePdfImage(template.logoUrl);
+
   return (
     <Document>
       <Page size="A4" style={s.page}>
         {/* Thin accent bar at top */}
         <View style={[s.accentBar, { backgroundColor: accent }]} />
 
-        {/* Invoice title */}
-        <Text style={s.title}>{title}</Text>
+        {/* Header (Title, Metadata, Logo) */}
+        <View style={s.headerRow}>
+          <View style={s.headerLeft}>
+            {/* Invoice title */}
+            <Text style={s.title}>{title}</Text>
 
-        {/* Metadata */}
-        <View style={s.metaBlock}>
-          <View style={s.metaRow}>
-            <Text style={[s.metaLabel, { fontFamily: "Helvetica-Bold" }]}>{labels?.numberLabel ?? "Invoice number"}</Text>
-            <Text style={s.metaValue}>{inv.invoiceNumber}</Text>
-          </View>
-          <View style={s.metaRow}>
-            <Text style={s.metaLabel}>Date of issue</Text>
-            <Text style={{ fontSize: 9 }}>{formattedIssueDate}</Text>
-          </View>
-          {showDateRow && (
-            <View style={s.metaRow}>
-              <Text style={s.metaLabel}>{dateRowLabel}</Text>
-              <Text style={{ fontSize: 9 }}>{formattedDueDate}</Text>
+            {/* Metadata */}
+            <View style={s.metaBlock}>
+              <View style={s.metaRow}>
+                <Text style={[s.metaLabel, { fontFamily: "Helvetica-Bold" }]}>{labels?.numberLabel ?? "Invoice number"}</Text>
+                <Text style={s.metaValue}>{inv.invoiceNumber}</Text>
+              </View>
+              <View style={s.metaRow}>
+                <Text style={s.metaLabel}>Date of issue</Text>
+                <Text style={{ fontSize: 9 }}>{formattedIssueDate}</Text>
+              </View>
+              {showDateRow && (
+                <View style={s.metaRow}>
+                  <Text style={s.metaLabel}>{dateRowLabel}</Text>
+                  <Text style={{ fontSize: 9 }}>{formattedDueDate}</Text>
+                </View>
+              )}
+              {inv.reference && (
+                <View style={s.metaRow}>
+                  <Text style={s.metaLabel}>Reference</Text>
+                  <Text style={{ fontSize: 9 }}>{inv.reference}</Text>
+                </View>
+              )}
             </View>
-          )}
-          {inv.reference && (
-            <View style={s.metaRow}>
-              <Text style={s.metaLabel}>Reference</Text>
-              <Text style={{ fontSize: 9 }}>{inv.reference}</Text>
+          </View>
+          {resolvedLogo && (
+            <View style={s.logoContainer}>
+              <Image src={resolvedLogo} style={s.logoImage} />
             </View>
           )}
         </View>
@@ -468,8 +519,22 @@ export async function renderInvoicePdf(
   template: PdfTemplateSettings,
   labels?: PdfDocumentLabels
 ): Promise<ArrayBuffer> {
+  let resolvedLogoUrl = template.logoUrl;
+  if (template.logoUrl) {
+    try {
+      resolvedLogoUrl = await fetchImageAsDataUri(template.logoUrl);
+    } catch {
+      resolvedLogoUrl = null;
+    }
+  }
+
+  const effectiveTemplate: PdfTemplateSettings = {
+    ...template,
+    logoUrl: resolvedLogoUrl,
+  };
+
   const buffer = await renderToBuffer(
-    <InvoiceDocument invoice={invoice} org={org} contact={contact} template={template} labels={labels} />
+    <InvoiceDocument invoice={invoice} org={org} contact={contact} template={effectiveTemplate} labels={labels} />
   );
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, organization } from "@/lib/db/schema";
+import { invoice, organization, documentTemplate } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -108,6 +108,14 @@ export async function POST(
           const org = await db.query.organization.findFirst({
             where: eq(organization.id, ctx.organizationId),
           });
+          const template = await db.query.documentTemplate.findFirst({
+            where: and(
+              eq(documentTemplate.organizationId, ctx.organizationId),
+              eq(documentTemplate.type, "invoice"),
+              eq(documentTemplate.isDefault, true),
+              notDeleted(documentTemplate.deletedAt)
+            ),
+          });
           const orgInfo = (found.senderSnapshot as any) || (await buildSenderSnapshot(ctx.organizationId));
           const contactInfo = (found.recipientSnapshot as any) || (found.contact ? buildRecipientSnapshot(found.contact) : { name: "Unknown" });
 
@@ -137,7 +145,7 @@ export async function POST(
             },
             orgInfo,
             contactInfo,
-            {}
+            template || {}
           );
           pdfBuffer = Buffer.from(buf);
           pdfFilename = `invoice-${found.invoiceNumber}.pdf`;

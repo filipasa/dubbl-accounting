@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { documentEmailLog, organization } from "@/lib/db/schema";
+import { documentEmailLog, organization, documentTemplate } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError, notFound } from "@/lib/api/response";
+import { notDeleted } from "@/lib/db/soft-delete";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
@@ -49,12 +50,21 @@ export async function POST(
         });
 
         if (inv) {
+          const invTemplate = await db.query.documentTemplate.findFirst({
+            where: and(
+              eq(documentTemplate.organizationId, ctx.organizationId),
+              eq(documentTemplate.type, "invoice"),
+              eq(documentTemplate.isDefault, true),
+              notDeleted(documentTemplate.deletedAt)
+            ),
+          });
           const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
           const buf = await renderInvoicePdf(
             {
               invoiceNumber: inv.invoiceNumber,
               issueDate: inv.issueDate,
               dueDate: inv.dueDate,
+              dateFormat: org?.dateFormat || null,
               currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
               lines: inv.lines.map((l) => ({
                 description: l.description,
@@ -73,9 +83,9 @@ export async function POST(
               reference: inv.reference,
               notes: inv.notes,
             },
-            { name: org?.name || "" },
+            { name: org?.name || "", dateFormat: org?.dateFormat || null },
             inv.contact ? { name: inv.contact.name } : { name: "Unknown" },
-            {}
+            invTemplate || {}
           );
           pdfBuffer = Buffer.from(buf);
           pdfFilename = `invoice-${inv.invoiceNumber}.pdf`;
@@ -99,12 +109,21 @@ export async function POST(
         });
 
         if (q) {
+          const quoteTemplate = await db.query.documentTemplate.findFirst({
+            where: and(
+              eq(documentTemplate.organizationId, ctx.organizationId),
+              eq(documentTemplate.type, "quote"),
+              eq(documentTemplate.isDefault, true),
+              notDeleted(documentTemplate.deletedAt)
+            ),
+          });
           const taxLabel = resolveTaxLabel(q.lines, q.taxTotal);
           const buf = await renderInvoicePdf(
             {
               invoiceNumber: q.quoteNumber,
               issueDate: q.issueDate,
               dueDate: q.expiryDate || q.issueDate,
+              dateFormat: org?.dateFormat || null,
               currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
               lines: q.lines.map((l) => ({
                 description: l.description,
@@ -121,9 +140,9 @@ export async function POST(
               reference: q.reference,
               notes: q.notes,
             },
-            { name: org?.name || "" },
+            { name: org?.name || "", dateFormat: org?.dateFormat || null },
             q.contact ? { name: q.contact.name } : { name: "Unknown" },
-            {},
+            quoteTemplate || {},
             {
               title: "Quote",
               numberLabel: "Quote number",

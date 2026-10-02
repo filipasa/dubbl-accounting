@@ -205,7 +205,14 @@ export function generateDocumentHtml(
     taxTotal: formatMoney(doc.taxTotal, doc.currencyCode),
     total: formatMoney(doc.total, doc.currencyCode),
     currency: doc.currencyCode,
+    logoUrl: template.logoUrl || "",
   };
+
+  const logoHtml = template.logoUrl
+    ? `<div style="max-width:180px;max-height:60px;display:flex;justify-content:flex-end;">
+      <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;" />
+    </div>`
+    : "";
 
   const headerHtml = template.headerHtml
     ? replaceTemplatePlaceholders(template.headerHtml, templateVars)
@@ -315,25 +322,28 @@ export function generateDocumentHtml(
   <div style="padding:32px 40px 40px;">
   ${headerHtml}
 
-  <!-- Title -->
-  <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;letter-spacing:-0.3px;">${docTitle}</h1>
-
-  <!-- Metadata -->
-  <table style="font-size:12px;border-collapse:collapse;margin-bottom:24px;">
-    <tr>
-      <td style="padding:2px 12px 2px 0;font-weight:600;">${cfg.numberLabel}</td>
-      <td style="padding:2px 0;font-weight:600;">${doc.documentNumber}</td>
-    </tr>
-    <tr>
-      <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
-      <td style="padding:2px 0;">${formattedIssueDate}</td>
-    </tr>
-    ${secondDateRow}
-    ${doc.reference ? `<tr>
-      <td style="padding:2px 12px 2px 0;color:#6b7280;">Reference</td>
-      <td style="padding:2px 0;">${escapeHtml(doc.reference)}</td>
-    </tr>` : ""}
-  </table>
+  <!-- Header (Title, Metadata, Logo) -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:20px;">
+    <div>
+      <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;letter-spacing:-0.3px;">${docTitle}</h1>
+      <table style="font-size:12px;border-collapse:collapse;">
+        <tr>
+          <td style="padding:2px 12px 2px 0;font-weight:600;">${cfg.numberLabel}</td>
+          <td style="padding:2px 0;font-weight:600;">${doc.documentNumber}</td>
+        </tr>
+        <tr>
+          <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
+          <td style="padding:2px 0;">${formattedIssueDate}</td>
+        </tr>
+        ${secondDateRow}
+        ${doc.reference ? `<tr>
+          <td style="padding:2px 12px 2px 0;color:#6b7280;">Reference</td>
+          <td style="padding:2px 0;">${escapeHtml(doc.reference)}</td>
+        </tr>` : ""}
+      </table>
+    </div>
+    ${logoHtml}
+  </div>
 
   <!-- Parties -->
   <div style="display:flex;gap:40px;margin-bottom:24px;">
@@ -469,7 +479,14 @@ export function generateInvoiceHtml(
     taxTotal: formatMoney(invoice.taxTotal, invoice.currencyCode),
     total: formatMoney(invoice.total, invoice.currencyCode),
     currency: invoice.currencyCode,
+    logoUrl: template.logoUrl || "",
   };
+
+  const logoHtml = template.logoUrl
+    ? `<div style="max-width:180px;max-height:60px;display:flex;justify-content:flex-end;">
+      <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;" />
+    </div>`
+    : "";
 
   const headerHtml = template.headerHtml
     ? replaceTemplatePlaceholders(template.headerHtml, templateVars)
@@ -552,28 +569,31 @@ export function generateInvoiceHtml(
   <div style="padding:32px 40px 40px;">
   ${headerHtml}
 
-  <!-- Title -->
-  <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;letter-spacing:-0.3px;">${invoiceTitle}</h1>
-
-  <!-- Metadata -->
-  <table style="font-size:12px;border-collapse:collapse;margin-bottom:24px;">
-    <tr>
-      <td style="padding:2px 12px 2px 0;font-weight:600;">Invoice number</td>
-      <td style="padding:2px 0;font-weight:600;">${invoice.invoiceNumber}</td>
-    </tr>
-    <tr>
-      <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
-      <td style="padding:2px 0;">${formattedIssueDate}</td>
-    </tr>
-    <tr>
-      <td style="padding:2px 12px 2px 0;color:#6b7280;">Date due</td>
-      <td style="padding:2px 0;">${formattedDueDate}</td>
-    </tr>
-    ${invoice.reference ? `<tr>
-      <td style="padding:2px 12px 2px 0;color:#6b7280;">Reference</td>
-      <td style="padding:2px 0;">${escapeHtml(invoice.reference)}</td>
-    </tr>` : ""}
-  </table>
+  <!-- Header (Title, Metadata, Logo) -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:20px;">
+    <div>
+      <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;letter-spacing:-0.3px;">${invoiceTitle}</h1>
+      <table style="font-size:12px;border-collapse:collapse;">
+        <tr>
+          <td style="padding:2px 12px 2px 0;font-weight:600;">Invoice number</td>
+          <td style="padding:2px 0;font-weight:600;">${invoice.invoiceNumber}</td>
+        </tr>
+        <tr>
+          <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
+          <td style="padding:2px 0;">${formattedIssueDate}</td>
+        </tr>
+        <tr>
+          <td style="padding:2px 12px 2px 0;color:#6b7280;">Date due</td>
+          <td style="padding:2px 0;">${formattedDueDate}</td>
+        </tr>
+        ${invoice.reference ? `<tr>
+          <td style="padding:2px 12px 2px 0;color:#6b7280;">Reference</td>
+          <td style="padding:2px 0;">${escapeHtml(invoice.reference)}</td>
+        </tr>` : ""}
+      </table>
+    </div>
+    ${logoHtml}
+  </div>
 
   <!-- Seller / Buyer -->
   <div style="display:flex;gap:40px;margin-bottom:24px;">
@@ -633,7 +653,7 @@ export function generateInvoiceHtml(
 
   <!-- Footer -->
   <div style="margin-top:40px;padding-top:8px;border-top:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:10px;color:#6b7280;">${invoice.invoiceNumber} · ${formatMoney(amountDue, invoice.currencyCode)} due ${invoice.dueDate}</span>
+    <span style="font-size:10px;color:#6b7280;">${invoice.invoiceNumber} · ${formatMoney(amountDue, invoice.currencyCode)} due ${formattedDueDate}</span>
     <a href="https://www.fixbooks.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
       <svg viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="9">
         <path d="M18 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10h-8V4z" fill="#d1d5db"/>

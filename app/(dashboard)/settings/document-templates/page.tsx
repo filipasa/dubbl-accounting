@@ -371,7 +371,7 @@ export default function DocumentTemplatesPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Logo URL</Label>
-                <p className="text-[11px] text-muted-foreground">URL to your logo image (shown in HTML preview only)</p>
+                <p className="text-[11px] text-muted-foreground">URL to your logo image (displayed on documents and PDFs)</p>
                 <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://example.com/logo.png" />
               </div>
 
