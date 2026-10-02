@@ -18,6 +18,7 @@ import { preloadTaxRates, calcTax } from "@/lib/api/tax-calculator";
 import { resolvePrice } from "@/lib/api/pricing";
 import { decimalToMinorUnits } from "@/lib/money";
 import { wrapTool } from "@/lib/mcp/errors";
+import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 
 function cleanNotes(notes?: string | null): string | null {
@@ -239,6 +240,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               amountPaid: 0,
               amountDue: invoiceTotal,
               currencyCode: found.currencyCode,
+              paymentLinkToken: randomBytes(24).toString("hex"),
               createdBy: ctx.userId,
             })
             .returning();

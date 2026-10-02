@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/money";
 import { resolveTaxLabel } from "./tax-label";
 import { formatDate } from "@/lib/date";
+import { generateQrCodePngDataUri } from "./qr-code";
 
 interface TemplateSettings {
   logoUrl?: string | null;
@@ -56,6 +57,8 @@ interface InvoiceData {
   currencyCode: string;
   reference?: string | null;
   notes?: string | null;
+  paymentUrl?: string | null;
+  qrCodeDataUri?: string | null;
 }
 
 function getTaxIdLabel(countryCode?: string | null): string {
@@ -532,6 +535,24 @@ export function generateInvoiceHtml(
       </tr>`
     : "";
 
+  let qrCodeUri = invoice.qrCodeDataUri || null;
+  if (invoice.paymentUrl && !qrCodeUri) {
+    try {
+      qrCodeUri = generateQrCodePngDataUri(invoice.paymentUrl);
+    } catch (err) {
+      console.error("Failed to generate QR code for HTML:", err);
+    }
+  }
+
+  const qrCodeSection =
+    invoice.paymentUrl && amountDue > 0
+      ? `<div style="margin-top:24px;">
+          <p style="font-size:12px;font-weight:600;color:#111827;margin:0 0 4px;">Scan to pay:</p>
+          ${qrCodeUri ? `<img src="${qrCodeUri}" width="80" height="80" style="display:block;margin:4px 0 6px;" alt="Scan to pay QR code" />` : ""}
+          <p style="font-size:12px;color:#111827;margin:0;">Pay Online: <a href="${invoice.paymentUrl}" style="color:#2563eb;text-decoration:underline;">${escapeHtml(invoice.paymentUrl)}</a></p>
+        </div>`
+      : "";
+
   const bankDetailsText = template.bankDetails
     ? replaceTemplatePlaceholders(template.bankDetails, templateVars)
     : "";
@@ -646,6 +667,7 @@ export function generateInvoiceHtml(
     </tfoot>
   </table>
 
+  ${qrCodeSection}
   ${bankDetailsSection}
   ${paymentInstructionsSection}
   ${notesSection}

@@ -9,6 +9,7 @@ import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { getNextNumber } from "@/lib/api/numbering";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 
 // Progress / milestone billing.
@@ -295,6 +296,7 @@ export async function POST(
           currencyCode: found.currencyCode,
           senderSnapshot,
           recipientSnapshot,
+          paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         })
         .returning();

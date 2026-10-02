@@ -62,6 +62,7 @@ export async function POST(
       currencyCode,
       reference: "PO-123",
       notes: null,
+      paymentUrl: `${url.protocol}//${url.host}/pay/sample-preview`,
     };
 
     const orgInfo = {
@@ -93,6 +94,7 @@ export async function POST(
           currencyCode: sampleData.currencyCode,
           reference: sampleData.reference,
           notes: sampleData.notes,
+          paymentUrl: sampleData.paymentUrl,
         },
         orgInfo,
         {

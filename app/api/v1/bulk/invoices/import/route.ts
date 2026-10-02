@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/api/audit";
 import { getNextNumber } from "@/lib/api/numbering";
 import { preProcessInvoices } from "@/lib/import-export/pre-process";
 import type { SourceSystem } from "@/lib/import-export/types";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 
 const lineSchema = z.object({
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
           total: subtotal,
           amountPaid: 0,
           amountDue: subtotal,
+          paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         }).returning();
 

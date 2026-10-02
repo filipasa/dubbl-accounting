@@ -19,20 +19,25 @@ export async function POST(
       eq(invoice.paymentLinkToken, token),
       isNull(invoice.deletedAt)
     ),
-    with: { organization: true },
+    with: { organization: true, contact: true },
   });
 
   if (!inv || inv.status === "paid" || inv.status === "void" || inv.status === "draft") {
     return NextResponse.json({ error: "Invoice not payable" }, { status: 400 });
   }
 
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
   const url = new URL(request.url);
-  const baseUrl = `${url.protocol}//${url.host}`;
+  const baseUrl = host ? `${proto}://${host}` : `${url.protocol}//${url.host}`;
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    automatic_tax: { enabled: true },
-    payment_method_types: ["card"],
+    payment_method_types: ["pay_by_bank"],
+    payment_method_options: {
+      pay_by_bank: {},
+    },
+    customer_email: inv.contact?.email || undefined,
     line_items: [
       {
         price_data: {

@@ -9,6 +9,8 @@ import { generateInvoiceHtml } from "@/lib/documents/pdf-generator";
 import type { SenderSnapshot, RecipientSnapshot } from "@/lib/documents/snapshots";
 import { formatContactAddress } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { randomBytes } from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 
 export async function GET(
   request: Request,
@@ -74,6 +76,20 @@ export async function GET(
     const contactAddress = recipient?.address ?? formatContactAddress(inv.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null);
     const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
 
+    let paymentLinkToken = inv.paymentLinkToken;
+    if (!paymentLinkToken) {
+      paymentLinkToken = randomBytes(24).toString("hex");
+      await db
+        .update(invoice)
+        .set({ paymentLinkToken, updatedAt: new Date() })
+        .where(eq(invoice.id, inv.id));
+    }
+
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || url.host;
+    const proto = request.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+    const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+    const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+
     const invoiceData = {
       invoiceNumber: inv.invoiceNumber,
       issueDate: inv.issueDate,
@@ -103,6 +119,7 @@ export async function GET(
       currencyCode: inv.currencyCode,
       reference: inv.reference,
       notes: inv.notes,
+      paymentUrl,
     };
 
     const templateSettings = template || {};
@@ -125,6 +142,7 @@ export async function GET(
           currencyCode: inv.currencyCode,
           reference: inv.reference,
           notes: inv.notes,
+          paymentUrl,
         },
         orgInfo,
         {

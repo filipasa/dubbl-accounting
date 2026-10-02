@@ -63,6 +63,8 @@ export interface PdfInvoiceData {
   currencyCode: string;
   reference?: string | null;
   notes?: string | null;
+  paymentUrl?: string | null;
+  qrCodeDataUri?: string | null;
 }
 
 export interface PdfTemplateSettings {
@@ -457,6 +459,25 @@ function stripBotMentions(text: string | null | undefined): string | null {
           </View>
         </View>
 
+        {/* Scan to pay & Pay Online */}
+        {inv.paymentUrl && amountDue > 0 && (
+          <View style={s.infoSection}>
+            <Text style={s.infoTitle}>Scan to pay:</Text>
+            {inv.qrCodeDataUri && (
+              <Image
+                src={inv.qrCodeDataUri}
+                style={{ width: 75, height: 75, marginTop: 4, marginBottom: 5 }}
+              />
+            )}
+            <Text style={s.infoText}>
+              Pay Online:{" "}
+              <Link src={inv.paymentUrl} style={{ color: "#2563eb", textDecoration: "underline" }}>
+                {inv.paymentUrl}
+              </Link>
+            </Text>
+          </View>
+        )}
+
         {/* Bank Details */}
         {bankDetailsText && (
           <View style={s.infoSection}>
@@ -518,13 +539,28 @@ export async function renderInvoicePdf(
     }
   }
 
+  let qrCodeDataUri = invoice.qrCodeDataUri;
+  if (invoice.paymentUrl && !qrCodeDataUri) {
+    try {
+      const { generateQrCodePngDataUri } = await import("./qr-code");
+      qrCodeDataUri = generateQrCodePngDataUri(invoice.paymentUrl);
+    } catch (err) {
+      console.error("Failed to generate QR code for PDF:", err);
+    }
+  }
+
   const effectiveTemplate: PdfTemplateSettings = {
     ...template,
     logoUrl: resolvedLogoUrl,
   };
 
+  const effectiveInvoice: PdfInvoiceData = {
+    ...invoice,
+    qrCodeDataUri,
+  };
+
   const buffer = await renderToBuffer(
-    <InvoiceDocument invoice={invoice} org={org} contact={contact} template={effectiveTemplate} labels={labels} />
+    <InvoiceDocument invoice={effectiveInvoice} org={org} contact={contact} template={effectiveTemplate} labels={labels} />
   );
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }

@@ -9,6 +9,7 @@ import { assertNotLocked, PeriodLockedError } from "@/lib/api/period-lock";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
+import { randomBytes } from "crypto";
 
 /**
  * Advance a date by the given frequency.
@@ -489,6 +490,7 @@ export async function processRecurringTemplates(
           amountPaid: 0,
           amountDue: total,
           currencyCode: tmpl.currencyCode,
+          paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: tmpl.createdBy,
         })
         .returning();

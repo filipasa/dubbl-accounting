@@ -22,6 +22,7 @@ import {
   createApprovalRequest,
 } from "@/lib/approvals/engine";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
+import { randomBytes } from "crypto";
 
 const lineSchema = z.object({
   description: z.string().min(1),
@@ -347,6 +348,7 @@ export async function POST(request: Request) {
         depositPercent: parsed.depositPercent ?? null,
         senderSnapshot,
         recipientSnapshot,
+        paymentLinkToken: randomBytes(24).toString("hex"),
         // Created as the schema default ('draft'); when submitForApproval is set
         // we move it to 'pending_approval' below, but only after confirming an
         // active approval workflow exists and an approval_request is created.

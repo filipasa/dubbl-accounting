@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, FileText, Loader2, AlertCircle, Download } from "lucide-react";
+import { CheckCircle2, Building2, FileText, Loader2, AlertCircle, Download } from "lucide-react";
 
 function getLocaleForCurrency(currency: string): string {
   const map: Record<string, string> = {
@@ -250,12 +250,12 @@ function PaymentPageContent() {
           {paying ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Redirecting to payment...
+              Redirecting to your bank...
             </>
           ) : (
             <>
-              <CreditCard className="h-4 w-4" />
-              Pay Now
+              <Building2 className="h-4 w-4" />
+              Pay by Bank
             </>
           )}
         </button>
@@ -271,7 +271,7 @@ function PaymentPageContent() {
         </a>
 
         <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
-          Secure payment powered by Stripe
+          Instant bank transfer powered by Stripe Open Banking
         </p>
       </div>
     </div>

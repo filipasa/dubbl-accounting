@@ -13,6 +13,7 @@ import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound, validationError } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { getNextNumber } from "@/lib/api/numbering";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 
 const invoiceSchema = z.object({
@@ -159,6 +160,7 @@ export async function POST(
           amountPaid: 0,
           amountDue: subtotal,
           currencyCode: proj.currency,
+          paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         })
         .returning();

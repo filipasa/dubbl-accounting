@@ -16,6 +16,7 @@ import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { getNextNumber } from "@/lib/api/numbering";
 import { decimalToMinorUnits } from "@/lib/money";
+import { randomBytes } from "crypto";
 import {
   calculateSimpleInterest,
   calculateCompoundInterest,
@@ -137,6 +138,7 @@ export async function POST(
         amountPaid: 0,
         amountDue: interestAmountCents,
         currencyCode: found.currencyCode,
+        paymentLinkToken: randomBytes(24).toString("hex"),
         createdBy: ctx.userId,
       })
       .returning();

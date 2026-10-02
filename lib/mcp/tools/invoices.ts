@@ -311,6 +311,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             currencyCode: params.currencyCode,
             invoiceType: params.invoiceType,
             depositPercent: params.depositPercent ?? null,
+            paymentLinkToken: randomBytes(24).toString("hex"),
             createdBy: ctx.userId,
           })
           .returning();
