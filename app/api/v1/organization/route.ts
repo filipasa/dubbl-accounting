@@ -27,6 +27,7 @@ const updateSchema = z
     country: z.string().min(1).optional().nullable(),
     businessType: z.string().min(1).optional().nullable(),
     defaultCurrency: z.string().min(1).optional(),
+    dateFormat: z.string().min(1).optional(),
     fiscalYearStartMonth: z.number().min(1).max(12).optional(),
     countryCode: z.string().max(2).nullable().optional(),
     taxId: z.string().nullable().optional(),

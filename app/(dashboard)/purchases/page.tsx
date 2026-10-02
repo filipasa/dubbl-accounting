@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -115,7 +116,7 @@ function buildColumns(): Column<Bill>[] {
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.issueDate}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.issueDate)}</span>,
     },
     {
       key: "due",
@@ -126,7 +127,7 @@ function buildColumns(): Column<Bill>[] {
         const info = getDueInfo(r.dueDate, r.status);
         return (
           <div className="flex items-center gap-2">
-            <span className="text-sm">{r.dueDate}</span>
+            <span className="text-sm">{formatDate(r.dueDate)}</span>
             {info && (
               <span className={`text-[11px] ${info.color}`}>{info.label}</span>
             )}

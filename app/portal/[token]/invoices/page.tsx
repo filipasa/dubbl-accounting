@@ -6,6 +6,7 @@ import { FileText, Download, ArrowLeft, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface PortalInvoice {
@@ -78,7 +79,7 @@ export default function PortalInvoicesPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900">{inv.invoiceNumber}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Issued {inv.issueDate} · Due {inv.dueDate}
+                    Issued {formatDate(inv.issueDate)} · Due {formatDate(inv.dueDate)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { formatMoney, centsToDecimal } from "@/lib/money";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
@@ -274,7 +275,7 @@ export default function CreditNoteDetailPage() {
           {statusLabels[cn.status] || cn.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          Issued {cn.issueDate}
+          Issued {formatDate(cn.issueDate)}
         </span>
       </div>
 

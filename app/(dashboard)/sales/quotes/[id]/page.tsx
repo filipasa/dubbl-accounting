@@ -26,6 +26,7 @@ import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog"
 import { EmailHistory } from "@/components/dashboard/email-history";
 import { formatContactAddress } from "@/lib/documents/address";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface QuoteDetail {
@@ -209,7 +210,7 @@ export default function QuoteDetailPage() {
           {statusLabels[q.status] || q.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          Issued {q.issueDate} · Expires {q.expiryDate}
+          Issued {formatDate(q.issueDate)} · Expires {formatDate(q.expiryDate)}
         </span>
       </div>
 

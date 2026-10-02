@@ -25,6 +25,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { formatMoney, centsToDecimal } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
 import { EmailHistory } from "@/components/dashboard/email-history";
 import Link from "next/link";
@@ -461,7 +462,7 @@ export default function PODetailPage() {
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {po.contact?.name || "Unknown supplier"}
-                {po.deliveryDate && <span> · Delivery {po.deliveryDate}</span>}
+                {po.deliveryDate && <span> · Delivery {formatDate(po.deliveryDate)}</span>}
               </p>
             </div>
           </div>
@@ -502,8 +503,8 @@ export default function PODetailPage() {
 
         {/* Info */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span>Issued {po.issueDate}</span>
-          {po.deliveryDate && <span>Delivery {po.deliveryDate}</span>}
+          <span>Issued {formatDate(po.issueDate)}</span>
+          {po.deliveryDate && <span> · Delivery {formatDate(po.deliveryDate)}</span>}
         </div>
 
         {po.notes && (

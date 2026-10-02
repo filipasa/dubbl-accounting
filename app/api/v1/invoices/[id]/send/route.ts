@@ -116,6 +116,7 @@ export async function POST(
               invoiceNumber: found.invoiceNumber,
               issueDate: found.issueDate,
               dueDate: found.dueDate,
+              dateFormat: org?.dateFormat || null,
               currencyCode: found.currencyCode || org?.defaultCurrency || "GBP",
               lines: found.lines.map((l) => ({
                 description: l.description,

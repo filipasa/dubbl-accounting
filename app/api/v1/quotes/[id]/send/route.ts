@@ -118,6 +118,7 @@ export async function POST(
               invoiceNumber: found.quoteNumber,
               issueDate: found.issueDate,
               dueDate: found.expiryDate || found.issueDate,
+              dateFormat: org?.dateFormat || null,
               lines: found.lines.map((l) => ({
                 description: l.description,
                 quantity: l.quantity,

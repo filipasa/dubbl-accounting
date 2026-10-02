@@ -20,6 +20,7 @@ import { DualAmount } from "@/components/ui/dual-amount";
 import { RateNote, type RateInfo } from "@/components/ui/rate-note";
 import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface BillDetail {
@@ -247,7 +248,7 @@ export default function BillDetailPage() {
                 <Badge variant="outline" className={sc.class}>{statusLabels[b.status] || b.status}</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {b.contact?.name || "Unknown supplier"} · Due {b.dueDate}
+                {b.contact?.name || "Unknown supplier"} · Due {formatDate(b.dueDate)}
               </p>
             </div>
           </div>
@@ -368,11 +369,11 @@ export default function BillDetailPage() {
                   </div>
                   <div className="flex sm:justify-end items-center gap-3">
                     <span className="text-xs text-muted-foreground">Issued</span>
-                    <span className="text-sm">{b.issueDate}</span>
+                    <span className="text-sm">{formatDate(b.issueDate)}</span>
                   </div>
                   <div className="flex sm:justify-end items-center gap-3">
                     <span className="text-xs text-muted-foreground">Due</span>
-                    <span className="text-sm">{b.dueDate}</span>
+                    <span className="text-sm">{formatDate(b.dueDate)}</span>
                   </div>
                 </div>
               </div>
@@ -497,11 +498,11 @@ export default function BillDetailPage() {
             <div className="space-y-3">
               <div>
                 <p className="text-[11px] text-muted-foreground">Issued</p>
-                <p className="text-sm mt-0.5">{b.issueDate}</p>
+                <p className="text-sm mt-0.5">{formatDate(b.issueDate)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Due</p>
-                <p className="text-sm mt-0.5">{b.dueDate}</p>
+                <p className="text-sm mt-0.5">{formatDate(b.dueDate)}</p>
               </div>
               {b.rejectionReason && (
                 <div>

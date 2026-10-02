@@ -23,6 +23,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 
 interface SendDocumentDialogProps {
   open: boolean;
@@ -66,8 +67,7 @@ const documentRenderRoute: Partial<Record<string, (id: string) => string>> = {
 
 function formatDateDisplay(dateStr: string | null | undefined) {
   if (!dateStr) return undefined;
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDate(dateStr);
 }
 
 export function SendDocumentDialog({

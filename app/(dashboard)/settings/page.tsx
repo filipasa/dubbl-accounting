@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Check, ChevronsUpDown, Lock } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { setDefaultCurrency } from "@/lib/money";
+import { DATE_FORMAT_OPTIONS, setGlobalDateFormat } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,7 @@ interface OrgSettings {
   country: string | null;
   businessType: string | null;
   defaultCurrency: string;
+  dateFormat?: string | null;
   fiscalYearStartMonth: number;
   countryCode: string | null;
   taxId: string | null;
@@ -74,6 +76,7 @@ export default function SettingsPage() {
     country: "" as string,
     businessType: "" as string,
     defaultCurrency: "USD",
+    dateFormat: "DD/MM/YYYY",
     fiscalYearStartMonth: "1",
     countryCode: "",
     taxId: "",
@@ -132,11 +135,16 @@ export default function SettingsPage() {
             localStorage.setItem("activeOrgCurrency", o.defaultCurrency);
             setDefaultCurrency(o.defaultCurrency);
           }
+          if (o.dateFormat) {
+            localStorage.setItem("activeOrgDateFormat", o.dateFormat);
+            setGlobalDateFormat(o.dateFormat);
+          }
           setForm({
             name: o.name,
             country: o.country ?? "",
             businessType: o.businessType ?? "",
             defaultCurrency: o.defaultCurrency,
+            dateFormat: o.dateFormat || "DD/MM/YYYY",
             fiscalYearStartMonth: String(o.fiscalYearStartMonth),
             countryCode: o.countryCode || "",
             taxId: o.taxId || "",
@@ -185,6 +193,7 @@ export default function SettingsPage() {
           country: form.country || null,
           businessType: form.businessType || null,
           defaultCurrency: form.defaultCurrency,
+          dateFormat: form.dateFormat || "DD/MM/YYYY",
           fiscalYearStartMonth: parseInt(form.fiscalYearStartMonth),
           countryCode: form.countryCode || null,
           taxId: form.taxId || null,
@@ -208,6 +217,10 @@ export default function SettingsPage() {
       if (form.defaultCurrency) {
         localStorage.setItem("activeOrgCurrency", form.defaultCurrency);
         setDefaultCurrency(form.defaultCurrency);
+      }
+      if (form.dateFormat) {
+        localStorage.setItem("activeOrgDateFormat", form.dateFormat);
+        setGlobalDateFormat(form.dateFormat);
       }
       toast.success("Settings saved");
     } catch (err) {
@@ -464,8 +477,8 @@ export default function SettingsPage() {
       <div className="h-px bg-border" />
 
       {/* Financials */}
-      <Section title="Financials" description="Currency, fiscal year, and default payment terms.">
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <Section title="Financials" description="Currency, date format, fiscal year, and default payment terms.">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Default currency</Label>
             <CurrencySelect
@@ -474,6 +487,26 @@ export default function SettingsPage() {
                 setForm({ ...form, defaultCurrency: v })
               }
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Date format</Label>
+            <Select
+              value={form.dateFormat}
+              onValueChange={(v) =>
+                setForm({ ...form, dateFormat: v })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select format" />
+              </SelectTrigger>
+              <SelectContent>
+                {DATE_FORMAT_OPTIONS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Fiscal year start</Label>

@@ -15,6 +15,7 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import { resolveTaxLabel } from "./tax-label";
+import { formatDate } from "@/lib/date";
 
 export interface OrgInfo {
   name: string;
@@ -25,6 +26,7 @@ export interface OrgInfo {
   email?: string | null;
   website?: string | null;
   countryCode?: string | null;
+  dateFormat?: string | null;
 }
 
 export interface ContactInfo {
@@ -50,6 +52,7 @@ export interface PdfInvoiceData {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  dateFormat?: string | null;
   lines: PdfLineItem[];
   subtotal: number;
   taxTotal: number;
@@ -246,17 +249,21 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
   // default ("Date due" / "{amount} due {date}"). Other document types override
   // the wording or suppress them: dateLabel === null hides the date row, and
   // summaryNoun === null shows just the amount with no "due {date}".
+  const activeDateFormat = inv.dateFormat || org.dateFormat || null;
+  const formattedIssueDate = formatDate(inv.issueDate, activeDateFormat);
+  const formattedDueDate = formatDate(inv.dueDate, activeDateFormat);
+
   const showDateRow = labels?.dateLabel !== null;
   const dateRowLabel = labels?.dateLabel ?? "Date due";
   const summaryNoun = labels?.summaryNoun === undefined ? "due" : labels.summaryNoun;
   const summaryText = summaryNoun
-    ? `${fmtMoney(amountDue, inv.currencyCode)} ${summaryNoun} ${inv.dueDate}`
+    ? `${fmtMoney(amountDue, inv.currencyCode)} ${summaryNoun} ${formattedDueDate}`
     : fmtMoney(amountDue, inv.currencyCode);
 
   const vars: Record<string, string> = {
     orgName: org.name, orgAddress: org.address || "", orgTaxId: org.taxId || "",
     orgPhone: org.phone || "", orgEmail: org.email || "", orgRegistrationNumber: org.registrationNumber || "",
-    invoiceNumber: inv.invoiceNumber, issueDate: inv.issueDate, dueDate: inv.dueDate,
+    invoiceNumber: inv.invoiceNumber, issueDate: formattedIssueDate, dueDate: formattedDueDate,
     contactName: contact.name, contactEmail: contact.email || "", contactAddress: contact.address || "",
     contactTaxNumber: contact.taxNumber || "", reference: inv.reference || "",
     subtotal: fmtMoney(inv.subtotal, inv.currencyCode), taxTotal: fmtMoney(inv.taxTotal, inv.currencyCode),
@@ -298,12 +305,12 @@ function stripBotMentions(text: string | null | undefined): string | null {
           </View>
           <View style={s.metaRow}>
             <Text style={s.metaLabel}>Date of issue</Text>
-            <Text style={{ fontSize: 9 }}>{inv.issueDate}</Text>
+            <Text style={{ fontSize: 9 }}>{formattedIssueDate}</Text>
           </View>
           {showDateRow && (
             <View style={s.metaRow}>
               <Text style={s.metaLabel}>{dateRowLabel}</Text>
-              <Text style={{ fontSize: 9 }}>{inv.dueDate}</Text>
+              <Text style={{ fontSize: 9 }}>{formattedDueDate}</Text>
             </View>
           )}
           {inv.reference && (

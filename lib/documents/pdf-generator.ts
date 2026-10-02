@@ -1,5 +1,6 @@
 import { formatMoney } from "@/lib/money";
 import { resolveTaxLabel } from "./tax-label";
+import { formatDate } from "@/lib/date";
 
 interface TemplateSettings {
   logoUrl?: string | null;
@@ -21,6 +22,7 @@ interface OrgInfo {
   phone?: string | null;
   email?: string | null;
   countryCode?: string | null;
+  dateFormat?: string | null;
 }
 
 interface LineItem {
@@ -38,6 +40,7 @@ interface InvoiceData {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
+  dateFormat?: string | null;
   status: string;
   contactName: string;
   contactEmail?: string | null;
@@ -147,6 +150,7 @@ export interface DocumentData {
   issueDate: string;
   // Second date (due / expiry / delivery). Optional for types without one.
   secondDate?: string | null;
+  dateFormat?: string | null;
   contactName: string;
   contactEmail?: string | null;
   contactAddress?: string | null;
@@ -177,6 +181,10 @@ export function generateDocumentHtml(
   const amountPaid = doc.amountPaid ?? 0;
   const amountDue = doc.amountDue ?? doc.total;
 
+  const activeDateFormat = doc.dateFormat || org.dateFormat || null;
+  const formattedIssueDate = formatDate(doc.issueDate, activeDateFormat);
+  const formattedSecondDate = doc.secondDate ? formatDate(doc.secondDate, activeDateFormat) : "";
+
   const templateVars: Record<string, string> = {
     orgName: org.name,
     orgAddress: org.address || "",
@@ -186,8 +194,8 @@ export function generateDocumentHtml(
     orgRegistrationNumber: org.registrationNumber || "",
     invoiceNumber: doc.documentNumber,
     documentNumber: doc.documentNumber,
-    issueDate: doc.issueDate,
-    dueDate: doc.secondDate || "",
+    issueDate: formattedIssueDate,
+    dueDate: formattedSecondDate,
     contactName: doc.contactName,
     contactEmail: doc.contactEmail || "",
     contactAddress: doc.contactAddress || "",
@@ -285,16 +293,16 @@ export function generateDocumentHtml(
   const secondDateRow = cfg.secondDateLabel && doc.secondDate
     ? `<tr>
       <td style="padding:2px 12px 2px 0;color:#6b7280;">${cfg.secondDateLabel}</td>
-      <td style="padding:2px 0;">${doc.secondDate}</td>
+      <td style="padding:2px 0;">${formattedSecondDate}</td>
     </tr>`
     : "";
 
   const dueSummary = cfg.showAmountDue
-    ? `<p style="font-size:18px;font-weight:600;margin:0 0 24px;">${formatMoney(amountDue, doc.currencyCode)} due ${doc.secondDate || doc.issueDate}</p>`
+    ? `<p style="font-size:18px;font-weight:600;margin:0 0 24px;">${formatMoney(amountDue, doc.currencyCode)} due ${formattedSecondDate || formattedIssueDate}</p>`
     : `<p style="font-size:18px;font-weight:600;margin:0 0 24px;">${formatMoney(doc.total, doc.currencyCode)}</p>`;
 
   const footerSummary = cfg.showAmountDue
-    ? `${doc.documentNumber} · ${formatMoney(amountDue, doc.currencyCode)} due ${doc.secondDate || doc.issueDate}`
+    ? `${doc.documentNumber} · ${formatMoney(amountDue, doc.currencyCode)} due ${formattedSecondDate || formattedIssueDate}`
     : `${doc.documentNumber} · ${formatMoney(doc.total, doc.currencyCode)}`;
 
   return `<!DOCTYPE html>
@@ -318,7 +326,7 @@ export function generateDocumentHtml(
     </tr>
     <tr>
       <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
-      <td style="padding:2px 0;">${doc.issueDate}</td>
+      <td style="padding:2px 0;">${formattedIssueDate}</td>
     </tr>
     ${secondDateRow}
     ${doc.reference ? `<tr>
@@ -438,6 +446,10 @@ export function generateInvoiceHtml(
   const amountPaid = invoice.amountPaid ?? 0;
   const amountDue = invoice.amountDue ?? invoice.total;
 
+  const activeDateFormat = invoice.dateFormat || org.dateFormat || null;
+  const formattedIssueDate = formatDate(invoice.issueDate, activeDateFormat);
+  const formattedDueDate = formatDate(invoice.dueDate, activeDateFormat);
+
   const templateVars: Record<string, string> = {
     orgName: org.name,
     orgAddress: org.address || "",
@@ -446,8 +458,8 @@ export function generateInvoiceHtml(
     orgEmail: org.email || "",
     orgRegistrationNumber: org.registrationNumber || "",
     invoiceNumber: invoice.invoiceNumber,
-    issueDate: invoice.issueDate,
-    dueDate: invoice.dueDate,
+    issueDate: formattedIssueDate,
+    dueDate: formattedDueDate,
     contactName: invoice.contactName,
     contactEmail: invoice.contactEmail || "",
     contactAddress: invoice.contactAddress || "",
@@ -551,11 +563,11 @@ export function generateInvoiceHtml(
     </tr>
     <tr>
       <td style="padding:2px 12px 2px 0;color:#6b7280;">Date of issue</td>
-      <td style="padding:2px 0;">${invoice.issueDate}</td>
+      <td style="padding:2px 0;">${formattedIssueDate}</td>
     </tr>
     <tr>
       <td style="padding:2px 12px 2px 0;color:#6b7280;">Date due</td>
-      <td style="padding:2px 0;">${invoice.dueDate}</td>
+      <td style="padding:2px 0;">${formattedDueDate}</td>
     </tr>
     ${invoice.reference ? `<tr>
       <td style="padding:2px 12px 2px 0;color:#6b7280;">Reference</td>
@@ -583,7 +595,7 @@ export function generateInvoiceHtml(
   </div>
 
   <!-- Due amount summary -->
-  <p style="font-size:18px;font-weight:600;margin:0 0 24px;">${formatMoney(amountDue, invoice.currencyCode)} due ${invoice.dueDate}</p>
+  <p style="font-size:18px;font-weight:600;margin:0 0 24px;">${formatMoney(amountDue, invoice.currencyCode)} due ${formattedDueDate}</p>
 
   <!-- Line Items -->
   <table style="width:100%;border-collapse:collapse;">

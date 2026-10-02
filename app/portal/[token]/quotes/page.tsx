@@ -25,6 +25,7 @@ interface Quote {
 }
 
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 
 export default function PortalQuotesPage() {
   const { token } = useParams<{ token: string }>();
@@ -82,8 +83,8 @@ export default function PortalQuotesPage() {
               quotes.map(q => (
                 <TableRow key={q.id}>
                   <TableCell className="text-sm font-medium">{q.quoteNumber}</TableCell>
-                  <TableCell className="text-sm">{q.issueDate}</TableCell>
-                  <TableCell className="text-sm">{q.expiryDate}</TableCell>
+                  <TableCell className="text-sm">{formatDate(q.issueDate)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(q.expiryDate)}</TableCell>
                   <TableCell className="text-sm text-right">{formatMoney(q.total, q.currencyCode)}</TableCell>
                   <TableCell>
                     <Badge variant={q.status === "accepted" ? "default" : q.status === "declined" ? "destructive" : "secondary"} className="text-xs">

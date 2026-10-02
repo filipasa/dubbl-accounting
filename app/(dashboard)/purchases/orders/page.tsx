@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { motion, MotionConfig } from "motion/react";
@@ -86,13 +87,17 @@ function buildColumns(): Column<PO>[] {
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.issueDate}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.issueDate)}</span>,
     },
     {
       key: "delivery",
       header: "Delivery",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.deliveryDate || "-"}</span>,
+      render: (r) => (
+        <span className="text-sm">
+          {r.deliveryDate ? formatDate(r.deliveryDate) : "-"}
+        </span>
+      ),
     },
     {
       key: "status",

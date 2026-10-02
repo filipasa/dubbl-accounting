@@ -48,13 +48,14 @@ export async function GET(
     const sender = inv.senderSnapshot as SenderSnapshot | null;
     const recipient = inv.recipientSnapshot as RecipientSnapshot | null;
 
+    const org = await db.query.organization.findFirst({
+      where: eq(organization.id, ctx.organizationId),
+    });
+
     let orgInfo;
     if (sender) {
-      orgInfo = sender;
+      orgInfo = { ...sender, dateFormat: (sender as any).dateFormat || org?.dateFormat || null };
     } else {
-      const org = await db.query.organization.findFirst({
-        where: eq(organization.id, ctx.organizationId),
-      });
       const orgAddress = [org?.addressStreet, org?.addressCity, org?.addressState, org?.addressPostalCode, org?.addressCountry]
         .filter(Boolean)
         .join(", ");
@@ -66,6 +67,7 @@ export async function GET(
         phone: org?.contactPhone || null,
         email: org?.contactEmail || null,
         countryCode: org?.countryCode || null,
+        dateFormat: org?.dateFormat || null,
       };
     }
 
@@ -76,6 +78,7 @@ export async function GET(
       invoiceNumber: inv.invoiceNumber,
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
+      dateFormat: org?.dateFormat || null,
       status: inv.status,
       contactName: recipient?.name ?? inv.contact?.name ?? "Unknown",
       contactEmail: recipient?.email ?? inv.contact?.email ?? null,
@@ -111,6 +114,7 @@ export async function GET(
           invoiceNumber: inv.invoiceNumber,
           issueDate: inv.issueDate,
           dueDate: inv.dueDate,
+          dateFormat: org?.dateFormat || null,
           lines: invoiceData.lines,
           subtotal: inv.subtotal,
           taxTotal: inv.taxTotal,

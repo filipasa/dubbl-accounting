@@ -58,6 +58,7 @@ export async function GET(
       phone: org?.contactPhone || null,
       email: org?.contactEmail || null,
       countryCode: org?.countryCode || null,
+      dateFormat: org?.dateFormat || null,
     };
 
     const contactAddress = formatContactAddress(
@@ -70,6 +71,7 @@ export async function GET(
       documentNumber: found.quoteNumber,
       issueDate: found.issueDate,
       secondDate: found.expiryDate,
+      dateFormat: org?.dateFormat || null,
       contactName: found.contact?.name ?? "Unknown",
       contactEmail: found.contact?.email ?? null,
       contactAddress,
@@ -102,6 +104,7 @@ export async function GET(
           invoiceNumber: docData.documentNumber,
           issueDate: docData.issueDate,
           dueDate: docData.secondDate || docData.issueDate,
+          dateFormat: org?.dateFormat || null,
           lines: docData.lines,
           subtotal: docData.subtotal,
           taxTotal: docData.taxTotal,

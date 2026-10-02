@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { BlurReveal } from "@/components/ui/blur-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 
@@ -63,13 +64,13 @@ const columns: Column<Quote>[] = [
     key: "date",
     header: "Date",
     className: "w-28",
-    render: (r) => <span className="text-sm">{r.issueDate}</span>,
+    render: (r) => <span className="text-sm">{formatDate(r.issueDate)}</span>,
   },
   {
     key: "expiry",
     header: "Expires",
     className: "w-28",
-    render: (r) => <span className="text-sm">{r.expiryDate}</span>,
+    render: (r) => <span className="text-sm">{formatDate(r.expiryDate)}</span>,
   },
   {
     key: "status",

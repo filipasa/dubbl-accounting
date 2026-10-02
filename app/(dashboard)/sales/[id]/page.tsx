@@ -48,6 +48,7 @@ import { EmailHistory } from "@/components/dashboard/email-history";
 import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
 import { formatContactAddress } from "@/lib/documents/address";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface InvoiceDetail {
@@ -171,11 +172,6 @@ interface PaymentRecord {
   date: string;
   amount: number;
   method: string;
-}
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function getOverdueInfo(dueDate: string, status: string) {
