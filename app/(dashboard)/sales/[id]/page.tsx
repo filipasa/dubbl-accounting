@@ -49,6 +49,7 @@ import { ReceiptAttachments } from "@/components/dashboard/receipt-attachments";
 import { formatContactAddress } from "@/lib/documents/address";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { formatDate } from "@/lib/date";
+import { partitionDocumentLines } from "@/lib/documents/line-adjustments";
 import Link from "next/link";
 
 interface InvoiceDetail {
@@ -665,7 +666,9 @@ export default function InvoiceDetailPage() {
     ? Math.min(100, Math.round((inv.amountPaid / inv.total) * 100))
     : inv.amountPaid > 0 ? 100 : 0;
   const sc = statusConfig[inv.status] || statusConfig.draft;
-  const hasAnyLineImage = inv.lines.some((l) => !!l.imageUrl);
+  const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(inv.lines);
+  const hasAnyLineImage = itemLines.some((l) => !!l.imageUrl);
 
   return (
     <ContentReveal>
@@ -980,8 +983,8 @@ export default function InvoiceDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {inv.lines.map((line, i) => (
-                  <tr key={line.id} className={i < inv.lines.length - 1 ? "border-b border-dashed" : ""}>
+                {itemLines.map((line, i) => (
+                  <tr key={line.id} className={i < itemLines.length - 1 ? "border-b border-dashed" : ""}>
                     <td className="px-6 py-3 align-middle">
                       <div className="flex items-center gap-3">
                         {line.imageUrl ? (
@@ -1033,11 +1036,29 @@ export default function InvoiceDetailPage() {
               <div className="w-full max-w-xs space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono tabular-nums">{formatMoney(inv.subtotal, inv.currencyCode)}</span>
+                  <span className="font-mono tabular-nums">
+                    {formatMoney(hasAdjustments ? itemsSubtotal : inv.subtotal, inv.currencyCode)}
+                  </span>
                 </div>
+                {discountLines.map((d, idx) => (
+                  <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                    <span>{d.description}</span>
+                    <span className="font-mono tabular-nums">
+                      -{formatMoney(Math.abs(d.amount), inv.currencyCode)}
+                    </span>
+                  </div>
+                ))}
+                {shippingLines.map((s, idx) => (
+                  <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
+                    <span>{s.description}</span>
+                    <span className="font-mono tabular-nums">
+                      +{formatMoney(Math.abs(s.amount), inv.currencyCode)}
+                    </span>
+                  </div>
+                ))}
                 {inv.taxTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{resolveTaxLabel(inv.lines, inv.taxTotal) || "Tax"}</span>
+                    <span className="text-muted-foreground">{resolveTaxLabel(itemLines, inv.taxTotal) || "Tax"}</span>
                     <span className="font-mono tabular-nums">{formatMoney(inv.taxTotal, inv.currencyCode)}</span>
                   </div>
                 )}

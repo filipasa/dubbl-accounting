@@ -16,6 +16,7 @@ import {
 } from "@react-pdf/renderer";
 import { resolveTaxLabel } from "./tax-label";
 import { formatDate } from "@/lib/date";
+import { partitionDocumentLines } from "./line-adjustments";
 
 export interface OrgInfo {
   name: string;
@@ -273,8 +274,10 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
   const appliedTaxLabel = inv.taxLabel || labels?.taxLabel || resolveTaxLabel(inv.lines, inv.taxTotal) || "Tax";
   const amountDue = inv.amountDue ?? inv.total;
   const amountPaid = inv.amountPaid ?? 0;
-  const hasDiscount = inv.lines.some((l) => l.discountPercent && l.discountPercent > 0);
-  const hasAnyLineImage = inv.lines.some((l) => !!resolvePdfImage(l.imageUrl));
+  const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(inv.lines);
+  const hasDiscount = itemLines.some((l) => l.discountPercent && l.discountPercent > 0);
+  const hasAnyLineImage = itemLines.some((l) => !!resolvePdfImage(l.imageUrl));
 
   // The second-date row and the headline/footer summary are invoice-shaped by
   // default ("Date due" / "{amount} due {date}"). Other document types override
@@ -297,7 +300,7 @@ function InvoiceDocument({ invoice: inv, org, contact, template, labels }: Invoi
     invoiceNumber: inv.invoiceNumber, issueDate: formattedIssueDate, dueDate: formattedDueDate,
     contactName: contact.name, contactEmail: contact.email || "", contactAddress: contact.address || "",
     contactTaxNumber: contact.taxNumber || "", reference: inv.reference || "",
-    subtotal: fmtMoney(inv.subtotal, inv.currencyCode), taxTotal: fmtMoney(inv.taxTotal, inv.currencyCode),
+    subtotal: fmtMoney(hasAdjustments ? itemsSubtotal : inv.subtotal, inv.currencyCode), taxTotal: fmtMoney(inv.taxTotal, inv.currencyCode),
     total: fmtMoney(inv.total, inv.currencyCode), currency: inv.currencyCode,
   };
 
@@ -395,7 +398,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
             {hasDiscount && <Text style={[s.th, s.cellDiscount]}>Discount</Text>}
             <Text style={[s.th, s.cellAmount]}>Amount</Text>
           </View>
-          {inv.lines.map((line, i) => {
+          {itemLines.map((line, i) => {
             const resolvedImg = resolvePdfImage(line.imageUrl);
             return (
               <View key={i} style={s.tableRow}>
@@ -434,8 +437,26 @@ function stripBotMentions(text: string | null | undefined): string | null {
           <View style={s.totalsBlock}>
             <View style={s.totalRow}>
               <Text style={s.totalLabel}>Subtotal</Text>
-              <Text style={s.totalValue}>{fmtMoney(inv.subtotal, inv.currencyCode)}</Text>
+              <Text style={s.totalValue}>
+                {fmtMoney(hasAdjustments ? itemsSubtotal : inv.subtotal, inv.currencyCode)}
+              </Text>
             </View>
+            {discountLines.map((d, idx) => (
+              <View key={`d-${idx}`} style={s.totalRow}>
+                <Text style={[s.totalLabel, { color: "#059669" }]}>{d.description}</Text>
+                <Text style={[s.totalValue, { color: "#059669" }]}>
+                  -{fmtMoney(Math.abs(d.amount), inv.currencyCode)}
+                </Text>
+              </View>
+            ))}
+            {shippingLines.map((sh, idx) => (
+              <View key={`s-${idx}`} style={s.totalRow}>
+                <Text style={s.totalLabel}>{sh.description}</Text>
+                <Text style={s.totalValue}>
+                  +{fmtMoney(Math.abs(sh.amount), inv.currencyCode)}
+                </Text>
+              </View>
+            ))}
             {template.showTaxBreakdown !== false && inv.taxTotal > 0 && (
               <View style={s.totalRow}>
                 <Text style={s.totalLabel}>{appliedTaxLabel}</Text>

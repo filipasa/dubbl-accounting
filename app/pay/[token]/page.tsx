@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, Building2, Loader2, AlertCircle, Download, CreditCard } from "lucide-react";
+import { partitionDocumentLines } from "@/lib/documents/line-adjustments";
 
 function getLocaleForCurrency(currency: string): string {
   const map: Record<string, string> = {
@@ -247,77 +248,98 @@ function PaymentPageContent() {
         </div>
 
         {/* Line items table with Tax column */}
-        <div className="overflow-x-auto border-t border-b border-gray-200 dark:border-gray-800 py-4 mb-6">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                <th className="text-left pb-3 font-medium">Description</th>
-                <th className="text-right pb-3 px-3 font-medium w-20">Qty</th>
-                <th className="text-right pb-3 px-3 font-medium w-28">Price</th>
-                <th className="text-right pb-3 px-3 font-medium w-28">Tax</th>
-                <th className="text-right pb-3 pl-3 font-medium w-32">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60 text-gray-900 dark:text-gray-100">
-              {inv.lines.map((line, i) => (
-                <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                  <td className="py-3.5 pr-3">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{line.description}</p>
-                  </td>
-                  <td className="text-right py-3.5 px-3 font-mono tabular-nums text-gray-600 dark:text-gray-300">
-                    {(line.quantity / 100).toFixed(2)}
-                  </td>
-                  <td className="text-right py-3.5 px-3 font-mono tabular-nums text-gray-600 dark:text-gray-300">
-                    {fmtMoney(line.unitPrice, currency)}
-                  </td>
-                  <td className="text-right py-3.5 px-3 tabular-nums">
-                    {line.taxAmount > 0 ? (
-                      <div>
-                        <span className="font-mono text-gray-900 dark:text-gray-100">
-                          {fmtMoney(line.taxAmount, currency)}
-                        </span>
-                        {line.taxRate ? (
-                          <span className="block text-xs text-gray-400 dark:text-gray-500 font-mono">
-                            {(line.taxRate.rate / 100).toFixed(line.taxRate.rate % 100 === 0 ? 0 : 2)}%
-                          </span>
-                        ) : line.amount > 0 ? (
-                          <span className="block text-xs text-gray-400 dark:text-gray-500 font-mono">
-                            {Math.round((line.taxAmount / line.amount) * 100)}%
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 dark:text-gray-500 font-mono">—</span>
-                    )}
-                  </td>
-                  <td className="text-right py-3.5 pl-3 font-mono tabular-nums font-semibold text-gray-900 dark:text-gray-100">
-                    {fmtMoney(line.amount + line.taxAmount, currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {(() => {
+          const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+            partitionDocumentLines(inv.lines);
+          return (
+            <>
+              <div className="overflow-x-auto border-t border-b border-gray-200 dark:border-gray-800 py-4 mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <th className="text-left pb-3 font-medium">Description</th>
+                      <th className="text-right pb-3 px-3 font-medium w-20">Qty</th>
+                      <th className="text-right pb-3 px-3 font-medium w-28">Price</th>
+                      <th className="text-right pb-3 px-3 font-medium w-28">Tax</th>
+                      <th className="text-right pb-3 pl-3 font-medium w-32">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60 text-gray-900 dark:text-gray-100">
+                    {itemLines.map((line, i) => (
+                      <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                        <td className="py-3.5 pr-3">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{line.description}</p>
+                        </td>
+                        <td className="text-right py-3.5 px-3 font-mono tabular-nums text-gray-600 dark:text-gray-300">
+                          {(line.quantity / 100).toFixed(2)}
+                        </td>
+                        <td className="text-right py-3.5 px-3 font-mono tabular-nums text-gray-600 dark:text-gray-300">
+                          {fmtMoney(line.unitPrice, currency)}
+                        </td>
+                        <td className="text-right py-3.5 px-3 tabular-nums">
+                          {line.taxAmount > 0 ? (
+                            <div>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">
+                                {fmtMoney(line.taxAmount, currency)}
+                              </span>
+                              {line.taxRate ? (
+                                <span className="block text-xs text-gray-400 dark:text-gray-500 font-mono">
+                                  {(line.taxRate.rate / 100).toFixed(line.taxRate.rate % 100 === 0 ? 0 : 2)}%
+                                </span>
+                              ) : line.amount > 0 ? (
+                                <span className="block text-xs text-gray-400 dark:text-gray-500 font-mono">
+                                  {Math.round((line.taxAmount / line.amount) * 100)}%
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500 font-mono">—</span>
+                          )}
+                        </td>
+                        <td className="text-right py-3.5 pl-3 font-mono tabular-nums font-semibold text-gray-900 dark:text-gray-100">
+                          {fmtMoney(line.amount + line.taxAmount, currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-        {/* Total breakdown */}
-        <div className="flex justify-end mb-8">
-          <div className="w-full sm:w-80 space-y-2.5">
-            {inv.taxTotal != null && inv.taxTotal > 0 && (
-              <>
-                <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>Subtotal</span>
-                  <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
-                    {fmtMoney(inv.subtotal ?? (inv.total - inv.taxTotal), currency)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>Tax</span>
-                  <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
-                    {fmtMoney(inv.taxTotal, currency)}
-                  </span>
-                </div>
-              </>
-            )}
+              {/* Total breakdown */}
+              <div className="flex justify-end mb-8">
+                <div className="w-full sm:w-80 space-y-2.5">
+                  {(hasAdjustments || (inv.taxTotal != null && inv.taxTotal > 0)) && (
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>Subtotal</span>
+                      <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
+                        {fmtMoney(hasAdjustments ? itemsSubtotal : (inv.subtotal ?? (inv.total - (inv.taxTotal ?? 0))), currency)}
+                      </span>
+                    </div>
+                  )}
+                  {discountLines.map((d, idx) => (
+                    <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                      <span>{d.description}</span>
+                      <span className="font-mono tabular-nums">
+                        -{fmtMoney(Math.abs(d.amount), currency)}
+                      </span>
+                    </div>
+                  ))}
+                  {shippingLines.map((s, idx) => (
+                    <div key={`s-${idx}`} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>{s.description}</span>
+                      <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
+                        +{fmtMoney(Math.abs(s.amount), currency)}
+                      </span>
+                    </div>
+                  ))}
+                  {inv.taxTotal != null && inv.taxTotal > 0 && (
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>Tax</span>
+                      <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
+                        {fmtMoney(inv.taxTotal, currency)}
+                      </span>
+                    </div>
+                  )}
             {inv.amountPaid != null && inv.amountPaid > 0 && (
               <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>Amount paid</span>
@@ -336,6 +358,9 @@ function PaymentPageContent() {
             </div>
           </div>
         </div>
+            </>
+          );
+        })()}
 
         {/* Pay button - emerald green matching website brand */}
         <button

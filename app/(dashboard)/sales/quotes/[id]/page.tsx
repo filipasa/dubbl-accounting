@@ -27,6 +27,7 @@ import { EmailHistory } from "@/components/dashboard/email-history";
 import { formatContactAddress } from "@/lib/documents/address";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { formatDate } from "@/lib/date";
+import { partitionDocumentLines } from "@/lib/documents/line-adjustments";
 import Link from "next/link";
 
 interface QuoteDetail {
@@ -242,85 +243,111 @@ export default function QuoteDetailPage() {
       </div>
 
       <div className="rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b bg-muted/50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
-            <span>Description</span>
-            <span className="text-right">Qty</span>
-            <span className="text-right">Price</span>
-            <span className="text-right">Tax</span>
-            <span className="text-right">Amount</span>
-          </div>
-          {q.lines.map((line) => (
-            <div key={line.id} className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b px-4 py-3 last:border-b-0 items-center">
-              <div className="flex items-center gap-3">
-                {line.imageUrl ? (
-                  <img
-                    src={line.imageUrl}
-                    alt=""
-                    className="size-9 rounded-full object-cover border shrink-0 bg-muted"
-                  />
-                ) : hasAnyLineImage ? (
-                  <div className="size-9 shrink-0" />
-                ) : null}
-                <div>
-                  <p className="text-sm font-medium">{line.description}</p>
-                  {line.shortDescription && (
-                    <p className="text-xs text-muted-foreground whitespace-pre-line mt-0.5">
-                      {line.shortDescription}
-                    </p>
-                  )}
-                  {line.account && (
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">
-                      {line.account.code} &middot; {line.account.name}
-                    </p>
-                  )}
+        {(() => {
+          const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+            partitionDocumentLines(q.lines);
+          return (
+            <>
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b bg-muted/50 px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                  <span>Description</span>
+                  <span className="text-right">Qty</span>
+                  <span className="text-right">Price</span>
+                  <span className="text-right">Tax</span>
+                  <span className="text-right">Amount</span>
                 </div>
-              </div>
-              <span className="text-right text-sm font-mono">{(line.quantity / 100).toFixed(0)}</span>
-              <span className="text-right text-sm font-mono text-muted-foreground">{formatMoney(line.unitPrice, q.currencyCode || "GBP")}</span>
-              <div className="text-right text-sm font-mono text-muted-foreground">
-                {line.taxRate ? (
-                  <div>
-                    <span>{(line.taxRate.rate / 100).toFixed(0)}%</span>
-                    {(line.taxAmount ?? 0) > 0 && (
-                      <p className="text-[11px] text-muted-foreground/70">
-                        {formatMoney(line.taxAmount!, q.currencyCode || "GBP")}
-                      </p>
-                    )}
+                {itemLines.map((line) => (
+                  <div key={line.id} className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b px-4 py-3 last:border-b-0 items-center">
+                    <div className="flex items-center gap-3">
+                      {line.imageUrl ? (
+                        <img
+                          src={line.imageUrl}
+                          alt=""
+                          className="size-9 rounded-full object-cover border shrink-0 bg-muted"
+                        />
+                      ) : hasAnyLineImage ? (
+                        <div className="size-9 shrink-0" />
+                      ) : null}
+                      <div>
+                        <p className="text-sm font-medium">{line.description}</p>
+                        {line.shortDescription && (
+                          <p className="text-xs text-muted-foreground whitespace-pre-line mt-0.5">
+                            {line.shortDescription}
+                          </p>
+                        )}
+                        {line.account && (
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">
+                            {line.account.code} &middot; {line.account.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-right text-sm font-mono">{(line.quantity / 100).toFixed(0)}</span>
+                    <span className="text-right text-sm font-mono text-muted-foreground">{formatMoney(line.unitPrice, q.currencyCode || "GBP")}</span>
+                    <div className="text-right text-sm font-mono text-muted-foreground">
+                      {line.taxRate ? (
+                        <div>
+                          <span>{(line.taxRate.rate / 100).toFixed(0)}%</span>
+                          {(line.taxAmount ?? 0) > 0 && (
+                            <p className="text-[11px] text-muted-foreground/70">
+                              {formatMoney(line.taxAmount!, q.currencyCode || "GBP")}
+                            </p>
+                          )}
+                        </div>
+                      ) : (line.taxAmount ?? 0) > 0 ? (
+                        <span>{formatMoney(line.taxAmount!, q.currencyCode || "GBP")}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">0%</span>
+                      )}
+                    </div>
+                    <span className="text-right text-sm font-mono font-medium">{formatMoney(line.amount, q.currencyCode || "GBP")}</span>
                   </div>
-                ) : (line.taxAmount ?? 0) > 0 ? (
-                  <span>{formatMoney(line.taxAmount!, q.currencyCode || "GBP")}</span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">0%</span>
-                )}
+                ))}
               </div>
-              <span className="text-right text-sm font-mono font-medium">{formatMoney(line.amount, q.currencyCode || "GBP")}</span>
-            </div>
-          ))}
-        </div>
 
-        {/* Totals Underneath */}
-        <div className="border-t bg-muted/10 px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex justify-end">
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-mono tabular-nums">{formatMoney(q.subtotal, q.currencyCode || "GBP")}</span>
-              </div>
-              {(q.taxTotal || 0) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{resolveTaxLabel(q.lines, q.taxTotal) || "Tax"}</span>
-                  <span className="font-mono tabular-nums">{formatMoney(q.taxTotal || 0, q.currencyCode || "GBP")}</span>
+              {/* Totals Underneath */}
+              <div className="border-t bg-muted/10 px-4 py-3 sm:px-6 sm:py-4">
+                <div className="flex justify-end">
+                  <div className="w-full max-w-xs space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-mono tabular-nums">
+                        {formatMoney(hasAdjustments ? itemsSubtotal : q.subtotal, q.currencyCode || "GBP")}
+                      </span>
+                    </div>
+                    {discountLines.map((d, idx) => (
+                      <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                        <span>{d.description}</span>
+                        <span className="font-mono tabular-nums">
+                          -{formatMoney(Math.abs(d.amount), q.currencyCode || "GBP")}
+                        </span>
+                      </div>
+                    ))}
+                    {shippingLines.map((s, idx) => (
+                      <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
+                        <span>{s.description}</span>
+                        <span className="font-mono tabular-nums">
+                          +{formatMoney(Math.abs(s.amount), q.currencyCode || "GBP")}
+                        </span>
+                      </div>
+                    ))}
+                    {(q.taxTotal || 0) > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{resolveTaxLabel(itemLines, q.taxTotal) || "Tax"}</span>
+                        <span className="font-mono tabular-nums">{formatMoney(q.taxTotal || 0, q.currencyCode || "GBP")}</span>
+                      </div>
+                    )}
+                    <div className="h-px bg-border my-1" />
+                    <div className="flex justify-between text-base font-semibold">
+                      <span>Total</span>
+                      <span className="font-mono tabular-nums text-foreground">{formatMoney(q.total, q.currencyCode || "GBP")}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div className="h-px bg-border my-1" />
-              <div className="flex justify-between text-base font-semibold">
-                <span>Total</span>
-                <span className="font-mono tabular-nums text-foreground">{formatMoney(q.total, q.currencyCode || "GBP")}</span>
               </div>
-            </div>
-          </div>
-        </div>
+            </>
+          );
+        })()}
       </div>
 
       <EmailHistory key={emailHistoryKey} documentType="quote" documentId={id} />

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateInvoiceHtml } from "../lib/documents/pdf-generator";
 import { renderInvoicePdf } from "../lib/documents/pdf-renderer";
 import { calculateCommercialCardFee } from "../lib/money";
+import { partitionDocumentLines } from "../lib/documents/line-adjustments";
 
 function resolveStripeCheckoutConfig(methods: string[] | null | undefined) {
   if (methods && methods.length === 0) {
@@ -276,7 +277,30 @@ test("Invoice HTML and PDF render Discount and Shipping lines properly", async (
   assert.ok(html.includes("Discount (10%)"), "HTML should include 'Discount (10%)'");
   assert.ok(html.includes("Shipping"), "HTML should include 'Shipping'");
   assert.ok(html.includes("-£20.00"), "HTML should format negative discount amount properly");
-  assert.ok(html.includes("£15.00"), "HTML should format shipping amount properly");
+  assert.ok(html.includes("+£15.00") || html.includes("£15.00"), "HTML should format shipping amount properly");
+
+  // Verify Discount and Shipping are NOT in <tbody> (product lines) but ARE in <tfoot> (underneath Subtotal)
+  const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/);
+  assert.ok(tbodyMatch, "HTML should have <tbody>");
+  const tbodyContent = tbodyMatch[1];
+  assert.ok(tbodyContent.includes("Web Development"), "tbody must contain actual product items");
+  assert.ok(!tbodyContent.includes("Discount (10%)"), "tbody must NOT contain Discount as a product line");
+  assert.ok(!tbodyContent.includes("Shipping"), "tbody must NOT contain Shipping as a product line");
+
+  const tfootMatch = html.match(/<tfoot>([\s\S]*?)<\/tfoot>/);
+  assert.ok(tfootMatch, "HTML should have <tfoot>");
+  const tfootContent = tfootMatch[1];
+  assert.ok(tfootContent.includes("Subtotal"), "tfoot must contain Subtotal");
+  assert.ok(tfootContent.includes("Discount (10%)"), "tfoot must contain Discount underneath Subtotal");
+  assert.ok(tfootContent.includes("Shipping"), "tfoot must contain Shipping underneath Subtotal");
+  assert.ok(
+    tfootContent.indexOf("Subtotal") < tfootContent.indexOf("Discount (10%)"),
+    "Discount must appear underneath Subtotal"
+  );
+  assert.ok(
+    tfootContent.indexOf("Discount (10%)") < tfootContent.indexOf("Shipping"),
+    "Shipping must appear underneath Discount"
+  );
 
   const pdfBuf = await renderInvoicePdf(
     invoiceWithAdjustments,
@@ -286,4 +310,30 @@ test("Invoice HTML and PDF render Discount and Shipping lines properly", async (
   );
   assert.ok(pdfBuf.byteLength > 1000, "PDF with discount and shipping renders successfully");
 });
+
+test("partitionDocumentLines correctly isolates product lines from discount and shipping", () => {
+  const lines = [
+    { description: "Frameless Hidden Door", amount: 50000, unitPrice: 50000 },
+    { description: "Magnetic Lock", amount: 8000, unitPrice: 8000 },
+    { description: "Discount (10%)", amount: -5800, unitPrice: -5800 },
+    { description: "Shipping", amount: 2500, unitPrice: 2500 },
+  ];
+
+  const partitioned = partitionDocumentLines(lines);
+
+  assert.equal(partitioned.hasAdjustments, true);
+  assert.equal(partitioned.itemLines.length, 2);
+  assert.equal(partitioned.itemLines[0].description, "Frameless Hidden Door");
+  assert.equal(partitioned.itemLines[1].description, "Magnetic Lock");
+  assert.equal(partitioned.itemsSubtotal, 58000);
+
+  assert.equal(partitioned.discountLines.length, 1);
+  assert.equal(partitioned.discountLines[0].description, "Discount (10%)");
+  assert.equal(partitioned.discountLines[0].amount, -5800);
+
+  assert.equal(partitioned.shippingLines.length, 1);
+  assert.equal(partitioned.shippingLines[0].description, "Shipping");
+  assert.equal(partitioned.shippingLines[0].amount, 2500);
+});
+
 

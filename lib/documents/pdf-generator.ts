@@ -2,6 +2,7 @@ import { formatMoney } from "@/lib/money";
 import { resolveTaxLabel } from "./tax-label";
 import { formatDate } from "@/lib/date";
 import { generateQrCodePngDataUri } from "./qr-code";
+import { partitionDocumentLines } from "./line-adjustments";
 
 interface TemplateSettings {
   logoUrl?: string | null;
@@ -188,6 +189,9 @@ export function generateDocumentHtml(
   const formattedIssueDate = formatDate(doc.issueDate, activeDateFormat);
   const formattedSecondDate = doc.secondDate ? formatDate(doc.secondDate, activeDateFormat) : "";
 
+  const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(doc.lines);
+
   const templateVars: Record<string, string> = {
     orgName: org.name,
     orgAddress: org.address || "",
@@ -204,7 +208,7 @@ export function generateDocumentHtml(
     contactAddress: doc.contactAddress || "",
     contactTaxNumber: doc.contactTaxNumber || "",
     reference: doc.reference || "",
-    subtotal: formatMoney(doc.subtotal, doc.currencyCode),
+    subtotal: formatMoney(hasAdjustments ? itemsSubtotal : doc.subtotal, doc.currencyCode),
     taxTotal: formatMoney(doc.taxTotal, doc.currencyCode),
     total: formatMoney(doc.total, doc.currencyCode),
     currency: doc.currencyCode,
@@ -224,8 +228,8 @@ export function generateDocumentHtml(
     ? replaceTemplatePlaceholders(template.footerHtml, templateVars)
     : "";
 
-  const hasAnyImage = doc.lines.some((l) => !!l.imageUrl);
-  const linesHtml = doc.lines
+  const hasAnyImage = itemLines.some((l) => !!l.imageUrl);
+  const linesHtml = itemLines
     .map(
       (line) => `
     <tr>
@@ -245,7 +249,27 @@ export function generateDocumentHtml(
     )
     .join("");
 
-  const effectiveTaxLabel = doc.taxLabel || resolveTaxLabel(doc.lines, doc.taxTotal) || "Tax";
+  const discountsHtml = discountLines
+    .map(
+      (d) => `
+    <tr>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#059669;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;color:#059669;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), doc.currencyCode)}</td>
+    </tr>`
+    )
+    .join("");
+
+  const shippingsHtml = shippingLines
+    .map(
+      (s) => `
+    <tr>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(s.description || "Shipping")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">+${formatMoney(Math.abs(s.amount), doc.currencyCode)}</td>
+    </tr>`
+    )
+    .join("");
+
+  const effectiveTaxLabel = doc.taxLabel || resolveTaxLabel(itemLines, doc.taxTotal) || "Tax";
   const taxRow =
     template.showTaxBreakdown !== false && doc.taxTotal > 0
       ? `<tr>
@@ -384,8 +408,10 @@ export function generateDocumentHtml(
     <tfoot>
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Subtotal</td>
-        <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(doc.subtotal, doc.currencyCode)}</td>
+        <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(hasAdjustments ? itemsSubtotal : doc.subtotal, doc.currencyCode)}</td>
       </tr>
+      ${discountsHtml}
+      ${shippingsHtml}
       ${taxRow}
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Total</td>
@@ -485,6 +511,11 @@ export function generateInvoiceHtml(
     logoUrl: template.logoUrl || "",
   };
 
+  const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(invoice.lines);
+
+  templateVars.subtotal = formatMoney(hasAdjustments ? itemsSubtotal : invoice.subtotal, invoice.currencyCode);
+
   const logoHtml = template.logoUrl
     ? `<div style="max-width:180px;max-height:60px;display:flex;justify-content:flex-end;">
       <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;" />
@@ -498,8 +529,8 @@ export function generateInvoiceHtml(
     ? replaceTemplatePlaceholders(template.footerHtml, templateVars)
     : "";
 
-  const hasAnyImage = invoice.lines.some((l) => !!l.imageUrl);
-  const linesHtml = invoice.lines
+  const hasAnyImage = itemLines.some((l) => !!l.imageUrl);
+  const linesHtml = itemLines
     .map(
       (line) => `
     <tr>
@@ -519,7 +550,27 @@ export function generateInvoiceHtml(
     )
     .join("");
 
-  const effectiveTaxLabel = invoice.taxLabel || resolveTaxLabel(invoice.lines, invoice.taxTotal) || "Tax";
+  const discountsHtml = discountLines
+    .map(
+      (d) => `
+    <tr>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#059669;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;color:#059669;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), invoice.currencyCode)}</td>
+    </tr>`
+    )
+    .join("");
+
+  const shippingsHtml = shippingLines
+    .map(
+      (s) => `
+    <tr>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(s.description || "Shipping")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">+${formatMoney(Math.abs(s.amount), invoice.currencyCode)}</td>
+    </tr>`
+    )
+    .join("");
+
+  const effectiveTaxLabel = invoice.taxLabel || resolveTaxLabel(itemLines, invoice.taxTotal) || "Tax";
   const taxRow =
     template.showTaxBreakdown !== false && invoice.taxTotal > 0
       ? `<tr>
@@ -652,8 +703,10 @@ export function generateInvoiceHtml(
     <tfoot>
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Subtotal</td>
-        <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(invoice.subtotal, invoice.currencyCode)}</td>
+        <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(hasAdjustments ? itemsSubtotal : invoice.subtotal, invoice.currencyCode)}</td>
       </tr>
+      ${discountsHtml}
+      ${shippingsHtml}
       ${taxRow}
       <tr>
         <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">Total</td>
