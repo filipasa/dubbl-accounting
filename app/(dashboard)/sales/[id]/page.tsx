@@ -1347,6 +1347,7 @@ export default function InvoiceDetailPage() {
           amountDue={inv.amountDue}
           dueDate={inv.dueDate}
           issueDate={inv.issueDate}
+          currencyCode={inv.currencyCode}
           initialPaymentMethods={inv.paymentMethods}
           sendApiUrl={`/api/v1/invoices/${id}/send`}
           onSent={handleSendComplete}

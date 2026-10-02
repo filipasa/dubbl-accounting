@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, organization, documentTemplate } from "@/lib/db/schema";
+import { invoice, invoiceLine, organization, documentTemplate } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
-import { createInvoiceJournalEntry, createCogsJournalEntry, assertBaseRateAvailable } from "@/lib/api/journal-automation";
+import { createInvoiceJournalEntry, createCogsJournalEntry, assertBaseRateAvailable, findAccountByCode } from "@/lib/api/journal-automation";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
 import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
+import { calculateCommercialCardFee, formatMoney } from "@/lib/money";
 import { z } from "zod";
 
 const templatePropsSchema = z.object({
@@ -37,6 +38,7 @@ const sendBodySchema = z.object({
   attachPdf: z.boolean().default(true),
   includePaymentLink: z.boolean().default(false),
   paymentMethods: z.array(z.string()).optional(),
+  passProcessingFee: z.boolean().optional().default(false),
 });
 
 export async function POST(
@@ -79,9 +81,71 @@ export async function POST(
     const rawBody = await request.json().catch(() => ({}));
     const emailParsed = sendBodySchema.safeParse(rawBody);
 
+    // Handle "Pass on commercial card processing fees" if requested
+    const passProcessingFee = emailParsed.success
+      ? emailParsed.data.passProcessingFee === true
+      : rawBody.passProcessingFee === true;
+
+    if (passProcessingFee) {
+      const existingFeeLine = found.lines.find(
+        (l) => l.description.toLowerCase().trim() === "payment processing fee"
+      );
+
+      if (!existingFeeLine) {
+        const fee = calculateCommercialCardFee(found.amountDue, found.currencyCode);
+        if (fee > 0) {
+          const accountId =
+            found.lines.find((l) => l.accountId)?.accountId ||
+            (await findAccountByCode(ctx.organizationId, "4000"))?.id ||
+            null;
+
+          const [createdFeeLine] = await db
+            .insert(invoiceLine)
+            .values({
+              invoiceId: id,
+              description: "Payment Processing Fee",
+              quantity: 100,
+              unitPrice: fee,
+              amount: fee,
+              taxAmount: 0,
+              discountPercent: 0,
+              accountId,
+              sortOrder: found.lines.length,
+            })
+            .returning();
+
+          const newSubtotal = found.subtotal + fee;
+          const newTotal = found.total + fee;
+          const newAmountDue = found.amountDue + fee;
+
+          await db
+            .update(invoice)
+            .set({
+              subtotal: newSubtotal,
+              total: newTotal,
+              amountDue: newAmountDue,
+              updatedAt: new Date(),
+            })
+            .where(eq(invoice.id, id));
+
+          found.lines.push({
+            ...createdFeeLine,
+            taxRate: null,
+          } as any);
+          found.subtotal = newSubtotal;
+          found.total = newTotal;
+          found.amountDue = newAmountDue;
+        }
+      }
+    }
+
     // Send email if requested
     if (emailParsed.success) {
       const { recipientEmail, subject, templateProps, attachPdf, includePaymentLink, paymentMethods } = emailParsed.data;
+
+      if (passProcessingFee) {
+        templateProps.amountFormatted = formatMoney(found.amountDue, found.currencyCode);
+      }
 
       // Determine final payment methods to store and use
       const finalPaymentMethods = paymentMethods !== undefined

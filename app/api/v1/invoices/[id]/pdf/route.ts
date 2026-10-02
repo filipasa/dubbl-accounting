@@ -11,6 +11,7 @@ import { formatContactAddress } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { randomBytes } from "crypto";
 import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
+import { calculateCommercialCardFee } from "@/lib/money";
 
 export async function GET(
   request: Request,
@@ -92,6 +93,41 @@ export async function GET(
       paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
     }
 
+    const passProcessingFeeParam = url.searchParams.get("passProcessingFee") === "true";
+
+    let previewLines = inv.lines.map((l) => ({
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      taxAmount: l.taxAmount,
+      amount: l.amount,
+      imageUrl: l.imageUrl || null,
+      shortDescription: l.shortDescription || null,
+      taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
+    }));
+    let previewSubtotal = inv.subtotal;
+    let previewTotal = inv.total;
+    let previewAmountDue = inv.amountDue;
+
+    if (passProcessingFeeParam && !previewLines.some((l) => l.description.toLowerCase().trim() === "payment processing fee")) {
+      const fee = calculateCommercialCardFee(inv.amountDue, inv.currencyCode);
+      if (fee > 0) {
+        previewLines.push({
+          description: "Payment Processing Fee",
+          quantity: 100,
+          unitPrice: fee,
+          taxAmount: 0,
+          amount: fee,
+          imageUrl: null,
+          shortDescription: null,
+          taxRate: null,
+        });
+        previewSubtotal += fee;
+        previewTotal += fee;
+        previewAmountDue += fee;
+      }
+    }
+
     const invoiceData = {
       invoiceNumber: inv.invoiceNumber,
       issueDate: inv.issueDate,
@@ -102,22 +138,13 @@ export async function GET(
       contactEmail: recipient?.email ?? inv.contact?.email ?? null,
       contactAddress,
       contactTaxNumber: recipient?.taxNumber ?? inv.contact?.taxNumber ?? null,
-      lines: inv.lines.map((l) => ({
-        description: l.description,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        amount: l.amount,
-        imageUrl: l.imageUrl || null,
-        shortDescription: l.shortDescription || null,
-        taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
-      })),
-      subtotal: inv.subtotal,
+      lines: previewLines,
+      subtotal: previewSubtotal,
       taxTotal: inv.taxTotal,
       taxLabel,
-      total: inv.total,
+      total: previewTotal,
       amountPaid: inv.amountPaid,
-      amountDue: inv.amountDue,
+      amountDue: previewAmountDue,
       currencyCode: inv.currencyCode,
       reference: inv.reference,
       notes: inv.notes,
@@ -135,12 +162,12 @@ export async function GET(
           dueDate: inv.dueDate,
           dateFormat: org?.dateFormat || null,
           lines: invoiceData.lines,
-          subtotal: inv.subtotal,
+          subtotal: invoiceData.subtotal,
           taxTotal: inv.taxTotal,
           taxLabel,
-          total: inv.total,
+          total: invoiceData.total,
           amountPaid: inv.amountPaid,
-          amountDue: inv.amountDue,
+          amountDue: invoiceData.amountDue,
           currencyCode: inv.currencyCode,
           reference: inv.reference,
           notes: inv.notes,

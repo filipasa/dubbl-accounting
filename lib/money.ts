@@ -108,3 +108,15 @@ export function addTax(
 export function sumCents(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
+
+/**
+ * Calculate commercial card processing fee (Stripe UK commercial card rate: 1.9% + 20p / 20 cents).
+ * All inputs and outputs are in minor units (cents / pence).
+ */
+export function calculateCommercialCardFee(amountCents: number, currency?: string): number {
+  if (!amountCents || amountCents <= 0) return 0;
+  const minorUnits = getCurrencyMinorUnits(currency || "GBP");
+  const fixedFee = minorUnits === 0 ? 20 : 20 * Math.pow(10, Math.max(0, minorUnits - 2));
+  return Math.round(amountCents * 0.019) + Math.round(fixedFee);
+}
+
