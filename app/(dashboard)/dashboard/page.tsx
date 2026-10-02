@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { StatCard, type SparklinePoint } from "@/components/dashboard/stat-card";
 import {
   DashboardPeriodSelect,
   getPeriodRange,
@@ -255,6 +255,16 @@ function KpiItem({ label, value, good }: { label: string; value: string; good: b
   );
 }
 
+function formatTrendMonth(monthKey: string): string {
+  if (!monthKey) return "";
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  if (isNaN(year) || isNaN(month)) return monthKey;
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { open: openDrawer } = useCreateDrawer();
@@ -279,9 +289,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sparklines, setSparklines] = useState<{
-    revenue: number[];
-    expenses: number[];
-    netIncome: number[];
+    revenue: (number | SparklinePoint)[];
+    expenses: (number | SparklinePoint)[];
+    netIncome: (number | SparklinePoint)[];
   }>({ revenue: [], expenses: [], netIncome: [] });
   const [budgetAlerts, setBudgetAlerts] = useState<
     { accountName: string; pct: number; budgeted: number; actual: number }[]
@@ -382,7 +392,34 @@ export default function DashboardPage() {
     fetch("/api/v1/reports/monthly-trends?months=6", { headers })
       .then((r) => r.json())
       .then((data) => {
-        if (data.revenueSparkline) {
+        if (Array.isArray(data.months) && data.months.length > 0) {
+          const revenuePoints: SparklinePoint[] = data.months.map(
+            (m: { month: string; revenue: number }) => ({
+              value: m.revenue,
+              label: formatTrendMonth(m.month),
+              formattedValue: formatMoney(m.revenue),
+            })
+          );
+          const expensePoints: SparklinePoint[] = data.months.map(
+            (m: { month: string; expenses: number }) => ({
+              value: m.expenses,
+              label: formatTrendMonth(m.month),
+              formattedValue: formatMoney(m.expenses),
+            })
+          );
+          const netIncomePoints: SparklinePoint[] = data.months.map(
+            (m: { month: string; netIncome: number }) => ({
+              value: m.netIncome,
+              label: formatTrendMonth(m.month),
+              formattedValue: formatMoney(m.netIncome),
+            })
+          );
+          setSparklines({
+            revenue: revenuePoints,
+            expenses: expensePoints,
+            netIncome: netIncomePoints,
+          });
+        } else if (data.revenueSparkline) {
           setSparklines({
             revenue: data.revenueSparkline,
             expenses: data.expenseSparkline,
