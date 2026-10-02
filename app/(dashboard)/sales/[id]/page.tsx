@@ -982,7 +982,7 @@ export default function InvoiceDetailPage() {
               <tbody>
                 {inv.lines.map((line, i) => (
                   <tr key={line.id} className={i < inv.lines.length - 1 ? "border-b border-dashed" : ""}>
-                    <td className="px-6 py-3">
+                    <td className="px-6 py-3 align-middle">
                       <div className="flex items-center gap-3">
                         {line.imageUrl ? (
                           <img
@@ -1006,9 +1006,9 @@ export default function InvoiceDetailPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{(line.quantity / 100).toFixed(0)}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(line.unitPrice, inv.currencyCode)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    <td className="px-4 py-3 text-right font-mono tabular-nums align-middle">{(line.quantity / 100).toFixed(0)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground align-middle">{formatMoney(line.unitPrice, inv.currencyCode)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground align-middle">
                       {line.taxRate ? (
                         <div>
                           <span className="font-mono">{(line.taxRate.rate / 100).toFixed(2)}%</span>
@@ -1020,7 +1020,7 @@ export default function InvoiceDetailPage() {
                         <span className="text-xs">No tax</span>
                       )}
                     </td>
-                    <td className="px-6 py-3 text-right font-mono tabular-nums font-medium">{formatMoney(line.amount, inv.currencyCode)}</td>
+                    <td className="px-6 py-3 text-right font-mono tabular-nums font-medium align-middle">{formatMoney(line.amount, inv.currencyCode)}</td>
                   </tr>
                 ))}
               </tbody>

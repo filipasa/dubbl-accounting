@@ -110,9 +110,13 @@ export function SendDocumentDialog({
   const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
 
   function togglePaymentMethod(method: string) {
-    setSelectedPaymentMethods((prev) =>
-      prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method]
-    );
+    setSelectedPaymentMethods((prev) => {
+      const next = prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method];
+      if (!next.includes("card")) {
+        setPassProcessingFee(false);
+      }
+      return next;
+    });
   }
 
   const typeLabel = documentTypeLabels[documentType] || "Document";
@@ -120,11 +124,13 @@ export function SendDocumentDialog({
   const canPreviewDocument = Boolean(renderRoute && documentId);
   const showAttachPdf = true;
   const isInvoice = documentType === "invoice";
+  const isOnlinePaymentSelected = isInvoice && selectedPaymentMethods.includes("card");
+  const effectivePassProcessingFee = isOnlinePaymentSelected && passProcessingFee;
   const currency = currencyCode || "GBP";
   const calculatedFee = isInvoice && amountDue && amountDue > 0
     ? calculateCommercialCardFee(amountDue, currency)
     : 0;
-  const effectiveAmountDue = (amountDue ?? 0) + (passProcessingFee ? calculatedFee : 0);
+  const effectiveAmountDue = (amountDue ?? 0) + (effectivePassProcessingFee ? calculatedFee : 0);
   const effectiveAmountFormatted = effectiveAmountDue > 0
     ? formatMoney(effectiveAmountDue, currency)
     : amountDue != null
@@ -245,7 +251,7 @@ export function SendDocumentDialog({
       // Fetch via fetch() (not a raw iframe src) so we can send the
       // x-organization-id header the document route requires, then render
       // the response through a blob URL.
-      const feeParam = passProcessingFee ? "&passProcessingFee=true" : "";
+      const feeParam = effectivePassProcessingFee ? "&passProcessingFee=true" : "";
       const res = await fetch(`${renderRoute(documentId)}?format=pdf${feeParam}`, {
         headers: { "x-organization-id": orgId },
       });
@@ -288,7 +294,7 @@ export function SendDocumentDialog({
             ? {
                 includePaymentLink: selectedPaymentMethods.length > 0,
                 paymentMethods: selectedPaymentMethods,
-                passProcessingFee,
+                passProcessingFee: effectivePassProcessingFee,
               }
             : {}),
         }),
@@ -318,7 +324,7 @@ export function SendDocumentDialog({
           "x-organization-id": orgId,
         },
         body: JSON.stringify({
-          ...(isInvoice ? { passProcessingFee } : {}),
+          ...(isInvoice ? { passProcessingFee: effectivePassProcessingFee } : {}),
         }),
       });
 
@@ -459,7 +465,7 @@ export function SendDocumentDialog({
                         {documentType === "quote" ? "Total" : "Amount Due"}
                       </p>
                       <p className="text-sm font-mono font-semibold">{effectiveAmountFormatted}</p>
-                      {passProcessingFee && calculatedFee > 0 && (
+                      {effectivePassProcessingFee && calculatedFee > 0 && (
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                           Includes {formatMoney(calculatedFee, currency)} fee
                         </p>
@@ -618,6 +624,7 @@ export function SendDocumentDialog({
                           type="button"
                           onClick={() => {
                             setSelectedPaymentMethods([]);
+                            setPassProcessingFee(false);
                             setPaymentPopoverOpen(false);
                           }}
                           className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-muted text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
@@ -646,35 +653,37 @@ export function SendDocumentDialog({
                     </p>
                   )}
 
-                  {/* Pass on commercial card processing fees */}
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-2">
-                    <div className="flex items-start gap-2.5">
-                      <Checkbox
-                        id="pass-processing-fee"
-                        checked={passProcessingFee}
-                        onCheckedChange={(checked) => setPassProcessingFee(checked === true)}
-                        className="mt-0.5"
-                      />
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="pass-processing-fee"
-                          className="text-xs font-medium cursor-pointer flex items-center gap-1.5"
-                        >
-                          Pass on commercial card processing fees
-                          {passProcessingFee && (
-                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                              (+{formatMoney(calculatedFee, currency)})
-                            </span>
-                          )}
-                        </label>
-                        <p className="text-[11px] text-muted-foreground">
-                          {passProcessingFee
-                            ? `Adds a new line "Payment Processing Fee: ${formatMoney(calculatedFee, currency)}" (1.9% + 20p) to the invoice total.`
-                            : "Adds a new line called Payment Processing Fee to calculate and pass on the commercial card processing fee (1.9% + 20p)."}
-                        </p>
+                  {/* Pass on commercial card processing fees - only shown when Online payment (Stripe) is selected */}
+                  {isOnlinePaymentSelected && (
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="pass-processing-fee"
+                          checked={passProcessingFee}
+                          onCheckedChange={(checked) => setPassProcessingFee(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="pass-processing-fee"
+                            className="text-xs font-medium cursor-pointer flex items-center gap-1.5"
+                          >
+                            Pass on commercial card processing fees
+                            {passProcessingFee && (
+                              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                (+{formatMoney(calculatedFee, currency)})
+                              </span>
+                            )}
+                          </label>
+                          <p className="text-[11px] text-muted-foreground">
+                            {passProcessingFee
+                              ? `Adds a new line "Payment Processing Fee: ${formatMoney(calculatedFee, currency)}" (1.9% + 20p) to the invoice total.`
+                              : "Adds a new line called Payment Processing Fee to calculate and pass on the commercial card processing fee (1.9% + 20p)."}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 

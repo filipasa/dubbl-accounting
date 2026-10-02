@@ -203,7 +203,7 @@ const s = StyleSheet.create({
   table: { marginBottom: 0 },
   tableHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: dark, paddingBottom: 6 },
   th: { fontSize: 8, color: gray },
-  tableRow: { flexDirection: "row", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: lightGray },
+  tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: lightGray },
   cellDesc: { flex: 3 },
   lineImageWrapper: {
     width: 22,
@@ -399,7 +399,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
             const resolvedImg = resolvePdfImage(line.imageUrl);
             return (
               <View key={i} style={s.tableRow}>
-                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "flex-start" }]}>
+                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "center" }]}>
                   {resolvedImg ? (
                     <View style={s.lineImageWrapper}>
                       <Image src={resolvedImg} style={s.lineImage} />

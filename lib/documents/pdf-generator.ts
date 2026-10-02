@@ -229,18 +229,18 @@ export function generateDocumentHtml(
     .map(
       (line) => `
     <tr>
-      <td style="padding:6px 0;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
-        <div style="display:flex;align-items:flex-start;gap:8px;">
-          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:1px;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
-          <div>
+      <td style="padding:6px 0;vertical-align:middle;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
+          <div style="flex:1;">
             <div style="font-weight:500;">${escapeHtml(line.description)}</div>
             ${line.shortDescription ? `<div style="font-size:11px;color:#6b7280;white-space:pre-line;margin-top:2px;">${escapeHtml(line.shortDescription)}</div>` : ""}
           </div>
         </div>
       </td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, doc.currencyCode)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, doc.currencyCode)}</td>
     </tr>`
     )
     .join("");
@@ -503,18 +503,18 @@ export function generateInvoiceHtml(
     .map(
       (line) => `
     <tr>
-      <td style="padding:6px 0;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
-        <div style="display:flex;align-items:flex-start;gap:8px;">
-          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:1px;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
-          <div>
+      <td style="padding:6px 0;vertical-align:middle;font-size:13px;border-bottom:0.5px solid #e5e7eb;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;" />` : hasAnyImage ? `<div style="width:22px;height:22px;flex-shrink:0;"></div>` : ""}
+          <div style="flex:1;">
             <div style="font-weight:500;">${escapeHtml(line.description)}</div>
             ${line.shortDescription ? `<div style="font-size:11px;color:#6b7280;white-space:pre-line;margin-top:2px;">${escapeHtml(line.shortDescription)}</div>` : ""}
           </div>
         </div>
       </td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, invoice.currencyCode)}</td>
-      <td style="padding:6px 0;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, invoice.currencyCode)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${(line.quantity / 100).toFixed(2)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.unitPrice, invoice.currencyCode)}</td>
+      <td style="padding:6px 0;vertical-align:middle;text-align:right;font-size:13px;border-bottom:0.5px solid #e5e7eb;">${formatMoney(line.amount, invoice.currencyCode)}</td>
     </tr>`
     )
     .join("");
