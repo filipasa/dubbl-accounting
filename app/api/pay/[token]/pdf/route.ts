@@ -7,7 +7,7 @@ import { renderInvoicePdf } from "@/lib/documents/pdf-renderer";
 import type { SenderSnapshot, RecipientSnapshot } from "@/lib/documents/snapshots";
 import { formatContactAddress } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
-import { getPublicAppUrl } from "@/lib/public-url";
+import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
 
 export async function GET(
   request: Request,
@@ -69,9 +69,7 @@ export async function GET(
     const contactAddress = recipient?.address ?? formatContactAddress(inv.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null);
     const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
 
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-    const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
-    const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+    const baseUrl = resolvePublicBaseUrl(request);
     const paymentUrl = `${baseUrl}/pay/${token}`;
 
     const pdfBuffer = await renderInvoicePdf(

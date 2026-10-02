@@ -174,3 +174,43 @@ test("invoice tax line items and totals calculate correctly for pay page", () =>
   assert.equal(sampleInvoice.subtotal + sampleInvoice.taxTotal, sampleInvoice.total);
 });
 
+test("resolvePublicBaseUrl uses fixbooks.io and overrides vercel.app deployment hosts", async () => {
+  const { resolvePublicBaseUrl, getPublicAppUrl } = await import("../lib/public-url");
+
+  // Default app URL should be fixbooks.io
+  assert.equal(getPublicAppUrl(), "https://fixbooks.io");
+
+  // Request with dubbl-accounting.vercel.app host should be overridden to https://fixbooks.io
+  const vercelReq = new Request("https://dubbl-accounting.vercel.app/api/v1/invoices/123/send", {
+    headers: {
+      host: "dubbl-accounting.vercel.app",
+    },
+  });
+  assert.equal(resolvePublicBaseUrl(vercelReq), "https://fixbooks.io");
+
+  // Request with x-forwarded-host as vercel.app
+  const xForwardedVercelReq = new Request("https://localhost:3000/api/v1/invoices/123/send", {
+    headers: {
+      "x-forwarded-host": "dubbl-accounting-git-master.vercel.app",
+    },
+  });
+  assert.equal(resolvePublicBaseUrl(xForwardedVercelReq), "https://fixbooks.io");
+
+  // Request with custom fixbooks.io domain should be preserved
+  const fixbooksReq = new Request("https://fixbooks.io/pay/token123", {
+    headers: {
+      host: "fixbooks.io",
+    },
+  });
+  assert.equal(resolvePublicBaseUrl(fixbooksReq), "https://fixbooks.io");
+
+  // Request with localhost in dev should be preserved
+  const localReq = new Request("http://localhost:3000/pay/token123", {
+    headers: {
+      host: "localhost:3000",
+    },
+  });
+  assert.equal(resolvePublicBaseUrl(localReq), "http://localhost:3000");
+});
+
+

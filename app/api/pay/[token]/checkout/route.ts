@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { invoice } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
+import { resolvePublicBaseUrl } from "@/lib/public-url";
 
 export async function POST(
   request: Request,
@@ -26,10 +27,7 @@ export async function POST(
     return NextResponse.json({ error: "Invoice not payable" }, { status: 400 });
   }
 
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
-  const url = new URL(request.url);
-  const baseUrl = host ? `${proto}://${host}` : `${url.protocol}//${url.host}`;
+  const baseUrl = resolvePublicBaseUrl(request);
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",

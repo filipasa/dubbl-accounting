@@ -13,7 +13,7 @@ import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
-import { getPublicAppUrl } from "@/lib/public-url";
+import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
 import { z } from "zod";
 
 const templatePropsSchema = z.object({
@@ -92,9 +92,7 @@ export async function POST(
           .where(eq(invoice.id, id));
       }
 
-      const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-      const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
-      const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+      const baseUrl = resolvePublicBaseUrl(request);
       const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
 
       if (includePaymentLink || !templateProps.viewUrl) {

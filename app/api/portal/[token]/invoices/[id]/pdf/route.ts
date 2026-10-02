@@ -9,7 +9,7 @@ import type { SenderSnapshot, RecipientSnapshot } from "@/lib/documents/snapshot
 import { formatContactAddress } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { randomBytes } from "crypto";
-import { getPublicAppUrl } from "@/lib/public-url";
+import { getPublicAppUrl, resolvePublicBaseUrl } from "@/lib/public-url";
 
 export async function GET(
   request: Request,
@@ -96,9 +96,7 @@ export async function GET(
         .where(eq(invoice.id, inv.id));
     }
 
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-    const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
-    const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+    const baseUrl = resolvePublicBaseUrl(request);
     const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
 
     const invoiceData = {

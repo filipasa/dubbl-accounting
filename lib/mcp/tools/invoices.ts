@@ -13,6 +13,7 @@ import { wrapTool } from "@/lib/mcp/errors";
 import { checkMonthlyLimit, checkMultiCurrency } from "@/lib/api/check-limit";
 import { sendEmail } from "@/lib/email/smtp-client";
 import { randomBytes } from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { checkInvoiceCompliance } from "@/lib/documents/compliance";
 import { checkApprovalRequired, createApprovalRequest, processApprovalAction } from "@/lib/approvals/engine";
@@ -471,7 +472,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         let emailSent = false;
         if (emailCfg) {
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          const baseUrl = getPublicAppUrl();
           const signUrl = `${baseUrl}/sign/${token}`;
 
           await sendEmail(emailCfg, {
@@ -560,7 +561,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         if (!emailCfg) throw new Error("Email is not configured for this organization");
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const baseUrl = getPublicAppUrl();
         const signUrl = `${baseUrl}/sign/${sig.token}`;
 
         await sendEmail(emailCfg, {
@@ -683,7 +684,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         if (!inv) throw new Error("Invoice not found");
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const baseUrl = getPublicAppUrl();
         return {
           downloadUrl: `${baseUrl}/api/v1/invoices/${params.invoiceId}/pdf?format=pdf`,
           invoiceNumber: inv.invoiceNumber,

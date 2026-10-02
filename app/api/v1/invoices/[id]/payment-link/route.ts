@@ -5,6 +5,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError, notFound } from "@/lib/api/response";
 import { randomBytes } from "crypto";
+import { resolvePublicBaseUrl } from "@/lib/public-url";
 
 export async function POST(
   request: Request,
@@ -24,12 +25,13 @@ export async function POST(
 
     if (!inv) return notFound("Invoice");
 
+    const baseUrl = resolvePublicBaseUrl(request);
+
     // Return existing token if already generated
     if (inv.paymentLinkToken) {
-      const url = new URL(request.url);
       return NextResponse.json({
         token: inv.paymentLinkToken,
-        url: `${url.protocol}//${url.host}/pay/${inv.paymentLinkToken}`,
+        url: `${baseUrl}/pay/${inv.paymentLinkToken}`,
       });
     }
 
@@ -41,10 +43,9 @@ export async function POST(
       .set({ paymentLinkToken: token, updatedAt: new Date() })
       .where(eq(invoice.id, id));
 
-    const url = new URL(request.url);
     return NextResponse.json({
       token,
-      url: `${url.protocol}//${url.host}/pay/${token}`,
+      url: `${baseUrl}/pay/${token}`,
     });
   } catch (err) {
     return handleError(err);

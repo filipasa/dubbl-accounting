@@ -12,6 +12,7 @@ import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
+import { resolvePublicBaseUrl } from "@/lib/public-url";
 import { z } from "zod";
 
 const templatePropsSchema = z.object({
@@ -93,8 +94,8 @@ export async function POST(
             .returning();
           token = created;
         }
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
-        templateProps.viewUrl = `${APP_URL}/portal/${token.token}/quotes`;
+        const baseUrl = resolvePublicBaseUrl(request);
+        templateProps.viewUrl = `${baseUrl}/portal/${token.token}/quotes`;
         templateProps.buttonLabel = "View quote";
       }
 

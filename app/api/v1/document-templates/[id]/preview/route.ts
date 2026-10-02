@@ -6,6 +6,7 @@ import { getAuthContext } from "@/lib/api/auth-context";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { notFound, handleError } from "@/lib/api/response";
 import { generateInvoiceHtml } from "@/lib/documents/pdf-generator";
+import { resolvePublicBaseUrl } from "@/lib/public-url";
 
 export async function POST(
   request: Request,
@@ -62,7 +63,7 @@ export async function POST(
       currencyCode,
       reference: "PO-123",
       notes: null,
-      paymentUrl: `${url.protocol}//${url.host}/pay/sample-preview`,
+      paymentUrl: `${resolvePublicBaseUrl(request)}/pay/sample-preview`,
     };
 
     const orgInfo = {
