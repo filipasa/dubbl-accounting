@@ -161,18 +161,8 @@ async function fetchImageAsDataUri(url: string, timeoutMs = 3500): Promise<strin
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") || "image/png";
     const arrayBuffer = await res.arrayBuffer();
-    let finalBuffer: Buffer = Buffer.from(arrayBuffer);
-    let finalMime = contentType;
-    if (contentType.includes("webp") || contentType.includes("svg") || contentType.includes("avif")) {
-      try {
-        const sharp = (await import("sharp")).default;
-        finalBuffer = await sharp(finalBuffer).png().toBuffer();
-        finalMime = "image/png";
-      } catch {
-        // Fallback to raw buffer
-      }
-    }
-    return `data:${finalMime};base64,${finalBuffer.toString("base64")}`;
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    return `data:${contentType};base64,${base64}`;
   } catch {
     return null;
   }
