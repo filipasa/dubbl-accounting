@@ -153,3 +153,24 @@ test("authConfig allows /pay and /api/pay as public routes without login", async
   assert.equal(isApiPayAllowed, true, "Unauthenticated user should be allowed to access /api/pay/[token]");
 });
 
+test("invoice tax line items and totals calculate correctly for pay page", () => {
+  const line1 = sampleInvoice.lines[0];
+  const line2 = sampleInvoice.lines[1];
+
+  // Net amounts
+  assert.equal(line1.amount, 48750);
+  assert.equal(line1.taxAmount, 9750);
+  // Gross amounts
+  assert.equal(line1.amount + line1.taxAmount, 58500);
+
+  assert.equal(line2.amount, 8333);
+  assert.equal(line2.taxAmount, 1667);
+  assert.equal(line2.amount + line2.taxAmount, 10000);
+
+  // Totals
+  assert.equal(sampleInvoice.subtotal, 57083);
+  assert.equal(sampleInvoice.taxTotal, 11417);
+  assert.equal(sampleInvoice.total, 68500);
+  assert.equal(sampleInvoice.subtotal + sampleInvoice.taxTotal, sampleInvoice.total);
+});
+

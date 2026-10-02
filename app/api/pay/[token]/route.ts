@@ -18,7 +18,11 @@ export async function GET(
     with: {
       organization: true,
       contact: true,
-      lines: true,
+      lines: {
+        with: {
+          taxRate: true,
+        },
+      },
     },
   });
 
@@ -52,7 +56,10 @@ export async function GET(
       invoiceNumber: inv.invoiceNumber,
       issueDate: inv.issueDate,
       dueDate: inv.dueDate,
+      subtotal: inv.subtotal,
+      taxTotal: inv.taxTotal,
       total: inv.total,
+      amountPaid: inv.amountPaid,
       amountDue: inv.amountDue,
       currencyCode: inv.currencyCode,
       lines: inv.lines.map((l) => ({
@@ -61,6 +68,13 @@ export async function GET(
         unitPrice: l.unitPrice,
         amount: l.amount,
         taxAmount: l.taxAmount,
+        taxRate: l.taxRate
+          ? {
+              id: l.taxRate.id,
+              name: l.taxRate.name,
+              rate: l.taxRate.rate,
+            }
+          : null,
       })),
     },
     organization: {
