@@ -13,6 +13,7 @@ import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { randomBytes } from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 import { z } from "zod";
 
 const templatePropsSchema = z.object({
@@ -81,18 +82,23 @@ export async function POST(
     if (emailParsed.success) {
       const { recipientEmail, subject, templateProps, attachPdf, includePaymentLink } = emailParsed.data;
 
-      // Generate payment link if requested
-      if (includePaymentLink) {
-        let paymentLinkToken = found.paymentLinkToken;
-        if (!paymentLinkToken) {
-          paymentLinkToken = randomBytes(24).toString("hex");
-          await db
-            .update(invoice)
-            .set({ paymentLinkToken, updatedAt: new Date() })
-            .where(eq(invoice.id, id));
-        }
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        templateProps.viewUrl = `${APP_URL}/pay/${paymentLinkToken}`;
+      // Ensure payment link token exists on invoice
+      let paymentLinkToken = found.paymentLinkToken;
+      if (!paymentLinkToken) {
+        paymentLinkToken = randomBytes(24).toString("hex");
+        await db
+          .update(invoice)
+          .set({ paymentLinkToken, updatedAt: new Date() })
+          .where(eq(invoice.id, id));
+      }
+
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
+      const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+      const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+
+      if (includePaymentLink || !templateProps.viewUrl) {
+        templateProps.viewUrl = paymentUrl;
         templateProps.buttonLabel = "Pay invoice";
       }
 
@@ -142,6 +148,7 @@ export async function POST(
               amountDue: found.amountDue,
               reference: found.reference,
               notes: found.notes,
+              paymentUrl,
             },
             orgInfo,
             contactInfo,

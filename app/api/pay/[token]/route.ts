@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice } from "@/lib/db/schema";
+import { invoice, documentTemplate } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
+import { notDeleted } from "@/lib/db/soft-delete";
 
 export async function GET(
   request: Request,
@@ -33,6 +34,17 @@ export async function GET(
     return NextResponse.json({ error: "Invoice is not payable" }, { status: 400 });
   }
 
+  const template = await db.query.documentTemplate.findFirst({
+    where: and(
+      eq(documentTemplate.organizationId, inv.organizationId),
+      eq(documentTemplate.type, "invoice"),
+      eq(documentTemplate.isDefault, true),
+      notDeleted(documentTemplate.deletedAt)
+    ),
+  });
+
+  const logoUrl = template?.logoUrl || inv.organization.logo || null;
+
   return NextResponse.json({
     status: "pending",
     invoice: {
@@ -53,6 +65,7 @@ export async function GET(
     },
     organization: {
       name: inv.organization.name,
+      logoUrl,
     },
     contact: {
       name: inv.contact?.name,

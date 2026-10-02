@@ -34,6 +34,10 @@ export const authConfig: NextAuthConfig = {
       // Public routes
       if (
         pathname === "/" ||
+        pathname.startsWith("/pay") ||
+        pathname.startsWith("/api/pay") ||
+        pathname.startsWith("/portal") ||
+        pathname.startsWith("/api/portal") ||
         pathname.startsWith("/pricing") ||
         pathname.startsWith("/sign-in") ||
         pathname.startsWith("/sign-up") ||

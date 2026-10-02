@@ -124,3 +124,32 @@ test("renderInvoicePdf generates PDF ArrayBuffer with QR code successfully", asy
   const header = Buffer.from(pdfBuffer).subarray(0, 5).toString("ascii");
   assert.equal(header, "%PDF-", "Generated buffer must have PDF magic signature");
 });
+
+test("authConfig allows /pay and /api/pay as public routes without login", async () => {
+  const { authConfig } = await import("../lib/auth.config");
+  const authorized = authConfig.callbacks?.authorized;
+  assert.ok(typeof authorized === "function", "authorized callback must be defined");
+
+  // Simulate unauthenticated request to /pay/token123
+  const unauthPayReq = {
+    auth: null,
+    request: {
+      nextUrl: new URL("https://www.fixbooks.io/pay/token123"),
+      headers: new Headers(),
+    },
+  };
+  const isPayAllowed = authorized(unauthPayReq as any);
+  assert.equal(isPayAllowed, true, "Unauthenticated user should be allowed to access /pay/[token]");
+
+  // Simulate unauthenticated request to /api/pay/token123
+  const unauthApiPayReq = {
+    auth: null,
+    request: {
+      nextUrl: new URL("https://www.fixbooks.io/api/pay/token123"),
+      headers: new Headers(),
+    },
+  };
+  const isApiPayAllowed = authorized(unauthApiPayReq as any);
+  assert.equal(isApiPayAllowed, true, "Unauthenticated user should be allowed to access /api/pay/[token]");
+});
+

@@ -9,6 +9,8 @@ import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import { formatMoney } from "@/lib/money";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { randomBytes } from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 import type { AuthContext } from "@/lib/api/auth-context";
 
 export function registerEmailTools(server: McpServer, ctx: AuthContext) {
@@ -112,6 +114,15 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   notDeleted(documentTemplate.deletedAt)
                 ),
               });
+              let token = inv.paymentLinkToken;
+              if (!token) {
+                token = randomBytes(24).toString("hex");
+                await db
+                  .update(invoice)
+                  .set({ paymentLinkToken: token, updatedAt: new Date() })
+                  .where(eq(invoice.id, inv.id));
+              }
+              const paymentUrl = `${getPublicAppUrl()}/pay/${token}`;
               const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
               const buf = await renderInvoicePdf(
                 {
@@ -132,7 +143,10 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   taxTotal: inv.taxTotal,
                   taxLabel,
                   total: inv.total,
+                  amountPaid: inv.amountPaid,
+                  amountDue: inv.amountDue,
                   notes: inv.notes,
+                  paymentUrl,
                 },
                 { name: org?.name || "", dateFormat: org?.dateFormat || null },
                 inv.contact ? { name: inv.contact.name } : { name: "Unknown" },

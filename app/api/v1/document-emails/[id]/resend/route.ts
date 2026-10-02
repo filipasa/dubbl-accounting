@@ -7,6 +7,8 @@ import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { randomBytes } from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 
 export async function POST(
   request: Request,
@@ -58,6 +60,19 @@ export async function POST(
               notDeleted(documentTemplate.deletedAt)
             ),
           });
+          let token = inv.paymentLinkToken;
+          if (!token) {
+            token = randomBytes(24).toString("hex");
+            await db
+              .update(invoice)
+              .set({ paymentLinkToken: token, updatedAt: new Date() })
+              .where(eq(invoice.id, inv.id));
+          }
+          const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+          const proto = request.headers.get("x-forwarded-proto") || (host && host.startsWith("localhost") ? "http" : "https");
+          const baseUrl = host ? `${proto}://${host}` : getPublicAppUrl();
+          const paymentUrl = `${baseUrl}/pay/${token}`;
+
           const taxLabel = resolveTaxLabel(inv.lines, inv.taxTotal);
           const buf = await renderInvoicePdf(
             {
@@ -82,6 +97,7 @@ export async function POST(
               amountDue: inv.amountDue,
               reference: inv.reference,
               notes: inv.notes,
+              paymentUrl,
             },
             { name: org?.name || "", dateFormat: org?.dateFormat || null },
             inv.contact ? { name: inv.contact.name } : { name: "Unknown" },

@@ -43,7 +43,7 @@ interface InvoiceData {
 interface PaymentData {
   status: "pending" | "paid";
   invoice: InvoiceData | { invoiceNumber: string };
-  organization?: { name: string };
+  organization?: { name: string; logoUrl?: string | null };
   contact?: { name: string };
   error?: string;
 }
@@ -168,9 +168,17 @@ function PaymentPageContent() {
       <div className="w-full max-w-lg rounded-xl border bg-white dark:bg-gray-900 p-6 shadow-lg">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
+          {data?.organization?.logoUrl ? (
+            <img
+              src={data.organization.logoUrl}
+              alt={data.organization.name}
+              className="h-10 max-w-[140px] object-contain rounded"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          )}
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {data?.organization?.name}
