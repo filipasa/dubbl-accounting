@@ -253,8 +253,8 @@ export function generateDocumentHtml(
     .map(
       (d) => `
     <tr>
-      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#059669;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
-      <td style="text-align:right;padding:3px 0;font-size:12px;color:#059669;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), doc.currencyCode)}</td>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), doc.currencyCode)}</td>
     </tr>`
     )
     .join("");
@@ -264,7 +264,7 @@ export function generateDocumentHtml(
       (s) => `
     <tr>
       <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(s.description || "Shipping")}</td>
-      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">+${formatMoney(Math.abs(s.amount), doc.currencyCode)}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(Math.abs(s.amount), doc.currencyCode)}</td>
     </tr>`
     )
     .join("");
@@ -554,8 +554,8 @@ export function generateInvoiceHtml(
     .map(
       (d) => `
     <tr>
-      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#059669;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
-      <td style="text-align:right;padding:3px 0;font-size:12px;color:#059669;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), invoice.currencyCode)}</td>
+      <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(d.description || "Discount")}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">-${formatMoney(Math.abs(d.amount), invoice.currencyCode)}</td>
     </tr>`
     )
     .join("");
@@ -565,7 +565,7 @@ export function generateInvoiceHtml(
       (s) => `
     <tr>
       <td colspan="3" style="text-align:right;padding:3px 6px 3px 0;color:#6b7280;font-size:12px;border-top:0.5px solid #e5e7eb;">${escapeHtml(s.description || "Shipping")}</td>
-      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">+${formatMoney(Math.abs(s.amount), invoice.currencyCode)}</td>
+      <td style="text-align:right;padding:3px 0;font-size:12px;border-top:0.5px solid #e5e7eb;">${formatMoney(Math.abs(s.amount), invoice.currencyCode)}</td>
     </tr>`
     )
     .join("");

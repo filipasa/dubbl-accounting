@@ -445,14 +445,14 @@ function stripBotMentions(text: string | null | undefined): string | null {
               <View key={`s-${idx}`} style={s.totalRow}>
                 <Text style={s.totalLabel}>{sh.description}</Text>
                 <Text style={s.totalValue}>
-                  +{fmtMoney(Math.abs(sh.amount), inv.currencyCode)}
+                  {fmtMoney(Math.abs(sh.amount), inv.currencyCode)}
                 </Text>
               </View>
             ))}
             {discountLines.map((d, idx) => (
               <View key={`d-${idx}`} style={s.totalRow}>
-                <Text style={[s.totalLabel, { color: "#059669" }]}>{d.description}</Text>
-                <Text style={[s.totalValue, { color: "#059669" }]}>
+                <Text style={s.totalLabel}>{d.description}</Text>
+                <Text style={s.totalValue}>
                   -{fmtMoney(Math.abs(d.amount), inv.currencyCode)}
                 </Text>
               </View>

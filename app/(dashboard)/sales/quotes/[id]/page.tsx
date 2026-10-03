@@ -319,12 +319,12 @@ export default function QuoteDetailPage() {
                       <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
                         <span>{s.description}</span>
                         <span className="font-mono tabular-nums">
-                          +{formatMoney(Math.abs(s.amount), q.currencyCode || "GBP")}
+                          {formatMoney(Math.abs(s.amount), q.currencyCode || "GBP")}
                         </span>
                       </div>
                     ))}
                     {discountLines.map((d, idx) => (
-                      <div key={`d-${idx}`} className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                      <div key={`d-${idx}`} className="flex justify-between text-sm text-muted-foreground">
                         <span>{d.description}</span>
                         <span className="font-mono tabular-nums">
                           -{formatMoney(Math.abs(d.amount), q.currencyCode || "GBP")}

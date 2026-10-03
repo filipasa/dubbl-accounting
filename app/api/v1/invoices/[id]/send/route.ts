@@ -187,7 +187,10 @@ export async function POST(
       let pdfBuffer: Buffer | undefined;
       let pdfFilename: string | undefined;
 
-      if (attachPdf) {
+      // Invoices emailed to customers must always include the generated PDF invoice attachment
+      const shouldAttachPdf = true;
+
+      if (shouldAttachPdf) {
         try {
           const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
           const org = await db.query.organization.findFirst({
@@ -217,6 +220,9 @@ export async function POST(
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
                 amount: l.amount,
+                discountPercent: l.discountPercent ?? 0,
+                imageUrl: l.imageUrl || null,
+                shortDescription: l.shortDescription || null,
                 taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
               })),
               subtotal: found.subtotal,
@@ -235,7 +241,8 @@ export async function POST(
           );
           pdfBuffer = Buffer.from(buf);
           pdfFilename = `invoice-${found.invoiceNumber}.pdf`;
-        } catch {
+        } catch (err) {
+          console.error("[Invoice Send PDF Error] Failed to generate PDF attachment:", err);
           // PDF generation failed, send without attachment
         }
       }
@@ -253,7 +260,7 @@ export async function POST(
         recipientEmail,
         subject,
         body: html,
-        attachPdf,
+        attachPdf: Boolean(pdfBuffer),
         pdfBuffer,
         pdfFilename,
         replyTo: org?.contactEmail || undefined,

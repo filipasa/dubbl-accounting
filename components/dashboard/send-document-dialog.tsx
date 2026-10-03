@@ -289,7 +289,7 @@ export function SendDocumentDialog({
           recipientEmail,
           subject: `${typeLabel} ${documentNumber} from ${organizationName}`,
           templateProps: buildTemplateProps(),
-          attachPdf,
+          attachPdf: isInvoice ? true : attachPdf,
           ...(isInvoice
             ? {
                 includePaymentLink: selectedPaymentMethods.length > 0,

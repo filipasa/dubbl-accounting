@@ -277,7 +277,9 @@ test("Invoice HTML and PDF render Discount and Shipping lines properly", async (
   assert.ok(html.includes("Discount (10%)"), "HTML should include 'Discount (10%)'");
   assert.ok(html.includes("Shipping"), "HTML should include 'Shipping'");
   assert.ok(html.includes("-£20.00"), "HTML should format negative discount amount properly");
-  assert.ok(html.includes("+£15.00") || html.includes("£15.00"), "HTML should format shipping amount properly");
+  assert.ok(html.includes("£15.00"), "HTML should format shipping amount properly");
+  assert.ok(!html.includes("+£15.00"), "HTML must NOT prepend '+' sign to shipping amount");
+  assert.ok(!html.includes("#059669"), "HTML must NOT color discount green");
 
   // Verify Discount and Shipping are NOT in <tbody> (product lines) but ARE in <tfoot> (underneath Subtotal)
   const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/);
@@ -411,8 +413,9 @@ test("VAT is calculated on net total after shipping and discount (Sub £100, Shi
 
   // Subtotal £100.00
   assert.ok(html.includes("£100.00"), "HTML includes Subtotal £100.00");
-  // Shipping +£10.00
-  assert.ok(html.includes("+£10.00") || html.includes("£10.00"), "HTML includes Shipping £10.00");
+  // Shipping £10.00
+  assert.ok(html.includes("£10.00"), "HTML includes Shipping £10.00");
+  assert.ok(!html.includes("+£10.00"), "HTML must NOT prepend '+' sign to shipping amount");
   // Discount -£20.00
   assert.ok(html.includes("-£20.00"), "HTML includes Discount -£20.00");
   // VAT @ 20% £18.00

@@ -594,7 +594,7 @@ export function LineItemsEditor({
                   </button>
                 </div>
                 <span className="font-mono tabular-nums">
-                  +{shippingAmount.toFixed(2)}
+                  {shippingAmount.toFixed(2)}
                 </span>
               </div>
             )}
@@ -658,7 +658,7 @@ export function LineItemsEditor({
                     <X className="size-3.5" />
                   </button>
                 </div>
-                <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <span className="font-mono tabular-nums">
                   -{discountAmount.toFixed(2)}
                 </span>
               </div>
