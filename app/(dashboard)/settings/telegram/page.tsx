@@ -54,6 +54,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TelegramLogo, TelegramPlaneIcon } from "@/components/icons/telegram-icon";
 
 interface StatusResponse {
   isConfigured: boolean;
@@ -300,8 +301,8 @@ export default function TelegramSettingsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center">
-              <Bot className="h-5 w-5" />
+            <div className="h-10 w-10 rounded-xl bg-[#229ED9]/10 flex items-center justify-center">
+              <TelegramLogo className="h-6 w-6" colored />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -347,8 +348,8 @@ export default function TelegramSettingsPage() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md shadow-sky-500/25">
-                  <Bot className="h-6 w-6" />
+                <div className="h-12 w-12 rounded-2xl bg-[#229ED9] text-white flex items-center justify-center shadow-md shadow-[#229ED9]/25">
+                  <TelegramLogo className="h-7 w-7" colored />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -372,16 +373,16 @@ export default function TelegramSettingsPage() {
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 {botLink ? (
-                  <Button asChild size="lg" className="gap-2 bg-sky-600 hover:bg-sky-700 text-white shadow-sm">
+                  <Button asChild size="lg" className="gap-2 bg-[#229ED9] hover:bg-[#1E8EC7] text-white shadow-sm">
                     <a href={botLink} target="_blank" rel="noreferrer">
-                      <Send className="h-4 w-4" />
+                      <TelegramPlaneIcon className="h-4 w-4" />
                       Open in Telegram
                       <ExternalLink className="h-3.5 w-3.5 opacity-70" />
                     </a>
                   </Button>
                 ) : (
                   <Button disabled size="lg" className="gap-2">
-                    <Bot className="h-4 w-4" /> Bot Not Configured
+                    <TelegramPlaneIcon className="h-4 w-4" /> Bot Not Configured
                   </Button>
                 )}
 
@@ -426,8 +427,8 @@ export default function TelegramSettingsPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center">
-                <UserCheck className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-lg bg-[#229ED9]/10 flex items-center justify-center">
+                <TelegramLogo className="h-5 w-5" colored />
               </div>
               <div>
                 <CardTitle className="text-lg">Your Connected Telegram Account</CardTitle>
@@ -469,13 +470,13 @@ export default function TelegramSettingsPage() {
 
               <div className="flex items-center gap-2 shrink-0">
                 {botUsername && (
-                  <Button asChild size="sm" variant="outline" className="gap-1.5 text-xs">
+                  <Button asChild size="sm" variant="outline" className="gap-1.5 text-xs border-[#229ED9]/30 text-[#229ED9] hover:bg-[#229ED9]/10">
                     <a
                       href={`https://t.me/${botUsername}`}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <Send className="h-3.5 w-3.5 text-sky-600" />
+                      <TelegramPlaneIcon className="h-3.5 w-3.5 text-[#229ED9]" />
                       Open Chat
                     </a>
                   </Button>
@@ -513,8 +514,8 @@ export default function TelegramSettingsPage() {
                 {/* Method 1: Link Code */}
                 <div className="p-4 rounded-xl border bg-card space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center">
-                      <KeyRound className="h-4 w-4" />
+                    <div className="h-7 w-7 rounded-lg bg-[#229ED9]/10 flex items-center justify-center">
+                      <TelegramLogo className="h-4 w-4" colored />
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-foreground">Option 1: 1-Click Link Code</h4>
@@ -543,13 +544,13 @@ export default function TelegramSettingsPage() {
 
                       <div className="space-y-2">
                         {botUsername && (
-                          <Button asChild size="sm" className="w-full bg-sky-600 hover:bg-sky-700 text-white gap-2">
+                          <Button asChild size="sm" className="w-full bg-[#229ED9] hover:bg-[#1E8EC7] text-white gap-2 shadow-sm">
                             <a
                               href={`https://t.me/${botUsername}?start=link_${linkCode}`}
                               target="_blank"
                               rel="noreferrer"
                             >
-                              <Send className="h-3.5 w-3.5" />
+                              <TelegramPlaneIcon className="h-3.5 w-3.5" />
                               1-Click Pair on Telegram
                               <ExternalLink className="h-3 w-3 opacity-70" />
                             </a>
@@ -582,8 +583,8 @@ export default function TelegramSettingsPage() {
                 {/* Method 2: Direct Username */}
                 <div className="p-4 rounded-xl border bg-card space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-                      <Bot className="h-4 w-4" />
+                    <div className="h-7 w-7 rounded-lg bg-[#229ED9]/10 text-[#229ED9] flex items-center justify-center">
+                      <TelegramPlaneIcon className="h-4 w-4" />
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-foreground">Option 2: Direct Username</h4>
@@ -801,7 +802,7 @@ export default function TelegramSettingsPage() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              <Bot className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <TelegramLogo className="h-9 w-9 mx-auto mb-2 opacity-40" colored />
               No Telegram messages logged yet. Text your bot to see live logs!
             </div>
           )}
@@ -949,7 +950,7 @@ export default function TelegramSettingsPage() {
                   </>
                 ) : (
                   <>
-                    <Send className="h-3.5 w-3.5" />
+                    <TelegramPlaneIcon className="h-3.5 w-3.5 text-sky-600" />
                     Send Diagnostic Message
                   </>
                 )}
