@@ -3,8 +3,29 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createMcpServer } from "@/lib/mcp/server";
 import { resolveToken } from "@/lib/mcp/auth";
 import { db } from "@/lib/db";
-import { organization, member } from "@/lib/db/schema";
-import { isNull } from "drizzle-orm";
+import {
+  organization,
+  member,
+  invoice,
+  invoiceLine,
+  quote,
+  quoteLine,
+  portalAccessToken,
+  documentTemplate,
+} from "@/lib/db/schema";
+import { isNull, eq, and, or, ilike } from "drizzle-orm";
+import { notDeleted } from "@/lib/db/soft-delete";
+import { formatMoney } from "@/lib/money";
+import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
+import { resolveTaxLabel } from "@/lib/tax/tax-label";
+import { sendDocumentEmail } from "@/lib/email/document-sender";
+import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
+import {
+  createInvoiceJournalEntry,
+  createCogsJournalEntry,
+  assertBaseRateAvailable,
+} from "@/lib/api/journal-automation";
+import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
 
@@ -623,4 +644,687 @@ export async function getBankAccountsAction(ctx: AuthContext) {
   return accounts.filter(
     (a: any) => a.subType === "bank" || a.name?.toLowerCase().includes("bank")
   );
+}
+
+/**
+ * Finds an invoice by invoiceNumber or UUID within the current organization.
+ */
+export async function findInvoiceByNumber(ctx: AuthContext, invoiceNumberOrId: string) {
+  const query = (invoiceNumberOrId || "").trim();
+  if (!query) return null;
+
+  const found = await db.query.invoice.findFirst({
+    where: and(
+      or(
+        ilike(invoice.invoiceNumber, query),
+        eq(invoice.id, query)
+      ),
+      eq(invoice.organizationId, ctx.organizationId),
+      notDeleted(invoice.deletedAt)
+    ),
+    with: {
+      lines: { with: { taxRate: true } },
+      contact: true,
+    },
+  });
+  if (found) return found;
+
+  // Fallback: check recent invoices in case query was e.g. "17" instead of "INV-00017"
+  const recent = await db.query.invoice.findMany({
+    where: and(
+      eq(invoice.organizationId, ctx.organizationId),
+      notDeleted(invoice.deletedAt)
+    ),
+    with: {
+      lines: { with: { taxRate: true } },
+      contact: true,
+    },
+    limit: 50,
+  });
+
+  return (
+    recent.find((i) =>
+      i.invoiceNumber.toLowerCase() === query.toLowerCase() ||
+      i.invoiceNumber.toLowerCase().replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "") ||
+      i.id.toLowerCase() === query.toLowerCase()
+    ) || null
+  );
+}
+
+/**
+ * Finds a quote by quoteNumber or UUID within the current organization.
+ */
+export async function findQuoteByNumber(ctx: AuthContext, quoteNumberOrId: string) {
+  const query = (quoteNumberOrId || "").trim();
+  if (!query) return null;
+
+  const found = await db.query.quote.findFirst({
+    where: and(
+      or(
+        ilike(quote.quoteNumber, query),
+        eq(quote.id, query)
+      ),
+      eq(quote.organizationId, ctx.organizationId),
+      notDeleted(quote.deletedAt)
+    ),
+    with: {
+      lines: { with: { taxRate: true } },
+      contact: true,
+    },
+  });
+  if (found) return found;
+
+  const recent = await db.query.quote.findMany({
+    where: and(
+      eq(quote.organizationId, ctx.organizationId),
+      notDeleted(quote.deletedAt)
+    ),
+    with: {
+      lines: { with: { taxRate: true } },
+      contact: true,
+    },
+    limit: 50,
+  });
+
+  return (
+    recent.find((q) =>
+      q.quoteNumber?.toLowerCase() === query.toLowerCase() ||
+      (q.quoteNumber && q.quoteNumber.replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "")) ||
+      q.id.toLowerCase() === query.toLowerCase()
+    ) || null
+  );
+}
+
+/**
+ * Updates an existing draft invoice
+ */
+export async function updateInvoiceAction(
+  ctx: AuthContext,
+  params: {
+    invoiceNumber: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerAddress?: string;
+    customerPhone?: string;
+    lines?: LineItemInput[];
+    description?: string;
+    unitPrice?: number;
+    quantity?: number;
+    taxRatePercent?: number | string;
+    issueDate?: string;
+    dueDate?: string;
+    reference?: string;
+    notes?: string;
+  }
+) {
+  const inv = await findInvoiceByNumber(ctx, params.invoiceNumber);
+  if (!inv) {
+    return { error: `Invoice "${params.invoiceNumber}" not found.` };
+  }
+
+  if (inv.status !== "draft") {
+    return {
+      error: `Only draft invoices can be edited. Invoice ${inv.invoiceNumber} is currently in "${inv.status}" status.`,
+    };
+  }
+
+  let contactId: string | undefined;
+  if (params.customerName) {
+    const contact = await resolveContact(ctx, {
+      customerName: params.customerName,
+      customerEmail: params.customerEmail,
+      customerAddress: params.customerAddress,
+      customerPhone: params.customerPhone,
+    });
+    contactId = contact.id;
+  }
+
+  let rawLines = params.lines;
+  if (!rawLines && params.description && params.unitPrice != null) {
+    rawLines = [
+      {
+        description: params.description,
+        quantity: params.quantity || 1,
+        unitPrice: params.unitPrice,
+      },
+    ];
+  }
+
+  let formattedLines: any[] | undefined;
+  if (rawLines && rawLines.length > 0) {
+    const taxRateId = await resolveTaxRateId(ctx, params.taxRatePercent);
+    const accountsRes = await executeMcpTool(ctx, "list_accounts", { type: "revenue" });
+    const accounts = accountsRes?.accounts || [];
+    const account = accounts.find((a: any) => a.code === "4000") || accounts[0];
+
+    formattedLines = rawLines.map((l) => ({
+      description: l.description,
+      quantity: Number(l.quantity || 1),
+      unitPrice: Number(l.unitPrice || 0), // decimal pounds
+      ...(account?.id ? { accountId: account.id } : {}),
+      ...(taxRateId ? { taxRateId } : {}),
+    }));
+  }
+
+  const patch: Record<string, any> = {
+    invoiceId: inv.id,
+  };
+  if (contactId) patch.contactId = contactId;
+  if (params.issueDate) {
+    const norm = normalizeDateInput(params.issueDate);
+    if (norm) patch.issueDate = norm;
+  }
+  if (params.dueDate) {
+    const norm = normalizeDateInput(params.dueDate);
+    if (norm) patch.dueDate = norm;
+  }
+  if (params.reference !== undefined) patch.reference = params.reference.trim();
+  if (params.notes !== undefined) patch.notes = sanitizeNotes(params.notes) || null;
+  if (formattedLines) patch.lines = formattedLines;
+
+  await executeMcpTool(ctx, "update_invoice", patch);
+
+  const updatedInv = await findInvoiceByNumber(ctx, inv.id);
+  const totalFormatted = ((updatedInv?.total || 0) / 100).toFixed(2);
+  const subtotalFormatted = ((updatedInv?.subtotal || 0) / 100).toFixed(2);
+  const taxFormatted = ((updatedInv?.taxTotal || 0) / 100).toFixed(2);
+
+  return {
+    success: true,
+    invoice: updatedInv,
+    invoiceNumber: updatedInv?.invoiceNumber,
+    customerName: updatedInv?.contact?.name || "Customer",
+    subtotal: `${updatedInv?.currencyCode || "GBP"} ${subtotalFormatted}`,
+    taxTotal: `${updatedInv?.currencyCode || "GBP"} ${taxFormatted}`,
+    total: `${updatedInv?.currencyCode || "GBP"} ${totalFormatted}`,
+    dueDate: updatedInv?.dueDate,
+    status: updatedInv?.status,
+    lineCount: updatedInv?.lines?.length || 0,
+  };
+}
+
+/**
+ * Updates an existing draft quote
+ */
+export async function updateQuoteAction(
+  ctx: AuthContext,
+  params: {
+    quoteNumber: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerAddress?: string;
+    customerPhone?: string;
+    lines?: LineItemInput[];
+    description?: string;
+    unitPrice?: number;
+    quantity?: number;
+    taxRatePercent?: number | string;
+    issueDate?: string;
+    expiryDate?: string;
+    reference?: string;
+    notes?: string;
+  }
+) {
+  const q = await findQuoteByNumber(ctx, params.quoteNumber);
+  if (!q) {
+    return { error: `Quote "${params.quoteNumber}" not found.` };
+  }
+
+  if (q.status !== "draft") {
+    return {
+      error: `Only draft quotes can be edited. Quote ${q.quoteNumber} is currently in "${q.status}" status.`,
+    };
+  }
+
+  let contactId: string | undefined;
+  if (params.customerName) {
+    const contact = await resolveContact(ctx, {
+      customerName: params.customerName,
+      customerEmail: params.customerEmail,
+      customerAddress: params.customerAddress,
+      customerPhone: params.customerPhone,
+    });
+    contactId = contact.id;
+  }
+
+  let rawLines = params.lines;
+  if (!rawLines && params.description && params.unitPrice != null) {
+    rawLines = [
+      {
+        description: params.description,
+        quantity: params.quantity || 1,
+        unitPrice: params.unitPrice,
+      },
+    ];
+  }
+
+  let formattedLines: any[] | undefined;
+  if (rawLines && rawLines.length > 0) {
+    const taxRateId = await resolveTaxRateId(ctx, params.taxRatePercent);
+    const accountsRes = await executeMcpTool(ctx, "list_accounts", { type: "revenue" });
+    const accounts = accountsRes?.accounts || [];
+    const account = accounts.find((a: any) => a.code === "4000") || accounts[0];
+
+    formattedLines = rawLines.map((l) => ({
+      description: l.description,
+      quantity: Number(l.quantity || 1),
+      unitPrice: Number(l.unitPrice || 0), // decimal pounds
+      ...(account?.id ? { accountId: account.id } : {}),
+      ...(taxRateId ? { taxRateId } : {}),
+    }));
+  }
+
+  const patch: Record<string, any> = {
+    quoteId: q.id,
+  };
+  if (contactId) patch.contactId = contactId;
+  if (params.issueDate) {
+    const norm = normalizeDateInput(params.issueDate);
+    if (norm) patch.issueDate = norm;
+  }
+  if (params.expiryDate) {
+    const norm = normalizeDateInput(params.expiryDate);
+    if (norm) patch.expiryDate = norm;
+  }
+  if (params.reference !== undefined) patch.reference = params.reference.trim();
+  if (params.notes !== undefined) patch.notes = sanitizeNotes(params.notes) || null;
+  if (formattedLines) patch.lines = formattedLines;
+
+  await executeMcpTool(ctx, "update_quote", patch);
+
+  const updatedQ = await findQuoteByNumber(ctx, q.id);
+  const totalFormatted = ((updatedQ?.total || 0) / 100).toFixed(2);
+  const subtotalFormatted = ((updatedQ?.subtotal || 0) / 100).toFixed(2);
+  const taxFormatted = ((updatedQ?.taxTotal || 0) / 100).toFixed(2);
+
+  return {
+    success: true,
+    quote: updatedQ,
+    quoteNumber: updatedQ?.quoteNumber,
+    customerName: updatedQ?.contact?.name || "Customer",
+    subtotal: `${updatedQ?.currencyCode || "GBP"} ${subtotalFormatted}`,
+    taxTotal: `${updatedQ?.currencyCode || "GBP"} ${taxFormatted}`,
+    total: `${updatedQ?.currencyCode || "GBP"} ${totalFormatted}`,
+    expiryDate: updatedQ?.expiryDate,
+    status: updatedQ?.status,
+    lineCount: updatedQ?.lines?.length || 0,
+  };
+}
+
+/**
+ * Sends an invoice to customer's email with PDF attached and payment link.
+ */
+export async function sendInvoiceEmailAction(
+  ctx: AuthContext,
+  params: {
+    invoiceNumber: string;
+    recipientEmail?: string;
+    personalMessage?: string;
+    subject?: string;
+  }
+) {
+  const inv = await findInvoiceByNumber(ctx, params.invoiceNumber);
+  if (!inv) {
+    return { error: `Invoice "${params.invoiceNumber}" not found.` };
+  }
+
+  if (inv.status === "void") {
+    return { error: `Cannot send void invoice ${inv.invoiceNumber}.` };
+  }
+
+  const email = (params.recipientEmail || inv.contact?.email || "").trim();
+  if (!email || !email.includes("@")) {
+    return {
+      error: `No email address found for customer ${inv.contact?.name || "Customer"}. Please specify an email address, e.g. "Send invoice ${inv.invoiceNumber} to name@example.com".`,
+    };
+  }
+
+  // Pre-check base exchange rate if foreign currency
+  try {
+    await assertBaseRateAvailable(ctx.organizationId, inv.currencyCode, inv.issueDate);
+  } catch (e: any) {
+    return { error: `Exchange rate error: ${e.message || String(e)}` };
+  }
+
+  // Ensure payment link token exists
+  let paymentLinkToken = inv.paymentLinkToken;
+  if (!paymentLinkToken) {
+    paymentLinkToken = randomBytes(24).toString("hex");
+    await db
+      .update(invoice)
+      .set({ paymentLinkToken, updatedAt: new Date() })
+      .where(eq(invoice.id, inv.id));
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
+
+  const org = await db.query.organization.findFirst({
+    where: eq(organization.id, ctx.organizationId),
+  });
+
+  const totalFormatted = formatMoney(inv.total, inv.currencyCode);
+  const templateProps = {
+    organizationName: org?.name || "Fixbooks Business",
+    contactName: inv.contact?.name || "Customer",
+    documentType: "Invoice",
+    documentNumber: inv.invoiceNumber,
+    personalMessage: params.personalMessage || undefined,
+    amountFormatted: totalFormatted,
+    dueDateFormatted: inv.dueDate || undefined,
+    issueDateFormatted: inv.issueDate || undefined,
+    viewUrl: paymentUrl,
+    buttonLabel: "Pay invoice",
+  };
+
+  const html = await renderDocumentEmailHtml(templateProps);
+
+  let pdfBuffer: Buffer | undefined;
+  try {
+    const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+    const template = await db.query.documentTemplate.findFirst({
+      where: and(
+        eq(documentTemplate.organizationId, ctx.organizationId),
+        eq(documentTemplate.type, "invoice"),
+        eq(documentTemplate.isDefault, true),
+        notDeleted(documentTemplate.deletedAt)
+      ),
+    });
+    const orgInfo = (inv.senderSnapshot as any) || (await buildSenderSnapshot(ctx.organizationId));
+    const contactInfo = (inv.recipientSnapshot as any) || (inv.contact ? buildRecipientSnapshot(inv.contact) : { name: "Unknown" });
+
+    const buf = await renderInvoicePdf(
+      {
+        invoiceNumber: inv.invoiceNumber,
+        issueDate: inv.issueDate,
+        dueDate: inv.dueDate,
+        dateFormat: org?.dateFormat || null,
+        currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
+        lines: inv.lines.map((l: any) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
+          amount: l.amount,
+          taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
+        })),
+        subtotal: inv.subtotal,
+        taxTotal: inv.taxTotal,
+        taxLabel: resolveTaxLabel(inv.lines, inv.taxTotal),
+        total: inv.total,
+        amountPaid: inv.amountPaid,
+        amountDue: inv.amountDue,
+        reference: inv.reference,
+        notes: inv.notes,
+        paymentUrl,
+      },
+      orgInfo,
+      contactInfo,
+      template || {}
+    );
+    pdfBuffer = Buffer.from(buf);
+  } catch (pdfErr) {
+    console.error("[Bot Invoice Send] Failed to render PDF:", pdfErr);
+  }
+
+  const subject = params.subject || `Invoice ${inv.invoiceNumber} from ${org?.name || "Fixbooks"}`;
+
+  await sendDocumentEmail({
+    orgId: ctx.organizationId,
+    userId: ctx.userId,
+    documentType: "invoice",
+    documentId: inv.id,
+    recipientEmail: email,
+    subject,
+    body: html,
+    attachPdf: true,
+    pdfBuffer,
+    pdfFilename: `invoice-${inv.invoiceNumber}.pdf`,
+    replyTo: org?.contactEmail || undefined,
+  });
+
+  // If in draft status, post journal entries and update status to sent
+  if (inv.status === "draft") {
+    const senderSnapshot = await buildSenderSnapshot(ctx.organizationId);
+    const recipientSnapshot = inv.contact
+      ? buildRecipientSnapshot(inv.contact)
+      : { name: "Unknown", email, address: null, taxNumber: null };
+    const stockLines = inv.lines.filter((l: any) => l.inventoryItemId);
+
+    await db.transaction(async (tx) => {
+      let entry: any = null;
+      try {
+        entry = await createInvoiceJournalEntry(
+          { organizationId: ctx.organizationId, userId: ctx.userId },
+          {
+            invoiceNumber: inv.invoiceNumber,
+            total: inv.total,
+            taxTotal: inv.taxTotal,
+            subtotal: inv.subtotal,
+            lines: inv.lines.map((l: any) => ({
+              accountId: l.accountId,
+              amount: l.amount,
+              taxAmount: l.taxAmount,
+            })),
+            date: inv.issueDate,
+            currencyCode: inv.currencyCode,
+          },
+          tx
+        );
+      } catch (e) {
+        console.warn("[Bot Invoice Send] Journal entry warning:", e);
+      }
+
+      if (stockLines.length > 0) {
+        try {
+          await createCogsJournalEntry(
+            { organizationId: ctx.organizationId, userId: ctx.userId },
+            {
+              reference: inv.invoiceNumber,
+              date: inv.issueDate,
+              currencyCode: inv.currencyCode,
+              lines: stockLines.map((l: any) => ({
+                inventoryItemId: l.inventoryItemId as string,
+                quantity: l.quantity,
+                warehouseId: l.warehouseId,
+              })),
+            },
+            tx
+          );
+        } catch (e) {
+          console.warn("[Bot Invoice Send] COGS journal entry warning:", e);
+        }
+      }
+
+      await tx
+        .update(invoice)
+        .set({
+          status: "sent",
+          sentAt: new Date(),
+          journalEntryId: entry?.id || null,
+          senderSnapshot,
+          recipientSnapshot,
+          paymentLinkToken,
+          paymentMethods: inv.paymentMethods && inv.paymentMethods.length > 0 ? inv.paymentMethods : ["pay_by_bank"],
+          updatedAt: new Date(),
+        })
+        .where(eq(invoice.id, inv.id));
+    });
+  }
+
+  return {
+    success: true,
+    invoiceNumber: inv.invoiceNumber,
+    customerName: inv.contact?.name || "Customer",
+    recipientEmail: email,
+    total: totalFormatted,
+    status: "sent",
+    paymentLink: paymentUrl,
+  };
+}
+
+/**
+ * Sends a quote to customer's email with PDF attached.
+ */
+export async function sendQuoteEmailAction(
+  ctx: AuthContext,
+  params: {
+    quoteNumber: string;
+    recipientEmail?: string;
+    personalMessage?: string;
+    subject?: string;
+  }
+) {
+  const q = await findQuoteByNumber(ctx, params.quoteNumber);
+  if (!q) {
+    return { error: `Quote "${params.quoteNumber}" not found.` };
+  }
+
+  if (q.status === "declined") {
+    return { error: `Cannot send declined quote ${q.quoteNumber}.` };
+  }
+
+  const email = (params.recipientEmail || q.contact?.email || "").trim();
+  if (!email || !email.includes("@")) {
+    return {
+      error: `No email address found for customer ${q.contact?.name || "Customer"}. Please specify an email address, e.g. "Send quote ${q.quoteNumber} to name@example.com".`,
+    };
+  }
+
+  let token: any = null;
+  if (q.contactId) {
+    token = await db.query.portalAccessToken.findFirst({
+      where: and(
+        eq(portalAccessToken.organizationId, ctx.organizationId),
+        eq(portalAccessToken.contactId, q.contactId),
+        isNull(portalAccessToken.revokedAt)
+      ),
+    });
+    if (!token) {
+      const [created] = await db
+        .insert(portalAccessToken)
+        .values({
+          organizationId: ctx.organizationId,
+          contactId: q.contactId,
+          token: randomBytes(32).toString("hex"),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+      token = created;
+    }
+  }
+
+  const org = await db.query.organization.findFirst({
+    where: eq(organization.id, ctx.organizationId),
+  });
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
+  const totalFormatted = formatMoney(q.total, q.currencyCode);
+
+  const templateProps = {
+    organizationName: org?.name || "Fixbooks Business",
+    contactName: q.contact?.name || "Customer",
+    documentType: "Quote",
+    documentNumber: q.quoteNumber || "Quote",
+    personalMessage: params.personalMessage || undefined,
+    amountFormatted: totalFormatted,
+    dueDateFormatted: q.expiryDate || undefined,
+    issueDateFormatted: q.issueDate || undefined,
+    viewUrl: portalUrl,
+    buttonLabel: portalUrl ? "View quote" : undefined,
+  };
+
+  const html = await renderDocumentEmailHtml(templateProps);
+
+  let pdfBuffer: Buffer | undefined;
+  try {
+    const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
+    const template = await db.query.documentTemplate.findFirst({
+      where: and(
+        eq(documentTemplate.organizationId, ctx.organizationId),
+        eq(documentTemplate.type, "quote"),
+        eq(documentTemplate.isDefault, true),
+        notDeleted(documentTemplate.deletedAt)
+      ),
+    });
+    const orgInfo = await buildSenderSnapshot(ctx.organizationId);
+    const contactInfo = q.contact ? buildRecipientSnapshot(q.contact) : { name: "Unknown" };
+    const taxLabel = resolveTaxLabel(q.lines, q.taxTotal);
+
+    const buf = await renderInvoicePdf(
+      {
+        invoiceNumber: q.quoteNumber || "Quote",
+        issueDate: q.issueDate,
+        dueDate: q.expiryDate || q.issueDate,
+        dateFormat: org?.dateFormat || null,
+        lines: q.lines.map((l: any) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
+          amount: l.amount,
+          taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
+        })),
+        subtotal: q.subtotal,
+        taxTotal: q.taxTotal,
+        taxLabel,
+        total: q.total,
+        currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
+        reference: q.reference,
+        notes: q.notes,
+      },
+      orgInfo,
+      contactInfo,
+      template || {},
+      {
+        title: "Quote",
+        numberLabel: "Quote number",
+        partyLabel: "Quote for",
+        amountLabel: "Total",
+        taxLabel: taxLabel ?? undefined,
+        dateLabel: q.expiryDate ? "Valid until" : null,
+        summaryNoun: q.expiryDate ? "valid until" : null,
+      }
+    );
+    pdfBuffer = Buffer.from(buf);
+  } catch (pdfErr) {
+    console.error("[Bot Quote Send] Failed to render PDF:", pdfErr);
+  }
+
+  const subject = params.subject || `Quote ${q.quoteNumber} from ${org?.name || "Fixbooks"}`;
+
+  await sendDocumentEmail({
+    orgId: ctx.organizationId,
+    userId: ctx.userId,
+    documentType: "quote",
+    documentId: q.id,
+    recipientEmail: email,
+    subject,
+    body: html,
+    attachPdf: true,
+    pdfBuffer,
+    pdfFilename: `quote-${q.quoteNumber}.pdf`,
+    replyTo: org?.contactEmail || undefined,
+  });
+
+  if (q.status === "draft") {
+    await db
+      .update(quote)
+      .set({
+        status: "sent",
+        sentAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(quote.id, q.id));
+  }
+
+  return {
+    success: true,
+    quoteNumber: q.quoteNumber,
+    customerName: q.contact?.name || "Customer",
+    recipientEmail: email,
+    total: totalFormatted,
+    status: "sent",
+  };
 }

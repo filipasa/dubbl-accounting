@@ -52,3 +52,25 @@ test("Webhook POST handler rejects unauthorized request without matching secret 
   const data = await res.json();
   assert.equal(data.error, "Unauthorized");
 });
+
+test("handleTelegramCommand renders help with send and edit capabilities", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const help = await handleTelegramCommand(dummyCtx, "/help");
+  assert.ok(help.includes("/sendinvoice"), "Help includes /sendinvoice");
+  assert.ok(help.includes("/sendquote"), "Help includes /sendquote");
+  assert.ok(help.includes("Edit invoice"), "Help includes edit invoice example");
+  assert.ok(help.includes("Edit quote"), "Help includes edit quote example");
+});
+
+test("handleTelegramCommand /sendinvoice and /sendquote validate required parameters", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const sendInvUsage = await handleTelegramCommand(dummyCtx, "/sendinvoice");
+  assert.ok(sendInvUsage.includes("Usage:"), "Should return usage for /sendinvoice without arguments");
+
+  const sendQuoteUsage = await handleTelegramCommand(dummyCtx, "/sendquote");
+  assert.ok(sendQuoteUsage.includes("Usage:"), "Should return usage for /sendquote without arguments");
+});

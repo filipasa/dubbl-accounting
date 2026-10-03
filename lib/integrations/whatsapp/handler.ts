@@ -16,6 +16,10 @@ import {
   createInvoiceAction,
   getInvoicePdfAction,
   getBankAccountsAction,
+  updateInvoiceAction,
+  updateQuoteAction,
+  sendInvoiceEmailAction,
+  sendQuoteEmailAction,
   executeMcpTool,
 } from "./executor";
 import {
@@ -247,6 +251,206 @@ const TOOL_DEFINITIONS = [
       properties: {},
     },
   },
+  {
+    name: "edit_invoice",
+    description:
+      "Edit or update an existing draft sales invoice in Fixbooks (e.g. change quantity, unit price, line items, customer, due date, notes, or reference). Only draft invoices can be edited.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        invoiceNumber: {
+          type: "STRING",
+          description: "The invoice number (e.g. INV-00017) or UUID of the invoice to edit",
+        },
+        customerName: {
+          type: "STRING",
+          description: "New customer name if changing customer",
+        },
+        lines: {
+          type: "ARRAY",
+          description: "Replacement array of line items. When provided, replaces existing lines.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              description: {
+                type: "STRING",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "NUMBER",
+                description: "Quantity (default 1)",
+              },
+              unitPrice: {
+                type: "NUMBER",
+                description: "Unit price in pounds (e.g. 250 for £250)",
+              },
+            },
+            required: ["description", "unitPrice"],
+          },
+        },
+        description: {
+          type: "STRING",
+          description: "Shorthand single line item description",
+        },
+        unitPrice: {
+          type: "NUMBER",
+          description: "Shorthand single line item unit price in pounds",
+        },
+        quantity: {
+          type: "NUMBER",
+          description: "Shorthand single line item quantity",
+        },
+        taxRatePercent: {
+          type: "NUMBER",
+          description: "VAT / Tax percentage (e.g. 20 for 20% VAT, 0 for zero rate)",
+        },
+        issueDate: {
+          type: "STRING",
+          description: "New issue date (e.g. 2026-10-05 or 05/10/2026)",
+        },
+        dueDate: {
+          type: "STRING",
+          description: "New due date (e.g. 2026-10-20 or 20/10/2026)",
+        },
+        reference: {
+          type: "STRING",
+          description: "PO number or reference",
+        },
+        notes: {
+          type: "STRING",
+          description: "Invoice notes",
+        },
+      },
+      required: ["invoiceNumber"],
+    },
+  },
+  {
+    name: "edit_quote",
+    description:
+      "Edit or update an existing draft sales quote / estimate in Fixbooks (e.g. change quantity, price, line items, customer, expiry date, notes, or reference). Only draft quotes can be edited.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        quoteNumber: {
+          type: "STRING",
+          description: "The quote number (e.g. QTE-00007) or UUID of the quote to edit",
+        },
+        customerName: {
+          type: "STRING",
+          description: "New customer name if changing customer",
+        },
+        lines: {
+          type: "ARRAY",
+          description: "Replacement array of line items. When provided, replaces existing lines.",
+          items: {
+            type: "OBJECT",
+            properties: {
+              description: {
+                type: "STRING",
+                description: "Line item description",
+              },
+              quantity: {
+                type: "NUMBER",
+                description: "Quantity (default 1)",
+              },
+              unitPrice: {
+                type: "NUMBER",
+                description: "Unit price in pounds (e.g. 450 for £450)",
+              },
+            },
+            required: ["description", "unitPrice"],
+          },
+        },
+        description: {
+          type: "STRING",
+          description: "Shorthand single line item description",
+        },
+        unitPrice: {
+          type: "NUMBER",
+          description: "Shorthand single line item unit price in pounds",
+        },
+        quantity: {
+          type: "NUMBER",
+          description: "Shorthand single line item quantity",
+        },
+        taxRatePercent: {
+          type: "NUMBER",
+          description: "VAT / Tax percentage (e.g. 20 for 20% VAT, 0 for zero rate)",
+        },
+        issueDate: {
+          type: "STRING",
+          description: "New issue date (e.g. 2026-10-05 or 05/10/2026)",
+        },
+        expiryDate: {
+          type: "STRING",
+          description: "New expiry date (e.g. 2026-11-05 or 05/11/2026)",
+        },
+        reference: {
+          type: "STRING",
+          description: "PO number or reference",
+        },
+        notes: {
+          type: "STRING",
+          description: "Quote notes",
+        },
+      },
+      required: ["quoteNumber"],
+    },
+  },
+  {
+    name: "send_invoice_email",
+    description:
+      "Send an invoice directly to the customer's email address with professional PDF attached and Pay by Bank payment link. If recipientEmail is not specified, uses the customer's email on file.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        invoiceNumber: {
+          type: "STRING",
+          description: "The invoice number (e.g. INV-00017) or invoice ID to email",
+        },
+        recipientEmail: {
+          type: "STRING",
+          description: "Recipient email address. If omitted, uses the customer's email on file.",
+        },
+        personalMessage: {
+          type: "STRING",
+          description: "Optional personal message to include in the email body",
+        },
+        subject: {
+          type: "STRING",
+          description: "Optional custom email subject",
+        },
+      },
+      required: ["invoiceNumber"],
+    },
+  },
+  {
+    name: "send_quote_email",
+    description:
+      "Send a sales quote / estimate directly to the customer's email address with professional PDF attached and link to view/accept. If recipientEmail is not specified, uses the customer's email on file.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        quoteNumber: {
+          type: "STRING",
+          description: "The quote number (e.g. QTE-00007) or quote ID to email",
+        },
+        recipientEmail: {
+          type: "STRING",
+          description: "Recipient email address. If omitted, uses the customer's email on file.",
+        },
+        personalMessage: {
+          type: "STRING",
+          description: "Optional personal message to include in the email body",
+        },
+        subject: {
+          type: "STRING",
+          description: "Optional custom email subject",
+        },
+      },
+      required: ["quoteNumber"],
+    },
+  },
 ];
 
 async function executeTool(ctx: AuthContext, name: string, args: Record<string, any> = {}) {
@@ -295,6 +499,16 @@ async function executeTool(ctx: AuthContext, name: string, args: Record<string, 
       return await getOrganizationDetails(ctx);
     case "get_invoice_pdf":
       return await getInvoicePdfAction(ctx, args.invoiceNumber);
+    case "edit_invoice":
+    case "update_invoice":
+      return await updateInvoiceAction(ctx, args as any);
+    case "edit_quote":
+    case "update_quote":
+      return await updateQuoteAction(ctx, args as any);
+    case "send_invoice_email":
+      return await sendInvoiceEmailAction(ctx, args as any);
+    case "send_quote_email":
+      return await sendQuoteEmailAction(ctx, args as any);
     default:
       return await executeMcpTool(ctx, name, args);
   }
@@ -505,12 +719,20 @@ CRITICAL INSTRUCTIONS:
 6. INVOICE LINKS & PDF DOWNLOADS:
    - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), ONLY provide the PDF download link (Download PDF: <downloadUrl>).
    - NEVER output internal web app dashboard links like "View Online" or "/sales/" URLs.
+7. EDITING INVOICES & QUOTES:
+   - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
+   - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
+   - Only DRAFT documents can be edited.
+8. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
+   - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"), execute the \`send_invoice_email\` tool.
+   - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00007 to customer email", "Email quote QTE-00007 to client@example.com"), execute the \`send_quote_email\` tool.
+   - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
 
 WHATSAPP FORMATTING RULES:
 - NEVER use HTML tags (NO <b>, NO <h3>, NO <br>, etc.). WhatsApp does NOT render HTML tags.
 - Use WhatsApp markdown ONLY: *bold*, _italic_, ~strikethrough~, \`code\`.
 - For section titles or totals, use emojis and bold text, e.g. *Total: £685.00*.
-When confirming the created quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis.`;
+When confirming the created/edited/sent quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis.`;
 
   const candidateModels = [
     "gemini-2.5-flash",
