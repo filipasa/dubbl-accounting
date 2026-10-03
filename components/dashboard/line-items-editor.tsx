@@ -531,7 +531,7 @@ export function LineItemsEditor({
           <div className="min-w-[240px] sm:min-w-[280px] space-y-1.5 text-right text-sm font-mono tabular-nums">
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground font-sans text-xs">Subtotal</span>
-              <span>{subtotal.toFixed(2)}</span>
+              <span className="text-foreground">{subtotal.toFixed(2)}</span>
             </div>
 
             {/* Shipping row if added */}
@@ -593,7 +593,7 @@ export function LineItemsEditor({
                     <X className="size-3.5" />
                   </button>
                 </div>
-                <span className="font-mono tabular-nums">
+                <span className="font-mono tabular-nums text-foreground">
                   {shippingAmount.toFixed(2)}
                 </span>
               </div>
@@ -603,7 +603,7 @@ export function LineItemsEditor({
             {activeDiscount && (
               <div className="flex items-center justify-between gap-2 py-0.5 font-sans">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Discount</span>
+                  <span className="text-xs font-medium text-[#737373]">Discount</span>
                   <div className="flex items-center rounded-md border border-border bg-background shadow-2xs overflow-hidden h-7">
                     <input
                       type="number"
@@ -658,7 +658,7 @@ export function LineItemsEditor({
                     <X className="size-3.5" />
                   </button>
                 </div>
-                <span className="font-mono tabular-nums">
+                <span className="font-mono tabular-nums text-foreground">
                   -{discountAmount.toFixed(2)}
                 </span>
               </div>
@@ -671,7 +671,7 @@ export function LineItemsEditor({
                   <button
                     type="button"
                     onClick={() => handleShippingChange({ type: "fixed", value: "" })}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer"
                   >
                     <Plus className="size-3" />
                     Shipping
@@ -684,7 +684,7 @@ export function LineItemsEditor({
                   <button
                     type="button"
                     onClick={() => handleDiscountChange({ type: "percent", value: "" })}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#737373] hover:text-foreground hover:underline transition-colors cursor-pointer"
                   >
                     <Plus className="size-3" />
                     Discount

@@ -311,22 +311,22 @@ export default function QuoteDetailPage() {
                   <div className="w-full max-w-xs space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-mono tabular-nums">
+                      <span className="font-mono tabular-nums text-foreground">
                         {formatMoney(hasAdjustments ? itemsSubtotal : q.subtotal, q.currencyCode || "GBP")}
                       </span>
                     </div>
                     {shippingLines.map((s, idx) => (
-                      <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
-                        <span>{s.description}</span>
-                        <span className="font-mono tabular-nums">
+                      <div key={`s-${idx}`} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{s.description}</span>
+                        <span className="font-mono tabular-nums text-foreground">
                           {formatMoney(Math.abs(s.amount), q.currencyCode || "GBP")}
                         </span>
                       </div>
                     ))}
                     {discountLines.map((d, idx) => (
-                      <div key={`d-${idx}`} className="flex justify-between text-sm text-muted-foreground">
-                        <span>{d.description}</span>
-                        <span className="font-mono tabular-nums">
+                      <div key={`d-${idx}`} className="flex justify-between text-sm">
+                        <span className="text-[#737373]">{d.description}</span>
+                        <span className="font-mono tabular-nums text-foreground">
                           -{formatMoney(Math.abs(d.amount), q.currencyCode || "GBP")}
                         </span>
                       </div>

@@ -1036,22 +1036,22 @@ export default function InvoiceDetailPage() {
               <div className="w-full max-w-xs space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono tabular-nums">
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatMoney(hasAdjustments ? itemsSubtotal : inv.subtotal, inv.currencyCode)}
                   </span>
                 </div>
                 {shippingLines.map((s, idx) => (
-                  <div key={`s-${idx}`} className="flex justify-between text-sm text-muted-foreground">
-                    <span>{s.description}</span>
-                    <span className="font-mono tabular-nums">
+                  <div key={`s-${idx}`} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{s.description}</span>
+                    <span className="font-mono tabular-nums text-foreground">
                       {formatMoney(Math.abs(s.amount), inv.currencyCode)}
                     </span>
                   </div>
                 ))}
                 {discountLines.map((d, idx) => (
-                  <div key={`d-${idx}`} className="flex justify-between text-sm text-muted-foreground">
-                    <span>{d.description}</span>
-                    <span className="font-mono tabular-nums">
+                  <div key={`d-${idx}`} className="flex justify-between text-sm">
+                    <span className="text-[#737373]">{d.description}</span>
+                    <span className="font-mono tabular-nums text-foreground">
                       -{formatMoney(Math.abs(d.amount), inv.currencyCode)}
                     </span>
                   </div>

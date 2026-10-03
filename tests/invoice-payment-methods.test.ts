@@ -280,6 +280,9 @@ test("Invoice HTML and PDF render Discount and Shipping lines properly", async (
   assert.ok(html.includes("£15.00"), "HTML should format shipping amount properly");
   assert.ok(!html.includes("+£15.00"), "HTML must NOT prepend '+' sign to shipping amount");
   assert.ok(!html.includes("#059669"), "HTML must NOT color discount green");
+  assert.ok(html.includes("#737373"), "HTML should style discount label in #737373");
+  assert.ok(html.includes("color:#111827;\">-£20.00"), "HTML should format discount value in same color as subtotal (#111827)");
+  assert.ok(html.includes("color:#111827;\">£15.00"), "HTML should format shipping value in same color as subtotal (#111827)");
 
   // Verify Discount and Shipping are NOT in <tbody> (product lines) but ARE in <tfoot> (underneath Subtotal)
   const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/);

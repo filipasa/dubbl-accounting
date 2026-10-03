@@ -326,8 +326,8 @@ function PaymentPageContent() {
                     </div>
                   ))}
                   {discountLines.map((d, idx) => (
-                    <div key={`d-${idx}`} className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>{d.description}</span>
+                    <div key={`d-${idx}`} className="flex justify-between text-sm">
+                      <span className="text-[#737373]">{d.description}</span>
                       <span className="font-mono tabular-nums text-gray-900 dark:text-gray-100">
                         -{fmtMoney(Math.abs(d.amount), currency)}
                       </span>

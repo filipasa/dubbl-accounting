@@ -395,7 +395,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
             <Text style={[s.th, s.cellDesc]}>Description</Text>
             <Text style={[s.th, s.cellQty]}>Qty</Text>
             <Text style={[s.th, s.cellPrice]}>Unit price</Text>
-            {hasDiscount && <Text style={[s.th, s.cellDiscount]}>Discount</Text>}
+            {hasDiscount && <Text style={[s.th, s.cellDiscount, { color: "#737373" }]}>Discount</Text>}
             <Text style={[s.th, s.cellAmount]}>Amount</Text>
           </View>
           {itemLines.map((line, i) => {
@@ -451,7 +451,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
             ))}
             {discountLines.map((d, idx) => (
               <View key={`d-${idx}`} style={s.totalRow}>
-                <Text style={s.totalLabel}>{d.description}</Text>
+                <Text style={[s.totalLabel, { color: "#737373" }]}>{d.description}</Text>
                 <Text style={s.totalValue}>
                   -{fmtMoney(Math.abs(d.amount), inv.currencyCode)}
                 </Text>
