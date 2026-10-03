@@ -502,6 +502,9 @@ CRITICAL INSTRUCTIONS:
 5. NOTES:
    - NEVER put "Created via WhatsApp Bot", "Created via Telegram Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
+6. INVOICE LINKS & PDF DOWNLOADS:
+   - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), ONLY provide the PDF download link (Download PDF: <downloadUrl>).
+   - NEVER output internal web app dashboard links like "View Online" or "/sales/" URLs.
 
 WHATSAPP FORMATTING RULES:
 - NEVER use HTML tags (NO <b>, NO <h3>, NO <br>, etc.). WhatsApp does NOT render HTML tags.

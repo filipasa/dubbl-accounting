@@ -275,7 +275,6 @@ async function executeTool(name, args = {}) {
       return {
         invoiceNumber: inv.invoiceNumber,
         downloadUrl: pdfRes.downloadUrl,
-        viewUrl: `http://localhost:3001/sales/${inv.id}`,
         customerName: inv.contact?.name || "Customer",
         total: `£${(inv.total / 100).toFixed(2)}`,
         status: inv.status,

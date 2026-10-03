@@ -607,12 +607,10 @@ export async function getInvoicePdfAction(ctx: AuthContext, invoiceNumber: strin
   }
 
   const pdfRes = await executeMcpTool(ctx, "get_invoice_pdf", { invoiceId: inv.id });
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   return {
     invoiceNumber: inv.invoiceNumber,
     downloadUrl: pdfRes?.downloadUrl,
-    viewUrl: `${appUrl}/sales/${inv.id}`,
     customerName: inv.contact?.name || "Customer",
     total: `£${(inv.total / 100).toFixed(2)}`,
     status: inv.status,
