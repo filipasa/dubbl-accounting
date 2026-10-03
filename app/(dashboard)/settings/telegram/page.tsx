@@ -46,6 +46,12 @@ import {
   ChevronDown,
   ChevronUp,
   Terminal,
+  UserCheck,
+  UserX,
+  Link2,
+  Unlink,
+  KeyRound,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,6 +75,13 @@ interface StatusResponse {
   hasGeminiKey: boolean;
   hasOpenAiKey: boolean;
   autoSynced?: boolean;
+  userLink?: {
+    id: string;
+    chatId: string;
+    username: string | null;
+    displayName: string | null;
+    createdAt: string;
+  } | null;
   recentLogs: Array<{
     id: string;
     updateId: number | null;
@@ -92,6 +105,15 @@ export default function TelegramSettingsPage() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // User link & pairing state
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [directUsername, setDirectUsername] = useState("");
+  const [directLinking, setDirectLinking] = useState(false);
+  const [showDirectInput, setShowDirectInput] = useState(false);
 
   // Test message state
   const [testChatId, setTestChatId] = useState("");
@@ -126,6 +148,73 @@ export default function TelegramSettingsPage() {
   const copyPrompt = (promptText: string) => {
     navigator.clipboard.writeText(promptText);
     toast.success("Prompt copied! Paste it in Telegram to send.");
+  };
+
+  const handleGenerateCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const res = await fetch("/api/v1/integrations/bot-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: "telegram" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate link code");
+      setLinkCode(data.code);
+      setCodeExpiresAt(data.expiresAt);
+      toast.success("Link code generated! Valid for 15 minutes.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate code");
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    try {
+      const res = await fetch("/api/v1/integrations/bot-link?platform=telegram", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to unlink account");
+      toast.success("Telegram account unlinked from your Fixbooks profile.");
+      setLinkCode(null);
+      fetchStatus();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to unlink account");
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  const handleDirectLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directUsername.trim()) {
+      toast.error("Please enter a Telegram username (e.g. @yourhandle)");
+      return;
+    }
+    setDirectLinking(true);
+    try {
+      const res = await fetch("/api/v1/integrations/bot-link", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "telegram",
+          identifier: directUsername.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to link username");
+      toast.success(`Telegram handle @${directUsername.replace(/^@/, "")} linked successfully!`);
+      setDirectUsername("");
+      setShowDirectInput(false);
+      fetchStatus();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to link username");
+    } finally {
+      setDirectLinking(false);
+    }
   };
 
   const handleRegisterWebhook = async () => {
@@ -329,6 +418,210 @@ export default function TelegramSettingsPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* User Separation & Account Linking Card */}
+      <Card className="border-border shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Your Connected Telegram Account</CardTitle>
+                <CardDescription>
+                  User separation scopes all bot interactions and ledger records to your Fixbooks identity.
+                </CardDescription>
+              </div>
+            </div>
+            {status?.userLink ? (
+              <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 border-emerald-300 dark:border-emerald-800 gap-1.5 w-fit">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Paired with You
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-amber-600 border-amber-300 dark:border-amber-800 gap-1.5 w-fit">
+                <AlertCircle className="h-3.5 w-3.5" /> Unlinked
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {status?.userLink ? (
+            /* Linked State */
+            <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground text-sm">
+                    {status.userLink.username ? `@${status.userLink.username}` : `Chat ID: ${status.userLink.chatId}`}
+                  </span>
+                  {status.userLink.displayName && (
+                    <span className="text-xs text-muted-foreground">
+                      ({status.userLink.displayName})
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Linked on {new Date(status.userLink.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}. Invoices, estimates, and balances requested in this Telegram chat will execute strictly under your user account and permissions.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {botUsername && (
+                  <Button asChild size="sm" variant="outline" className="gap-1.5 text-xs">
+                    <a
+                      href={`https://t.me/${botUsername}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Send className="h-3.5 w-3.5 text-sky-600" />
+                      Open Chat
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUnlink}
+                  disabled={unlinking}
+                  className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  {unlinking ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Unlink className="h-3.5 w-3.5" />
+                  )}
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Unlinked State */
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/40 dark:bg-amber-950/20 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground text-xs flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                  <AlertCircle className="h-4 w-4" /> Account Not Paired
+                </p>
+                <p>
+                  To prevent unauthorized bookkeeping access, your personal Telegram account must be paired before the bot will process your commands. Choose an option below to connect:
+                </p>
+              </div>
+
+              {/* Pairing Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {/* Method 1: Link Code */}
+                <div className="p-4 rounded-xl border bg-card space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center">
+                      <KeyRound className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">Option 1: 1-Click Link Code</h4>
+                      <p className="text-[11px] text-muted-foreground">Generate a secure 15-minute pairing code</p>
+                    </div>
+                  </div>
+
+                  {linkCode ? (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted border font-mono text-lg font-bold tracking-wider text-sky-600">
+                        <span>{linkCode}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(linkCode, "Link Code")}
+                          className="h-7 gap-1 text-xs"
+                        >
+                          {copiedField === "Link Code" ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                          Copy
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {botUsername && (
+                          <Button asChild size="sm" className="w-full bg-sky-600 hover:bg-sky-700 text-white gap-2">
+                            <a
+                              href={`https://t.me/${botUsername}?start=link_${linkCode}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                              1-Click Pair on Telegram
+                              <ExternalLink className="h-3 w-3 opacity-70" />
+                            </a>
+                          </Button>
+                        )}
+                        <p className="text-[11px] text-muted-foreground text-center">
+                          Or send <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">/link {linkCode}</code> in your Telegram chat.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateCode}
+                        disabled={generatingCode || !status?.hasBotToken}
+                        className="w-full gap-2 text-xs"
+                      >
+                        {generatingCode ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Link2 className="h-3.5 w-3.5" />
+                        )}
+                        Generate 1-Click Code
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Method 2: Direct Username */}
+                <div className="p-4 rounded-xl border bg-card space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">Option 2: Direct Username</h4>
+                      <p className="text-[11px] text-muted-foreground">Pair your public Telegram @handle</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleDirectLink} className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g. @your_username"
+                        value={directUsername}
+                        onChange={(e) => setDirectUsername(e.target.value)}
+                        disabled={directLinking}
+                        className="text-xs font-mono"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={directLinking || !directUsername.trim()}
+                        className="shrink-0 text-xs gap-1.5"
+                      >
+                        {directLinking ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        Link
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Automatically authorizes commands sent by this Telegram username.
+                    </p>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

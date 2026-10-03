@@ -18,6 +18,12 @@ import {
   getBankAccountsAction,
   executeMcpTool,
 } from "./executor";
+import {
+  resolveBotUserContext,
+  linkConversationWithCode,
+  unlinkConversation,
+  getLinkedUserInfo,
+} from "@/lib/integrations/bot-auth";
 import type { AuthContext } from "@/lib/api/auth-context";
 
 // Tool definitions for Gemini / OpenAI function calling
@@ -425,6 +431,27 @@ export async function handleShortcutCommand(ctx: AuthContext, text: string): Pro
       );
     }
 
+    case "!whoami":
+    case "/whoami": {
+      const info = await getLinkedUserInfo("whatsapp", parts[1] || "");
+      if (info) {
+        return (
+          `👤 *Fixbooks Connected Account*\n\n` +
+          `• *User:* ${info.user.name || "Fixbooks User"} (${info.user.email})\n` +
+          `• *Organization:* ${info.org.name}\n` +
+          `• *Role:* ${info.role.toUpperCase()}\n\n` +
+          `💡 _To disconnect this WhatsApp number, type \`!unlink\`._`
+        );
+      }
+      return (
+        `👤 *Fixbooks Connected Account*\n\n` +
+        `• *User ID:* \`${ctx.userId}\`\n` +
+        `• *Organization ID:* \`${ctx.organizationId}\`\n` +
+        `• *Role:* ${ctx.role.toUpperCase()}\n\n` +
+        `💡 _To disconnect this WhatsApp number, type \`!unlink\`._`
+      );
+    }
+
     case "!balance": {
       const banks = await getBankAccountsAction(ctx);
       if (!banks || banks.length === 0) {
@@ -705,10 +732,7 @@ export async function processIncomingWhatsAppMessage({
     return { reply: unauthReply, sent: true, error: "Unauthorized sender" };
   }
 
-  // 2. Resolve AuthContext
-  const ctx = await resolveWhatsAppAuthContext();
-
-  // 3. Deduplication check
+  // 2. Deduplication check
   if (messageId) {
     const existing = await db.query.whatsappMessageLog.findFirst({
       where: eq(whatsappMessageLog.messageId, messageId),
@@ -719,18 +743,143 @@ export async function processIncomingWhatsAppMessage({
     }
   }
 
-  // 4. Mark message as read
+  // 3. Mark message as read
   if (messageId) {
     await markWhatsAppMessageRead(messageId).catch(() => {});
   }
 
-  // 5. Insert inbound log
+  const trimmed = (text || "").trim();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+
+  // 4. Handle Link Command (!link <code> or /link <code> or link <code>)
+  const isLinkCommand =
+    trimmed.startsWith("!link") ||
+    trimmed.startsWith("/link") ||
+    /^link\s+/i.test(trimmed);
+
+  if (isLinkCommand) {
+    const code = trimmed.replace(/^(!|\/)?link\s*/i, "").trim();
+    if (code) {
+      const linkResult = await linkConversationWithCode(
+        "whatsapp",
+        cleanedFrom,
+        code,
+        { displayName: cleanedFrom }
+      );
+
+      let linkReply = "";
+      if (linkResult.success && linkResult.user && linkResult.org) {
+        linkReply =
+          `✅ *Account Linked Successfully!*\n\n` +
+          `Welcome, *${linkResult.user.name || linkResult.user.email}*!\n` +
+          `This WhatsApp number (+${cleanedFrom}) is now connected to *${linkResult.org.name}* on Fixbooks.\n\n` +
+          `All invoices, quotes, and reports will be saved directly under your account.\n\n` +
+          `Type \`!help\` to see available commands or message me in natural language!`;
+      } else {
+        linkReply =
+          `⚠️ *Linking Failed*\n\n` +
+          `${linkResult.error || "Invalid or expired link code."}\n\n` +
+          `To generate a fresh link code:\n` +
+          `1. Log in to Fixbooks: ${appUrl}/settings/whatsapp\n` +
+          `2. Click *Connect WhatsApp*\n` +
+          `3. Reply here with: \`!link <your-code>\``;
+      }
+
+      await sendWhatsAppTextMessage({
+        to: cleanedFrom,
+        text: linkReply,
+      }).catch(() => {});
+
+      try {
+        await db.insert(whatsappMessageLog).values({
+          organizationId: linkResult.org?.id || null,
+          userId: linkResult.user?.id || null,
+          messageId: messageId || null,
+          senderPhone: cleanedFrom,
+          direction: "inbound",
+          messageBody: text,
+          status: linkResult.success ? "processed" : "failed",
+          errorMessage: linkResult.error || null,
+        });
+      } catch (dbErr) {
+        console.warn("[WhatsApp] Failed to save link log:", dbErr);
+      }
+
+      return { reply: linkReply, sent: true };
+    }
+  }
+
+  // 5. Handle Unlink Command (!unlink or /unlink)
+  if (
+    trimmed === "!unlink" ||
+    trimmed === "/unlink" ||
+    trimmed.toLowerCase() === "unlink"
+  ) {
+    await unlinkConversation("whatsapp", cleanedFrom);
+    const unlinkReply =
+      `👋 *Conversation Disconnected*\n\n` +
+      `This WhatsApp number is no longer connected to Fixbooks. You will not be able to create invoices or view financial data from this chat until you link again.`;
+
+    await sendWhatsAppTextMessage({
+      to: cleanedFrom,
+      text: unlinkReply,
+    }).catch(() => {});
+
+    try {
+      await db.insert(whatsappMessageLog).values({
+        messageId: messageId || null,
+        senderPhone: cleanedFrom,
+        direction: "inbound",
+        messageBody: text,
+        status: "processed",
+      });
+    } catch {}
+
+    return { reply: unlinkReply, sent: true };
+  }
+
+  // 6. Resolve User Context for this specific conversation
+  const ctx = await resolveBotUserContext("whatsapp", cleanedFrom);
+
+  // If conversation is NOT linked to any Fixbooks user, refuse action and instruct user
+  if (!ctx) {
+    const unlinkedReply =
+      `👋 *Fixbooks WhatsApp Assistant*\n\n` +
+      `This WhatsApp number (+${cleanedFrom}) is not connected to a Fixbooks user account yet.\n\n` +
+      `Each conversation is separated and associated with a specific user so your business books stay private and secure.\n\n` +
+      `*To connect your account:*\n` +
+      `1. Log in to Fixbooks: ${appUrl}/settings/whatsapp\n` +
+      `2. Go to *Settings > WhatsApp Assistant*\n` +
+      `3. Click *Connect WhatsApp* to get your link code\n` +
+      `4. Reply here with: \`!link <your-code>\`\n\n` +
+      `_Example:_ \`!link FB-123456\``;
+
+    await sendWhatsAppTextMessage({
+      to: cleanedFrom,
+      text: unlinkedReply,
+    }).catch(() => {});
+
+    try {
+      await db.insert(whatsappMessageLog).values({
+        messageId: messageId || null,
+        senderPhone: cleanedFrom,
+        direction: "inbound",
+        messageBody: text,
+        status: "unlinked",
+      });
+    } catch {}
+
+    return { reply: unlinkedReply, sent: true };
+  }
+
+  // 7. Save inbound log with user and organization association
   let inboundLogId: string | null = null;
   try {
     const [inserted] = await db
       .insert(whatsappMessageLog)
       .values({
         organizationId: ctx.organizationId,
+        userId: ctx.userId,
         messageId: messageId || null,
         senderPhone: cleanedFrom,
         direction: "inbound",
@@ -744,8 +893,7 @@ export async function processIncomingWhatsAppMessage({
     console.warn("[WhatsApp] Failed to save inbound log:", dbErr);
   }
 
-  // 6. Process message text
-  const trimmed = (text || "").trim();
+  // 8. Process message text under user's AuthContext
   let replyText = "";
 
   try {
@@ -766,6 +914,7 @@ export async function processIncomingWhatsAppMessage({
         `• \`!quotes\` — View quotes\n` +
         `• \`!invoice Filip, 250, Oak Door\` — Create invoice\n` +
         `• \`!org\` — Organization details\n` +
+        `• \`!whoami\` — Connected account details\n` +
         `• \`!help\` — Full command list`;
     }
   } catch (err: any) {
@@ -773,7 +922,7 @@ export async function processIncomingWhatsAppMessage({
     replyText = `⚠️ Something went wrong processing that request: ${err.message || "Internal error"}. Type \`!help\` for available commands.`;
   }
 
-  // 7. Send reply via Meta WhatsApp Cloud API
+  // 9. Send reply via Meta WhatsApp Cloud API
   let sendResult: any = null;
   let sendError: string | undefined;
 
@@ -787,10 +936,11 @@ export async function processIncomingWhatsAppMessage({
     sendError = err.message || String(err);
   }
 
-  // 8. Record outbound log and update inbound log
+  // 10. Record outbound log and update inbound log
   try {
     await db.insert(whatsappMessageLog).values({
       organizationId: ctx.organizationId,
+      userId: ctx.userId,
       messageId: sendResult?.messages?.[0]?.id || null,
       senderPhone: config.phoneNumberId || "bot",
       recipientPhone: cleanedFrom,

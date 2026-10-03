@@ -5,8 +5,8 @@ import {
   getWhatsAppBusinessProfile,
 } from "@/lib/integrations/whatsapp/client";
 import { db } from "@/lib/db";
-import { whatsappMessageLog } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { whatsappMessageLog, botConversationLink } from "@/lib/db/schema";
+import { desc, eq, and } from "drizzle-orm";
 
 export async function GET() {
   const session = await auth();
@@ -46,6 +46,32 @@ export async function GET() {
     console.warn("[WhatsApp Status] Failed to fetch message logs:", err);
   }
 
+  // Fetch current user's personal WhatsApp link
+  let userLink: {
+    id: string;
+    phone: string;
+    displayName: string | null;
+    createdAt: Date;
+  } | null = null;
+  try {
+    const link = await db.query.botConversationLink.findFirst({
+      where: and(
+        eq(botConversationLink.platform, "whatsapp"),
+        eq(botConversationLink.userId, session.user.id)
+      ),
+    });
+    if (link) {
+      userLink = {
+        id: link.id,
+        phone: link.chatId,
+        displayName: link.displayName,
+        createdAt: link.createdAt,
+      };
+    }
+  } catch (err) {
+    console.warn("[WhatsApp Status] Failed to fetch user link:", err);
+  }
+
   return NextResponse.json({
     isConfigured,
     phoneNumberId: config.phoneNumberId ? `${config.phoneNumberId.slice(0, 4)}••••${config.phoneNumberId.slice(-4)}` : null,
@@ -59,6 +85,7 @@ export async function GET() {
     hasAppSecret: Boolean(config.appSecret),
     hasGeminiKey: Boolean(config.geminiApiKey),
     hasOpenAiKey: Boolean(config.openaiApiKey),
+    userLink,
     recentLogs,
   });
 }

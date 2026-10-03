@@ -236,6 +236,8 @@ export const whatsappMessageLog = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     organizationId: uuid("organization_id")
       .references(() => organization.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "set null" }),
     messageId: text("message_id"), // Meta wamid
     senderPhone: text("sender_phone").notNull(),
     recipientPhone: text("recipient_phone"),
@@ -259,6 +261,10 @@ export const whatsappMessageLogRelations = relations(
       fields: [whatsappMessageLog.organizationId],
       references: [organization.id],
     }),
+    user: one(users, {
+      fields: [whatsappMessageLog.userId],
+      references: [users.id],
+    }),
   })
 );
 
@@ -269,6 +275,8 @@ export const telegramMessageLog = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     organizationId: uuid("organization_id")
       .references(() => organization.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "set null" }),
     updateId: integer("update_id"), // Telegram update_id
     messageId: integer("message_id"), // Telegram message_id
     chatId: text("chat_id").notNull(),
@@ -292,6 +300,87 @@ export const telegramMessageLogRelations = relations(
   ({ one }) => ({
     organization: one(organization, {
       fields: [telegramMessageLog.organizationId],
+      references: [organization.id],
+    }),
+    user: one(users, {
+      fields: [telegramMessageLog.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+// Bot Conversation Link (maps Telegram chat / WhatsApp phone to a specific Fixbooks user & org)
+export const botConversationLink = pgTable(
+  "bot_conversation_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platform: text("platform").notNull(), // "telegram" | "whatsapp"
+    chatId: text("chat_id").notNull(), // Telegram chatId or WhatsApp phone number
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    platformUsername: text("platform_username"), // e.g. @telegram_user
+    platformUserId: text("platform_user_id"), // e.g. Telegram user ID
+    displayName: text("display_name"), // e.g. sender full name
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("bot_conv_link_platform_chat_idx").on(
+      table.platform,
+      table.chatId
+    ),
+  ]
+);
+
+export const botConversationLinkRelations = relations(
+  botConversationLink,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [botConversationLink.userId],
+      references: [users.id],
+    }),
+    organization: one(organization, {
+      fields: [botConversationLink.organizationId],
+      references: [organization.id],
+    }),
+  })
+);
+
+// Bot Link Code (short-lived code for pairing a chat with a Fixbooks user account)
+export const botLinkCode = pgTable(
+  "bot_link_code",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    platform: text("platform").notNull().default("all"), // "telegram" | "whatsapp" | "all"
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    usedAt: timestamp("used_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("bot_link_code_code_idx").on(table.code),
+  ]
+);
+
+export const botLinkCodeRelations = relations(
+  botLinkCode,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [botLinkCode.userId],
+      references: [users.id],
+    }),
+    organization: one(organization, {
+      fields: [botLinkCode.organizationId],
       references: [organization.id],
     }),
   })

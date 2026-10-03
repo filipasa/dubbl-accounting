@@ -7,8 +7,8 @@ import {
   setTelegramWebhook,
 } from "@/lib/integrations/telegram/client";
 import { db } from "@/lib/db";
-import { telegramMessageLog } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { telegramMessageLog, botConversationLink } from "@/lib/db/schema";
+import { desc, eq, and } from "drizzle-orm";
 
 export async function GET() {
   const session = await auth();
@@ -73,6 +73,34 @@ export async function GET() {
     console.warn("[Telegram Status] Failed to fetch message logs:", err);
   }
 
+  // Fetch current user's personal Telegram link
+  let userLink: {
+    id: string;
+    chatId: string;
+    username: string | null;
+    displayName: string | null;
+    createdAt: Date;
+  } | null = null;
+  try {
+    const link = await db.query.botConversationLink.findFirst({
+      where: and(
+        eq(botConversationLink.platform, "telegram"),
+        eq(botConversationLink.userId, session.user.id)
+      ),
+    });
+    if (link) {
+      userLink = {
+        id: link.id,
+        chatId: link.chatId,
+        username: link.platformUsername,
+        displayName: link.displayName,
+        createdAt: link.createdAt,
+      };
+    }
+  } catch (err) {
+    console.warn("[Telegram Status] Failed to fetch user link:", err);
+  }
+
   return NextResponse.json({
     isConfigured,
     botUser,
@@ -84,6 +112,7 @@ export async function GET() {
     hasGeminiKey: Boolean(config.geminiApiKey),
     hasOpenAiKey: Boolean(config.openaiApiKey),
     autoSynced,
+    userLink,
     recentLogs,
   });
 }

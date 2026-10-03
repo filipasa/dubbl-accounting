@@ -17,6 +17,12 @@ import {
   getBankAccountsAction,
   executeMcpTool,
 } from "@/lib/integrations/whatsapp/executor";
+import {
+  resolveBotUserContext,
+  linkConversationWithCode,
+  unlinkConversation,
+  getLinkedUserInfo,
+} from "@/lib/integrations/bot-auth";
 import type { AuthContext } from "@/lib/api/auth-context";
 import type { TelegramUpdate } from "./types";
 
@@ -428,6 +434,26 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       );
     }
 
+    case "/whoami": {
+      const info = await getLinkedUserInfo("telegram", parts[1] || "");
+      if (info) {
+        return (
+          `👤 <b>Fixbooks Connected Account</b>\n\n` +
+          `• <b>User:</b> ${info.user.name || "Fixbooks User"} (${info.user.email})\n` +
+          `• <b>Organization:</b> ${info.org.name}\n` +
+          `• <b>Role:</b> ${info.role.toUpperCase()}\n\n` +
+          `💡 <i>To disconnect this chat from Fixbooks, type <b>/unlink</b>.</i>`
+        );
+      }
+      return (
+        `👤 <b>Fixbooks Connected Account</b>\n\n` +
+        `• <b>User ID:</b> <code>${ctx.userId}</code>\n` +
+        `• <b>Organization ID:</b> <code>${ctx.organizationId}</code>\n` +
+        `• <b>Role:</b> ${ctx.role.toUpperCase()}\n\n` +
+        `💡 <i>To disconnect this chat, type <b>/unlink</b>.</i>`
+      );
+    }
+
     case "/balance": {
       const banks = await getBankAccountsAction(ctx);
       if (!banks || banks.length === 0) {
@@ -704,10 +730,7 @@ export async function processIncomingTelegramUpdate(
     }
   }
 
-  // 2. Resolve AuthContext
-  const ctx = await resolveWhatsAppAuthContext();
-
-  // 3. Deduplication check
+  // 2. Deduplication check
   if (update.update_id) {
     const existing = await db.query.telegramMessageLog.findFirst({
       where: eq(telegramMessageLog.updateId, update.update_id),
@@ -718,13 +741,162 @@ export async function processIncomingTelegramUpdate(
     }
   }
 
-  // 4. Save inbound log
+  const trimmed = message.text.trim();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+
+  // 3. Handle Link Command (/link <code> or /start link_<code> or /start FB-<code>)
+  const isLinkCommand =
+    trimmed.startsWith("/link") ||
+    (trimmed.startsWith("/start") &&
+      (trimmed.includes("link_") ||
+        trimmed.includes("FB-") ||
+        (/^\/start\s+[A-Za-z0-9_-]+$/.test(trimmed) && trimmed !== "/start")));
+
+  if (isLinkCommand) {
+    let code = "";
+    if (trimmed.startsWith("/link")) {
+      code = trimmed.replace(/^\/link\s*/i, "").trim();
+    } else {
+      const startArg = trimmed.replace(/^\/start\s*/i, "").trim();
+      code = startArg.replace(/^link_/i, "").trim();
+    }
+
+    if (code) {
+      const linkResult = await linkConversationWithCode(
+        "telegram",
+        chatId,
+        code,
+        { username: senderUsername, userId: senderId, displayName: senderName }
+      );
+
+      let linkReply = "";
+      if (linkResult.success && linkResult.user && linkResult.org) {
+        linkReply =
+          `✅ <b>Account Linked Successfully!</b>\n\n` +
+          `Welcome, <b>${linkResult.user.name || linkResult.user.email}</b>!\n` +
+          `This Telegram chat is now connected to <b>${linkResult.org.name}</b> on Fixbooks.\n\n` +
+          `All invoices, quotes, and reports will be saved directly under your account.\n\n` +
+          `Type <b>/help</b> to see available commands or text me in natural language!`;
+      } else {
+        linkReply =
+          `⚠️ <b>Linking Failed</b>\n\n` +
+          `${linkResult.error || "Invalid or expired link code."}\n\n` +
+          `To generate a fresh link code:\n` +
+          `1. Log in to <a href="${appUrl}/settings/telegram">Fixbooks Settings &gt; Telegram</a>\n` +
+          `2. Click <b>Connect Telegram</b>\n` +
+          `3. Send <code>/link &lt;your-code&gt;</code> here.`;
+      }
+
+      await sendTelegramMessage({
+        chatId,
+        text: linkReply,
+        parseMode: "HTML",
+        replyToMessageId: message.message_id,
+      }).catch(() => {});
+
+      try {
+        await db.insert(telegramMessageLog).values({
+          organizationId: linkResult.org?.id || null,
+          userId: linkResult.user?.id || null,
+          updateId: update.update_id,
+          messageId: message.message_id,
+          chatId,
+          senderUsername,
+          senderName,
+          direction: "inbound",
+          messageBody: message.text,
+          status: linkResult.success ? "processed" : "failed",
+          errorMessage: linkResult.error || null,
+        });
+      } catch (dbErr) {
+        console.warn("[Telegram] Failed to save link log:", dbErr);
+      }
+
+      return { ok: true, reply: linkReply };
+    }
+  }
+
+  // 4. Handle Unlink Command (/unlink)
+  if (trimmed.toLowerCase() === "/unlink") {
+    await unlinkConversation("telegram", chatId);
+    const unlinkReply =
+      `👋 <b>Conversation Disconnected</b>\n\n` +
+      `This Telegram chat is no longer connected to Fixbooks. You will not be able to create invoices or view financial data from this chat until you link again.`;
+
+    await sendTelegramMessage({
+      chatId,
+      text: unlinkReply,
+      parseMode: "HTML",
+      replyToMessageId: message.message_id,
+    }).catch(() => {});
+
+    try {
+      await db.insert(telegramMessageLog).values({
+        updateId: update.update_id,
+        messageId: message.message_id,
+        chatId,
+        senderUsername,
+        senderName,
+        direction: "inbound",
+        messageBody: message.text,
+        status: "processed",
+      });
+    } catch {}
+
+    return { ok: true, reply: unlinkReply };
+  }
+
+  // 5. Resolve User Context for this specific conversation
+  const ctx = await resolveBotUserContext("telegram", chatId, {
+    username: senderUsername,
+    userId: senderId,
+    displayName: senderName,
+  });
+
+  // If conversation is NOT linked to any Fixbooks user, refuse action and instruct user
+  if (!ctx) {
+    const unlinkedText =
+      `👋 <b>Fixbooks Telegram Assistant</b>\n\n` +
+      `This Telegram chat is not connected to a Fixbooks user account yet.\n\n` +
+      `Each conversation is separated and associated with a specific user so your business books stay private and secure.\n\n` +
+      `<b>To connect your account:</b>\n` +
+      `1. Log in to <a href="${appUrl}/settings/telegram">Fixbooks</a>\n` +
+      `2. Go to <b>Settings &gt; Telegram Assistant</b>\n` +
+      `3. Click <b>Connect Telegram</b> to get your link code\n` +
+      `4. Reply here with: <code>/link &lt;your-code&gt;</code>\n\n` +
+      `<i>Example:</i> <code>/link FB-123456</code>`;
+
+    await sendTelegramMessage({
+      chatId,
+      text: unlinkedText,
+      parseMode: "HTML",
+      replyToMessageId: message.message_id,
+    }).catch(() => {});
+
+    try {
+      await db.insert(telegramMessageLog).values({
+        updateId: update.update_id,
+        messageId: message.message_id,
+        chatId,
+        senderUsername,
+        senderName,
+        direction: "inbound",
+        messageBody: message.text,
+        status: "unlinked",
+      });
+    } catch {}
+
+    return { ok: true, reply: unlinkedText };
+  }
+
+  // 6. Save inbound log with user and organization association
   let inboundLogId: string | null = null;
   try {
     const [inserted] = await db
       .insert(telegramMessageLog)
       .values({
         organizationId: ctx.organizationId,
+        userId: ctx.userId,
         updateId: update.update_id,
         messageId: message.message_id,
         chatId,
@@ -741,8 +913,7 @@ export async function processIncomingTelegramUpdate(
     console.warn("[Telegram] Failed to save inbound log:", dbErr);
   }
 
-  // 5. Process message text
-  const trimmed = message.text.trim();
+  // 7. Process message text under user's AuthContext
   let replyText = "";
 
   try {
@@ -763,6 +934,7 @@ export async function processIncomingTelegramUpdate(
         `• <b>/quotes</b> — View quotes\n` +
         `• <b>/invoice Filip, 250, Oak Door</b> — Create invoice\n` +
         `• <b>/org</b> — Organization details\n` +
+        `• <b>/whoami</b> — Connected account details\n` +
         `• <b>/help</b> — Full command list`;
     }
   } catch (err: any) {
@@ -770,7 +942,7 @@ export async function processIncomingTelegramUpdate(
     replyText = `⚠️ Something went wrong processing that request: ${err.message || "Internal error"}. Type <b>/help</b> for commands.`;
   }
 
-  // 6. Send reply via Telegram Bot API
+  // 8. Send reply via Telegram Bot API
   let sendError: string | undefined;
   let sentResult: any = null;
 
@@ -786,10 +958,11 @@ export async function processIncomingTelegramUpdate(
     sendError = err.message || String(err);
   }
 
-  // 7. Record outbound log and update inbound status
+  // 9. Record outbound log and update inbound status
   try {
     await db.insert(telegramMessageLog).values({
       organizationId: ctx.organizationId,
+      userId: ctx.userId,
       messageId: sentResult?.result?.message_id || null,
       chatId,
       senderUsername: "FixbooksBot",
