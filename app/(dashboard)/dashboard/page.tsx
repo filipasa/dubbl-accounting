@@ -257,13 +257,62 @@ function KpiItem({ label, value, good }: { label: string; value: string; good: b
 
 function formatTrendMonth(monthKey: string): string {
   if (!monthKey) return "";
-  const [yearStr, monthStr] = monthKey.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  if (isNaN(year) || isNaN(month)) return monthKey;
-  const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const parts = monthKey.split("-");
+  if (parts.length === 2) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (!isNaN(year) && !isNaN(month)) {
+      const date = new Date(year, month - 1, 1);
+      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+  } else if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+  }
+  return monthKey;
 }
+
+function parseTrendPoints(data: any): {
+  revenue: SparklinePoint[];
+  expenses: SparklinePoint[];
+  netIncome: SparklinePoint[];
+} {
+  if (Array.isArray(data?.months) && data.months.length > 0) {
+    const revenuePoints: SparklinePoint[] = data.months.map(
+      (m: { month: string; label?: string; revenue: number }) => ({
+        value: m.revenue,
+        label: m.label || formatTrendMonth(m.month),
+        formattedValue: formatMoney(m.revenue),
+      })
+    );
+    const expensePoints: SparklinePoint[] = data.months.map(
+      (m: { month: string; label?: string; expenses: number }) => ({
+        value: m.expenses,
+        label: m.label || formatTrendMonth(m.month),
+        formattedValue: formatMoney(m.expenses),
+      })
+    );
+    const netIncomePoints: SparklinePoint[] = data.months.map(
+      (m: { month: string; label?: string; netIncome: number }) => ({
+        value: m.netIncome,
+        label: m.label || formatTrendMonth(m.month),
+        formattedValue: formatMoney(m.netIncome),
+      })
+    );
+    return {
+      revenue: revenuePoints,
+      expenses: expensePoints,
+      netIncome: netIncomePoints,
+    };
+  }
+  return { revenue: [], expenses: [], netIncome: [] };
+}
+
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -388,44 +437,17 @@ export default function DashboardPage() {
       .catch(() => setError("Failed to load dashboard data. Please check your connection."))
       .finally(() => setLoading(false));
 
-    // Load sparkline trends in background
-    fetch("/api/v1/reports/monthly-trends?months=6", { headers })
+    // Load sparkline trends for the active period in background
+    const activeKey =
+      (typeof window !== "undefined" &&
+        ((localStorage.getItem("fixbooks_dashboard_period") ||
+          localStorage.getItem("dubbl_dashboard_period")) as DashboardPeriodKey | null)) ||
+      "ytd";
+    const trendsUrl = `/api/v1/reports/monthly-trends?startDate=${activeRange.startDate}&endDate=${activeRange.endDate}&period=${activeKey}`;
+    fetch(trendsUrl, { headers })
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data.months) && data.months.length > 0) {
-          const revenuePoints: SparklinePoint[] = data.months.map(
-            (m: { month: string; revenue: number }) => ({
-              value: m.revenue,
-              label: formatTrendMonth(m.month),
-              formattedValue: formatMoney(m.revenue),
-            })
-          );
-          const expensePoints: SparklinePoint[] = data.months.map(
-            (m: { month: string; expenses: number }) => ({
-              value: m.expenses,
-              label: formatTrendMonth(m.month),
-              formattedValue: formatMoney(m.expenses),
-            })
-          );
-          const netIncomePoints: SparklinePoint[] = data.months.map(
-            (m: { month: string; netIncome: number }) => ({
-              value: m.netIncome,
-              label: formatTrendMonth(m.month),
-              formattedValue: formatMoney(m.netIncome),
-            })
-          );
-          setSparklines({
-            revenue: revenuePoints,
-            expenses: expensePoints,
-            netIncome: netIncomePoints,
-          });
-        } else if (data.revenueSparkline) {
-          setSparklines({
-            revenue: data.revenueSparkline,
-            expenses: data.expenseSparkline,
-            netIncome: data.netIncomeSparkline,
-          });
-        }
+        setSparklines(parseTrendPoints(data));
       })
       .catch(() => {});
 
@@ -507,23 +529,35 @@ export default function DashboardPage() {
     const headers: Record<string, string> = {};
     if (id) headers["x-organization-id"] = id;
 
-    fetch(
-      `/api/v1/reports/profit-and-loss?startDate=${range.startDate}&endDate=${range.endDate}`,
-      { headers }
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        if (data) {
+    Promise.all([
+      fetch(
+        `/api/v1/reports/profit-and-loss?startDate=${range.startDate}&endDate=${range.endDate}`,
+        { headers }
+      )
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(
+        `/api/v1/reports/monthly-trends?startDate=${range.startDate}&endDate=${range.endDate}&period=${key}`,
+        { headers }
+      )
+        .then((r) => r.json())
+        .catch(() => null),
+    ])
+      .then(([pnlData, trendsData]) => {
+        if (pnlData) {
           setPnl({
-            totalRevenue: data.totalRevenue || 0,
-            totalExpenses: data.totalExpenses || 0,
-            netIncome: data.netIncome || 0,
-            expenses: data.expenses || [],
+            totalRevenue: pnlData.totalRevenue || 0,
+            totalExpenses: pnlData.totalExpenses || 0,
+            netIncome: pnlData.netIncome || 0,
+            expenses: pnlData.expenses || [],
           });
+        }
+        if (trendsData) {
+          setSparklines(parseTrendPoints(trendsData));
         }
       })
       .catch((err) => {
-        console.error("Failed to load P&L for period:", err);
+        console.error("Failed to load dashboard data for period:", err);
       })
       .finally(() => {
         setPnlLoading(false);
@@ -778,8 +812,9 @@ export default function DashboardPage() {
                   value={formatMoney(pnl.totalRevenue)}
                   icon={TrendingUp}
                   isLoading={pnlLoading}
+                  sparklineColor="emerald"
                   sparklineData={
-                    sparklines.revenue.length > 1 ? sparklines.revenue : undefined
+                    sparklines.revenue.length > 0 ? sparklines.revenue : undefined
                   }
                 />
                 <StatCard
@@ -789,8 +824,9 @@ export default function DashboardPage() {
                   value={formatMoney(pnl.totalExpenses)}
                   icon={TrendingDown}
                   isLoading={pnlLoading}
+                  sparklineColor="emerald"
                   sparklineData={
-                    sparklines.expenses.length > 1 ? sparklines.expenses : undefined
+                    sparklines.expenses.length > 0 ? sparklines.expenses : undefined
                   }
                 />
                 <StatCard
@@ -801,8 +837,9 @@ export default function DashboardPage() {
                   icon={Wallet}
                   isLoading={pnlLoading}
                   changeType={pnl.netIncome >= 0 ? "positive" : "negative"}
+                  sparklineColor={pnl.netIncome >= 0 ? "emerald" : "red"}
                   sparklineData={
-                    sparklines.netIncome.length > 1
+                    sparklines.netIncome.length > 0
                       ? sparklines.netIncome
                       : undefined
                   }

@@ -14,6 +14,7 @@ export interface StatCardProps {
   value: string;
   change?: string;
   changeType?: "positive" | "negative" | "neutral";
+  sparklineColor?: "emerald" | "green" | "red" | "neutral" | "auto";
   icon: LucideIcon;
   sparklineData?: (number | SparklinePoint)[];
   badge?: string;
@@ -24,9 +25,11 @@ export interface StatCardProps {
 function Sparkline({
   data,
   changeType = "positive",
+  sparklineColor,
 }: {
   data: (number | SparklinePoint)[];
   changeType?: "positive" | "negative" | "neutral";
+  sparklineColor?: "emerald" | "green" | "red" | "neutral" | "auto";
 }) {
   const gradientId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,7 +38,7 @@ function Sparkline({
   const points: SparklinePoint[] = useMemo(() => {
     return (data || []).map((d, i) =>
       typeof d === "number"
-        ? { value: d, label: `Month ${i + 1}`, formattedValue: d.toLocaleString() }
+        ? { value: d, label: `Point ${i + 1}`, formattedValue: d.toLocaleString() }
         : {
             value: d.value,
             label: d.label,
@@ -56,21 +59,27 @@ function Sparkline({
     [rawValues]
   );
 
-  if (points.length < 2) return null;
+  if (points.length === 0) return null;
 
-  const strokeColor =
-    changeType === "negative"
-      ? "text-red-500 dark:text-red-400"
-      : changeType === "neutral"
-      ? "text-muted-foreground"
-      : "text-emerald-500 dark:text-emerald-400";
+  // Curves default to emerald green unless explicitly configured or negative
+  const isRed =
+    sparklineColor === "red" ||
+    (sparklineColor === "auto" && changeType === "negative") ||
+    (!sparklineColor && changeType === "negative");
 
-  const stopColor =
-    changeType === "negative"
-      ? "rgba(239, 68, 68, 0.20)"
-      : changeType === "neutral"
-      ? "rgba(148, 163, 184, 0.16)"
-      : "rgba(16, 185, 129, 0.22)";
+  const isNeutral = sparklineColor === "neutral";
+
+  const strokeColor = isRed
+    ? "text-red-500 dark:text-red-400"
+    : isNeutral
+    ? "text-muted-foreground"
+    : "text-emerald-500 dark:text-emerald-400";
+
+  const stopColor = isRed
+    ? "rgba(239, 68, 68, 0.20)"
+    : isNeutral
+    ? "rgba(148, 163, 184, 0.16)"
+    : "rgba(16, 185, 129, 0.22)";
 
   const handlePointer = (clientX: number) => {
     if (!containerRef.current || points.length === 0) return;
@@ -197,6 +206,7 @@ export function StatCard({
   value,
   change,
   changeType = "neutral",
+  sparklineColor,
   icon: Icon,
   sparklineData,
   badge,
@@ -251,7 +261,11 @@ export function StatCard({
         </div>
         {sparklineData && (
           <div className="mt-3 pt-0.5">
-            <Sparkline data={sparklineData} changeType={changeType} />
+            <Sparkline
+              data={sparklineData}
+              changeType={changeType}
+              sparklineColor={sparklineColor}
+            />
           </div>
         )}
       </div>
