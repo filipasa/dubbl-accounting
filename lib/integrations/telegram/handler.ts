@@ -19,6 +19,10 @@ import {
   updateQuoteAction,
   sendInvoiceEmailAction,
   sendQuoteEmailAction,
+  listUnreconciledBankTransactionsAction,
+  getReconciliationSuggestionsAction,
+  reconcileBankTransactionAction,
+  getReconciliationReportAction,
   executeMcpTool,
 } from "@/lib/integrations/whatsapp/executor";
 import {
@@ -450,6 +454,88 @@ const TOOL_DEFINITIONS = [
       required: ["quoteNumber"],
     },
   },
+  {
+    name: "list_unreconciled_transactions",
+    description:
+      "List unreconciled bank transactions across registered bank accounts, showing amounts, dates, descriptions, references, and suggested matches (invoices, bills, or chart accounts). Use when the user asks to see unreconciled transactions, view bank activity for review, or asks what needs reconciling.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        bankAccountName: {
+          type: "STRING",
+          description: "Optional bank account name to filter by (e.g. 'Wise', 'Tide', 'Barclays')",
+        },
+        limit: {
+          type: "NUMBER",
+          description: "Maximum number of transactions to return (default: 10)",
+        },
+      },
+    },
+  },
+  {
+    name: "get_reconciliation_suggestions",
+    description:
+      "Find candidate matches (open invoices, open bills, existing payments, or suggested chart accounts) for a specific bank transaction.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        transactionId: {
+          type: "STRING",
+          description: "UUID, short ID (e.g. 6ab9e4fc), or description of the bank transaction",
+        },
+      },
+      required: ["transactionId"],
+    },
+  },
+  {
+    name: "reconcile_bank_transaction",
+    description:
+      "Reconcile a bank transaction by matching it to an invoice (for incoming money), matching to a bill (for outgoing money), or categorizing to a chart-of-accounts account (e.g. 5000, Cost of Goods Sold, Office Supplies).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        transactionId: {
+          type: "STRING",
+          description: "UUID or short 8-char ID (e.g. 6ab9e4fc) of the bank transaction to reconcile",
+        },
+        invoiceNumber: {
+          type: "STRING",
+          description: "Invoice number (e.g. INV-00017) to match incoming funds to",
+        },
+        billNumber: {
+          type: "STRING",
+          description: "Bill number (e.g. BILL-00001) to match outgoing funds to",
+        },
+        accountCodeOrName: {
+          type: "STRING",
+          description: "Chart of accounts code or name (e.g. 5000, 4000, Cost of Goods Sold, Advertising, Rent) to categorize to",
+        },
+        target: {
+          type: "STRING",
+          description: "Generic target identifier (e.g. 'INV-00017', 'BILL-00001', or '5000')",
+        },
+        memo: {
+          type: "STRING",
+          description: "Optional memo or description for the reconciled posting",
+        },
+      },
+      required: ["transactionId"],
+    },
+  },
+  {
+    name: "get_reconciliation_report",
+    description:
+      "Generate a bank reconciliation proof report showing statement balance, general ledger balance, variance, and reconciled vs unreconciled line counts.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        bankAccountName: {
+          type: "STRING",
+          description: "Optional bank account name (e.g. 'Wise', 'Barclays') to filter report by",
+        },
+      },
+    },
+  },
 ];
 
 async function executeTool(ctx: AuthContext, name: string, args: Record<string, any> = {}) {
@@ -508,6 +594,22 @@ async function executeTool(ctx: AuthContext, name: string, args: Record<string, 
       return await sendInvoiceEmailAction(ctx, args as any);
     case "send_quote_email":
       return await sendQuoteEmailAction(ctx, args as any);
+    case "list_unreconciled_transactions": {
+      const res = await listUnreconciledBankTransactionsAction(ctx, args as any);
+      return res.formattedMessage || res;
+    }
+    case "get_reconciliation_suggestions": {
+      const res = await getReconciliationSuggestionsAction(ctx, args as any);
+      return res.formattedMessage || res;
+    }
+    case "reconcile_bank_transaction": {
+      const res = await reconcileBankTransactionAction(ctx, args as any);
+      return res.formattedMessage || res;
+    }
+    case "get_reconciliation_report": {
+      const res = await getReconciliationReportAction(ctx, args as any);
+      return res.formattedMessage || res;
+    }
     default:
       return await executeMcpTool(ctx, name, args);
   }
@@ -528,7 +630,7 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
     case "/help":
       return (
         `👋 <b>Fixbooks Telegram Bookkeeper</b>\n\n` +
-        `I can create quotes, generate invoices, edit them, and email them directly to your customers with PDFs and payment links.\n\n` +
+        `I can create quotes, generate invoices, edit them, email them to your customers with PDFs and payment links, and reconcile your bank transactions.\n\n` +
         `<b>Available Commands:</b>\n` +
         `• <b>/quotes</b> — List recent estimates & quotes\n` +
         `• <b>/invoices</b> — List recent sales invoices\n` +
@@ -538,15 +640,23 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         `  <i>Example:</i> <code>/sendinvoice INV-00017 client@example.com</code>\n` +
         `• <b>/sendquote &lt;Quote #&gt; [email]</b> — Email quote PDF to customer\n` +
         `  <i>Example:</i> <code>/sendquote QTE-00007 client@example.com</code>\n` +
+        `• <b>/reconcile</b> — View unreconciled bank transactions & match suggestions\n` +
+        `• <b>/reconcile &lt;tx_id&gt; &lt;INV-# / BILL-# / Account&gt;</b> — Reconcile transaction\n` +
+        `  <i>Example:</i> <code>/reconcile 6ab9e4fc INV-00017</code> or <code>/reconcile 93ce783a 5000</code>\n` +
+        `• <b>/reconcile report [bank]</b> — Bank reconciliation proof & GL balance\n` +
         `• <b>/contacts</b> — Current customers and suppliers\n` +
         `• <b>/org</b> — Company profile, currency, and VAT\n` +
-        `• <b>/balance</b> — Registered bank accounts\n\n` +
+        `• <b>/balance</b> — Registered bank accounts & balances\n\n` +
         `💡 <i>You can also message me in full natural language:</i>\n` +
         `• "Create a quote for Login Construction for 2 doors at £450 each"\n` +
         `• "Edit invoice INV-00017 with 3 doors at £600 each"\n` +
         `• "Edit quote QTE-00007: change price to £450"\n` +
         `• "Send invoice INV-00017 to customer email"\n` +
-        `• "Send quote QTE-00007 to customer email"`
+        `• "Send quote QTE-00007 to customer email"\n` +
+        `• "Show unreconciled bank transactions"\n` +
+        `• "Reconcile transaction 6ab9e4fc with invoice INV-00017"\n` +
+        `• "Categorize transaction 93ce783a as Cost of Goods Sold"\n` +
+        `• "Give me a bank reconciliation report for Wise"`
       );
 
     case "/org": {
@@ -737,9 +847,58 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       }
       let reply = `🏦 <b>Bank Accounts</b>\n\n`;
       for (const b of banks) {
-        reply += `• <b>${b.name}</b> (Code ${b.code})\n`;
+        const bal = typeof b.balance === "number" ? `£${(b.balance / 100).toFixed(2)}` : null;
+        reply += `• <b>${b.name}</b> (${b.currency || "GBP"})`;
+        if (bal) reply += `: <b>${bal}</b>`;
+        reply += `\n`;
+        if (b.code) reply += `  Account: <code>${b.code}</code>\n`;
       }
       return reply.trim();
+    }
+
+    case "/reconcile": {
+      if (!argsString) {
+        const res = await listUnreconciledBankTransactionsAction(ctx);
+        return res.formattedMessage;
+      }
+
+      const lowerArgs = argsString.toLowerCase();
+
+      // Check if user asked for report, e.g. /reconcile report or /reconcile report Wise
+      if (lowerArgs.startsWith("report")) {
+        const bankName = argsString.replace(/^report\s*/i, "").trim();
+        const res = await getReconciliationReportAction(
+          ctx,
+          bankName ? { bankAccountName: bankName } : undefined
+        );
+        return res.formattedMessage;
+      }
+
+      // Check if user asked for suggestions, e.g. /reconcile suggestions 6ab9e4fc
+      if (lowerArgs.startsWith("suggestions") || lowerArgs.startsWith("suggest")) {
+        const txId = argsString.replace(/^(suggestions|suggest)\s*/i, "").trim();
+        const res = await getReconciliationSuggestionsAction(ctx, { transactionId: txId });
+        return res.formattedMessage;
+      }
+
+      // Format: /reconcile <txId> [target]
+      const [txId, ...targetParts] = argsString.split(/\s+/);
+      const target = targetParts.join(" ").trim();
+
+      const res = await reconcileBankTransactionAction(ctx, {
+        transactionId: txId,
+        target: target || undefined,
+      });
+
+      return res.formattedMessage;
+    }
+
+    case "/reconcilereport": {
+      const res = await getReconciliationReportAction(
+        ctx,
+        argsString ? { bankAccountName: argsString } : undefined
+      );
+      return res.formattedMessage;
     }
 
     default:
@@ -791,12 +950,18 @@ CRITICAL INSTRUCTIONS:
    - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"), execute the \`send_invoice_email\` tool.
    - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00007 to customer email", "Email quote QTE-00007 to client@example.com"), execute the \`send_quote_email\` tool.
    - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
+9. BANK RECONCILIATION & TRANSACTIONS:
+   - When the user asks to see unreconciled transactions, review bank accounts, or asks what needs reconciling, call the \`list_unreconciled_transactions\` tool.
+   - When the user asks for candidate matches or suggestions for a specific transaction (e.g. "What matches transaction 6ab9e4fc?"), call \`get_reconciliation_suggestions\`.
+   - When the user asks to reconcile, match, or categorize a bank transaction (e.g. "Reconcile transaction 6ab9e4fc with invoice INV-00017", "Match 6ab9e4fc to INV-00017", "Categorize 93ce783a as Cost of Goods Sold", "Reconcile 93ce783a to 5000", "Match 9b4425d3 to bill BILL-00001"), call the \`reconcile_bank_transaction\` tool with transactionId and the corresponding invoiceNumber, billNumber, accountCodeOrName, or target.
+   - When the user asks for a bank reconciliation report or proof of balances, call \`get_reconciliation_report\`.
+   - The tool outputs will already contain formatted HTML messages. Present them clearly and directly to the user.
 
 TELEGRAM FORMATTING RULES:
 - ONLY use Telegram-supported HTML tags: <b>bold</b>, <i>italic</i>, and <code>code</code>.
 - NEVER use <h3>, <h2>, <h1>, <p>, <br>, <div>, or markdown (no ###, no ---).
 - For section titles or totals, use bold text with an emoji, e.g. <b>Total: £685.00</b>.
-When confirming the created/edited/sent quote or invoice, display a clean breakdown with the item names, subtotal, VAT/Tax, and final total with emojis.`;
+When confirming actions, display clean breakdowns with emojis.`;
 
   const candidateModels = [
     "gemini-2.5-flash",

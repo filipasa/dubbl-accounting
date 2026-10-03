@@ -74,3 +74,15 @@ test("handleTelegramCommand /sendinvoice and /sendquote validate required parame
   const sendQuoteUsage = await handleTelegramCommand(dummyCtx, "/sendquote");
   assert.ok(sendQuoteUsage.includes("Usage:"), "Should return usage for /sendquote without arguments");
 });
+
+test("handleTelegramCommand renders help with bank reconciliation commands", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const help = await handleTelegramCommand(dummyCtx, "/help");
+  assert.ok(help.includes("/reconcile"), "Help includes /reconcile");
+  assert.ok(help.includes("/reconcile report"), "Help includes /reconcile report");
+  assert.ok(help.includes("Reconcile transaction"), "Help includes reconcile transaction example");
+  assert.ok(help.includes("Categorize transaction"), "Help includes categorize transaction example");
+});
+

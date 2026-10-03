@@ -12,8 +12,14 @@ import {
   quoteLine,
   portalAccessToken,
   documentTemplate,
+  bankAccount,
+  bankTransaction,
+  bankReconciliation,
+  bill,
+  billLine,
+  chartAccount,
 } from "@/lib/db/schema";
-import { isNull, eq, and, or, ilike } from "drizzle-orm";
+import { isNull, eq, and, or, ilike, desc, asc, inArray, sql } from "drizzle-orm";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { formatMoney } from "@/lib/money";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
@@ -22,9 +28,11 @@ import { sendDocumentEmail } from "@/lib/email/document-sender";
 import { renderDocumentEmailHtml } from "@/lib/email/render-document-email";
 import {
   createInvoiceJournalEntry,
+  createBillJournalEntry,
   createCogsJournalEntry,
   assertBaseRateAvailable,
 } from "@/lib/api/journal-automation";
+import { suggestAccounts } from "@/lib/banking/account-suggestions";
 import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
@@ -639,6 +647,25 @@ export async function getInvoicePdfAction(ctx: AuthContext, invoiceNumber: strin
 }
 
 export async function getBankAccountsAction(ctx: AuthContext) {
+  const bankAccounts = await db.query.bankAccount.findMany({
+    where: and(
+      eq(bankAccount.organizationId, ctx.organizationId),
+      notDeleted(bankAccount.deletedAt)
+    ),
+    orderBy: asc(bankAccount.accountName),
+  });
+
+  if (bankAccounts.length > 0) {
+    return bankAccounts.map((b) => ({
+      id: b.id,
+      name: b.accountName,
+      code: b.accountNumber || b.accountType,
+      currency: b.currencyCode,
+      balance: b.balance,
+      accountType: b.accountType,
+    }));
+  }
+
   const result = await executeMcpTool(ctx, "list_accounts", { type: "asset" });
   const accounts = result?.accounts || [];
   return accounts.filter(
@@ -1328,3 +1355,884 @@ export async function sendQuoteEmailAction(
     status: "sent",
   };
 }
+
+/**
+ * Finds a bank transaction by ID (full UUID or short prefix) or description search
+ * scoped to the organization's bank accounts.
+ */
+export async function findBankTransaction(
+  ctx: AuthContext,
+  queryOrId: string
+): Promise<{ transaction: any; account: any } | null> {
+  const query = (queryOrId || "").trim();
+  if (!query) return null;
+
+  try {
+    const orgBankAccounts = await db.query.bankAccount.findMany({
+      where: and(
+        eq(bankAccount.organizationId, ctx.organizationId),
+        notDeleted(bankAccount.deletedAt)
+      ),
+    });
+    if (orgBankAccounts.length === 0) return null;
+    const bankAccountIds = orgBankAccounts.map((b) => b.id);
+
+    const cleanQuery = query.toLowerCase().replace(/^tx-/, "");
+
+    // 1. Exact UUID match
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanQuery);
+    if (isUuid) {
+      const tx = await db.query.bankTransaction.findFirst({
+        where: and(
+          eq(bankTransaction.id, cleanQuery),
+          inArray(bankTransaction.bankAccountId, bankAccountIds)
+        ),
+      });
+      if (tx) {
+        const acct = orgBankAccounts.find((a) => a.id === tx.bankAccountId);
+        return { transaction: tx, account: acct };
+      }
+    }
+
+    // 2. Fetch recent transactions across bank accounts (last 200)
+    const txs = await db.query.bankTransaction.findMany({
+      where: inArray(bankTransaction.bankAccountId, bankAccountIds),
+      orderBy: desc(bankTransaction.date),
+      limit: 200,
+    });
+
+    // 3. Prefix match (e.g. 6ab9e4fc)
+    const byPrefix = txs.find((t) => t.id.toLowerCase().startsWith(cleanQuery));
+    if (byPrefix) {
+      const acct = orgBankAccounts.find((a) => a.id === byPrefix.bankAccountId);
+      return { transaction: byPrefix, account: acct };
+    }
+
+    // 4. Reference match
+    const byRef = txs.find((t) => t.reference && t.reference.toLowerCase() === query.toLowerCase());
+    if (byRef) {
+      const acct = orgBankAccounts.find((a) => a.id === byRef.bankAccountId);
+      return { transaction: byRef, account: acct };
+    }
+
+    // 5. Description contains
+    const byDesc = txs.find(
+      (t) =>
+        t.description.toLowerCase().includes(query.toLowerCase()) ||
+        (t.reference && t.reference.toLowerCase().includes(query.toLowerCase()))
+    );
+    if (byDesc) {
+      const acct = orgBankAccounts.find((a) => a.id === byDesc.bankAccountId);
+      return { transaction: byDesc, account: acct };
+    }
+
+    return null;
+  } catch (err) {
+    console.warn("[Bot Bank Tx] Query warning:", err);
+    return null;
+  }
+}
+
+/**
+ * Finds a supplier bill by billNumber or UUID within the current organization.
+ */
+export async function findBillByNumber(ctx: AuthContext, billNumberOrId: string) {
+  const query = (billNumberOrId || "").trim();
+  if (!query) return null;
+
+  try {
+    const found = await db.query.bill.findFirst({
+      where: and(
+        or(ilike(bill.billNumber, query), eq(bill.id, query)),
+        eq(bill.organizationId, ctx.organizationId),
+        notDeleted(bill.deletedAt)
+      ),
+      with: {
+        contact: true,
+        lines: true,
+      },
+    });
+    if (found) return found;
+
+    const recent = await db.query.bill.findMany({
+      where: and(
+        eq(bill.organizationId, ctx.organizationId),
+        notDeleted(bill.deletedAt)
+      ),
+      with: {
+        contact: true,
+        lines: true,
+      },
+      limit: 50,
+    });
+
+    return (
+      recent.find(
+        (b) =>
+          b.billNumber.toLowerCase() === query.toLowerCase() ||
+          b.billNumber.toLowerCase().replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "") ||
+          b.id.toLowerCase() === query.toLowerCase()
+      ) || null
+    );
+  } catch (err) {
+    console.warn("[Bot Bill] Query warning:", err);
+    return null;
+  }
+}
+
+/**
+ * Finds a chart of accounts account by code or name within the current organization.
+ */
+export async function findChartAccount(ctx: AuthContext, codeOrName: string) {
+  const query = (codeOrName || "").trim();
+  if (!query) return null;
+
+  try {
+    // Direct code match (e.g. "5000", "4000")
+    const byCode = await db.query.chartAccount.findFirst({
+      where: and(
+        eq(chartAccount.organizationId, ctx.organizationId),
+        eq(chartAccount.code, query),
+        eq(chartAccount.isActive, true)
+      ),
+    });
+    if (byCode) return byCode;
+
+    const accounts = await db.query.chartAccount.findMany({
+      where: and(
+        eq(chartAccount.organizationId, ctx.organizationId),
+        eq(chartAccount.isActive, true)
+      ),
+    });
+
+    const queryLower = query.toLowerCase();
+    // Exact name match
+    const exactName = accounts.find((a) => a.name.toLowerCase() === queryLower);
+    if (exactName) return exactName;
+
+    // Substring match
+    const partialName = accounts.find(
+      (a) =>
+        a.name.toLowerCase().includes(queryLower) ||
+        (a.subType && a.subType.toLowerCase().includes(queryLower))
+    );
+    if (partialName) return partialName;
+
+    return null;
+  } catch (err) {
+    console.warn("[Bot Chart Account] Query warning:", err);
+    return null;
+  }
+}
+
+/**
+ * Lists unreconciled bank transactions for the organization with suggested matches.
+ */
+export async function listUnreconciledBankTransactionsAction(
+  ctx: AuthContext,
+  options?: {
+    bankAccountId?: string;
+    bankAccountName?: string;
+    limit?: number;
+  }
+) {
+  try {
+    const limit = options?.limit || 10;
+    const orgBankAccounts = await db.query.bankAccount.findMany({
+      where: and(
+        eq(bankAccount.organizationId, ctx.organizationId),
+        notDeleted(bankAccount.deletedAt)
+      ),
+      orderBy: asc(bankAccount.accountName),
+    });
+
+    if (orgBankAccounts.length === 0) {
+      return {
+        bankAccounts: [],
+        transactions: [],
+        totalUnreconciled: 0,
+        formattedMessage: "🏦 No bank accounts registered in this organization.",
+      };
+    }
+
+    // Filter bank accounts if bankAccountId or bankAccountName is specified
+    let targetAccounts = orgBankAccounts;
+    if (options?.bankAccountId) {
+      targetAccounts = orgBankAccounts.filter((b) => b.id === options.bankAccountId);
+    } else if (options?.bankAccountName) {
+      const q = options.bankAccountName.toLowerCase();
+      const matched = orgBankAccounts.filter((b) => b.accountName.toLowerCase().includes(q));
+      if (matched.length > 0) targetAccounts = matched;
+    }
+    const targetIds = targetAccounts.map((b) => b.id);
+
+    // Get unreconciled counts per bank account
+    const countRows = await db
+      .select({
+        bankAccountId: bankTransaction.bankAccountId,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(bankTransaction)
+      .where(
+        and(
+          inArray(bankTransaction.bankAccountId, orgBankAccounts.map((b) => b.id)),
+          eq(bankTransaction.status, "unreconciled")
+        )
+      )
+      .groupBy(bankTransaction.bankAccountId);
+
+    const countsMap = new Map<string, number>();
+    countRows.forEach((r) => countsMap.set(r.bankAccountId, Number(r.count)));
+
+    const totalUnreconciled = countRows.reduce((sum, r) => sum + Number(r.count), 0);
+
+    // Fetch unreconciled transactions for target bank accounts
+    const txRows = await db.query.bankTransaction.findMany({
+      where: and(
+        inArray(bankTransaction.bankAccountId, targetIds),
+        eq(bankTransaction.status, "unreconciled")
+      ),
+      orderBy: desc(bankTransaction.date),
+      limit,
+    });
+
+    // Pre-fetch open invoices and bills to quickly compute high-confidence suggested matches
+    const openInvoices = await db.query.invoice.findMany({
+      where: and(
+        eq(invoice.organizationId, ctx.organizationId),
+        notDeleted(invoice.deletedAt),
+        inArray(invoice.status, ["draft", "sent", "partial", "overdue"])
+      ),
+      with: { contact: true },
+      limit: 50,
+    });
+
+    const openBills = await db.query.bill.findMany({
+      where: and(
+        eq(bill.organizationId, ctx.organizationId),
+        notDeleted(bill.deletedAt),
+        inArray(bill.status, ["draft", "received", "partial", "overdue"])
+      ),
+      with: { contact: true },
+      limit: 50,
+    });
+
+    const transactionsWithSuggestions = [];
+
+    for (const t of txRows) {
+      const acct = orgBankAccounts.find((b) => b.id === t.bankAccountId);
+      const shortId = t.id.slice(0, 8);
+      const isIncome = t.amount > 0;
+      const absAmount = Math.abs(t.amount);
+
+      let suggestedMatchText: string | null = null;
+      let suggestedReconcileCmd: string | null = null;
+
+      if (isIncome) {
+        // Find matching invoice by exact amount or contact
+        const match = openInvoices.find(
+          (inv) =>
+            inv.amountDue === t.amount ||
+            inv.total === t.amount ||
+            (inv.contact?.name && t.description.toLowerCase().includes(inv.contact.name.toLowerCase()))
+        );
+        if (match) {
+          suggestedMatchText = `Invoice <b>${match.invoiceNumber}</b> (${match.contact?.name || "Customer"}, £${(match.total / 100).toFixed(2)})`;
+          suggestedReconcileCmd = `/reconcile ${shortId} ${match.invoiceNumber}`;
+        }
+      } else {
+        // Find matching bill by exact amount or supplier
+        const match = openBills.find(
+          (b) =>
+            b.amountDue === absAmount ||
+            b.total === absAmount ||
+            (b.contact?.name && t.description.toLowerCase().includes(b.contact.name.toLowerCase()))
+        );
+        if (match) {
+          suggestedMatchText = `Bill <b>${match.billNumber}</b> (${match.contact?.name || "Supplier"}, £${(match.total / 100).toFixed(2)})`;
+          suggestedReconcileCmd = `/reconcile ${shortId} ${match.billNumber}`;
+        }
+      }
+
+      // Fallback: check historical account suggestions if no document match found
+      if (!suggestedMatchText) {
+        try {
+          const acctSuggestions = await suggestAccounts(t.bankAccountId, t.description, 1);
+          if (acctSuggestions.length > 0 && acctSuggestions[0].confidence >= 50) {
+            const sug = acctSuggestions[0];
+            suggestedMatchText = `Category <b>${sug.accountCode} ${sug.accountName}</b> (${sug.confidence}% match)`;
+            suggestedReconcileCmd = `/reconcile ${shortId} ${sug.accountCode}`;
+          }
+        } catch (e) {
+          // Non-blocking
+        }
+      }
+
+      transactionsWithSuggestions.push({
+        ...t,
+        shortId,
+        accountName: acct?.accountName || "Bank",
+        currencyCode: t.currencyCode || acct?.currencyCode || "GBP",
+        isIncome,
+        suggestedMatchText,
+        suggestedReconcileCmd,
+      });
+    }
+
+    // Build formatted message
+    let msg = `🏦 <b>Bank Accounts Overview</b>\n\n`;
+    for (const ba of orgBankAccounts) {
+      const unrec = countsMap.get(ba.id) || 0;
+      const balFormatted = `£${((ba.balance || 0) / 100).toFixed(2)}`;
+      msg += `• <b>${ba.accountName}</b> (${ba.currencyCode}): ${balFormatted} — <b>${unrec} unreconciled</b>\n`;
+    }
+
+    if (transactionsWithSuggestions.length === 0) {
+      msg += `\n🎉 <b>All caught up!</b> No unreconciled bank transactions found.`;
+      return {
+        bankAccounts: orgBankAccounts,
+        transactions: [],
+        totalUnreconciled,
+        formattedMessage: msg,
+      };
+    }
+
+    msg += `\n📋 <b>Unreconciled Transactions (Latest ${transactionsWithSuggestions.length})</b>:\n\n`;
+
+    const numberEmojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
+
+    transactionsWithSuggestions.forEach((tx, idx) => {
+      const emoji = numberEmojis[idx] || `•`;
+      const signEmoji = tx.isIncome ? "🟢 +" : "🔴 -";
+      const amtFormatted = `£${(Math.abs(tx.amount) / 100).toFixed(2)}`;
+      const dateFormatted = new Date(tx.date).toLocaleDateString("en-GB");
+
+      msg += `${emoji} <b>[${tx.shortId}]</b> ${dateFormatted} • <b>${tx.accountName}</b>\n`;
+      msg += `   ${signEmoji}${amtFormatted} — <i>${tx.description}</i>\n`;
+      if (tx.reference) {
+        msg += `   <i>Ref:</i> <code>${tx.reference}</code>\n`;
+      }
+      if (tx.suggestedMatchText) {
+        msg += `   💡 <i>Suggested Match:</i> ${tx.suggestedMatchText}\n`;
+        if (tx.suggestedReconcileCmd) {
+          msg += `   👉 <code>${tx.suggestedReconcileCmd}</code>\n`;
+        }
+      } else {
+        msg += `   👉 To reconcile: <code>/reconcile ${tx.shortId} &lt;INV-# / BILL-# / Account&gt;</code>\n`;
+      }
+      msg += `\n`;
+    });
+
+    msg += `💡 <b>Quick Commands & Natural Language:</b>\n`;
+    msg += `• <code>/reconcile &lt;tx_id&gt; &lt;INV-# / BILL-# / Account&gt;</code>\n`;
+    msg += `• <code>/reconcile report [bank]</code> — View reconciliation proof & balances\n`;
+    msg += `• <i>Or say:</i> "Match ${transactionsWithSuggestions[0]?.shortId} with INV-00017" or "Categorize ${transactionsWithSuggestions[0]?.shortId} as Cost of Goods Sold"`;
+
+    return {
+      bankAccounts: orgBankAccounts,
+      transactions: transactionsWithSuggestions,
+      totalUnreconciled,
+      formattedMessage: msg.trim(),
+    };
+  } catch (err: any) {
+    console.warn("[Bot Reconcile] listUnreconciled error:", err);
+    return {
+      bankAccounts: [],
+      transactions: [],
+      totalUnreconciled: 0,
+      formattedMessage: "⚠️ Database service is temporarily unavailable. Please try again shortly.",
+    };
+  }
+}
+
+/**
+ * Gets candidate matches for a specific bank transaction.
+ */
+export async function getReconciliationSuggestionsAction(
+  ctx: AuthContext,
+  params: { transactionId: string }
+) {
+  const foundTx = await findBankTransaction(ctx, params.transactionId);
+  if (!foundTx) {
+    return {
+      transaction: null,
+      suggestions: null,
+      formattedMessage: `⚠️ Bank transaction "<code>${params.transactionId}</code>" not found. Type <b>/reconcile</b> to see available transactions.`,
+    };
+  }
+
+  const { transaction: tx, account } = foundTx;
+  const shortId = tx.id.slice(0, 8);
+
+  const res = await executeMcpTool(ctx, "get_match_suggestions", {
+    transactionId: tx.id,
+  });
+
+  const candidates = res?.suggestedMatches || [];
+  const existingCandidates = res?.existingCandidates || [];
+  const suggestedAccounts = res?.suggestedAccounts || [];
+
+  let msg = `🔍 <b>Reconciliation Matches for [${shortId}]</b>\n\n`;
+  msg += `• <b>Bank Account:</b> ${account.accountName}\n`;
+  msg += `• <b>Date:</b> ${new Date(tx.date).toLocaleDateString("en-GB")}\n`;
+  msg += `• <b>Description:</b> <i>${tx.description}</i>\n`;
+  if (tx.reference) msg += `• <b>Reference:</b> <code>${tx.reference}</code>\n`;
+  msg += `• <b>Amount:</b> ${tx.amount > 0 ? "🟢 +" : "🔴 -"}£${(Math.abs(tx.amount) / 100).toFixed(2)}\n\n`;
+
+  if (candidates.length === 0 && existingCandidates.length === 0 && suggestedAccounts.length === 0) {
+    msg += `ℹ️ No automatic match candidates found for this transaction.\n\n`;
+    msg += `👉 You can categorize it manually: <code>/reconcile ${shortId} &lt;Account Code or Name&gt;</code>`;
+    return {
+      transaction: tx,
+      suggestions: res,
+      formattedMessage: msg,
+    };
+  }
+
+  if (candidates.length > 0) {
+    msg += `<b>Matching Invoices / Bills:</b>\n`;
+    for (const c of candidates) {
+      const typeLabel = c.candidate.type === "invoice" ? "Invoice" : "Bill";
+      const amtStr = `£${(Math.abs(c.candidate.amount) / 100).toFixed(2)}`;
+      msg += `• ${typeLabel} <b>${c.candidate.reference || c.candidate.description}</b> (${amtStr}) — <b>${c.confidence}% match</b>\n`;
+      msg += `  👉 <code>/reconcile ${shortId} ${c.candidate.reference || c.candidate.id}</code>\n`;
+    }
+    msg += `\n`;
+  }
+
+  if (suggestedAccounts.length > 0) {
+    msg += `<b>Suggested Categories:</b>\n`;
+    for (const a of suggestedAccounts.slice(0, 3)) {
+      msg += `• <code>${a.accountCode}</code> <b>${a.accountName}</b> (${a.confidence}% match)\n`;
+      msg += `  👉 <code>/reconcile ${shortId} ${a.accountCode}</code>\n`;
+    }
+    msg += `\n`;
+  }
+
+  return {
+    transaction: tx,
+    suggestions: res,
+    formattedMessage: msg.trim(),
+  };
+}
+
+/**
+ * Reconciles a bank transaction by matching with an invoice, bill, or chart account.
+ */
+export async function reconcileBankTransactionAction(
+  ctx: AuthContext,
+  params: {
+    transactionId: string;
+    invoiceNumber?: string;
+    billNumber?: string;
+    accountCodeOrName?: string;
+    target?: string;
+    memo?: string;
+  }
+) {
+  const foundTx = await findBankTransaction(ctx, params.transactionId);
+  if (!foundTx) {
+    return {
+      success: false,
+      error: `Bank transaction "${params.transactionId}" not found. Type /reconcile to view recent transactions.`,
+      formattedMessage: `⚠️ Bank transaction "<code>${params.transactionId}</code>" not found. Type <b>/reconcile</b> to see available transactions.`,
+    };
+  }
+
+  const { transaction: tx, account } = foundTx;
+
+  if (tx.status === "reconciled") {
+    return {
+      success: false,
+      error: `Bank transaction "${tx.id.slice(0, 8)}" is already reconciled.`,
+      formattedMessage: `ℹ️ Transaction <b>${tx.id.slice(0, 8)}</b> is already reconciled.`,
+    };
+  }
+
+  let rawTarget = (params.target || "").trim();
+  let invoiceQuery = (params.invoiceNumber || "").trim();
+  let billQuery = (params.billNumber || "").trim();
+  let accountQuery = (params.accountCodeOrName || "").trim();
+
+  // If generic target supplied, classify whether it is an invoice, bill, or account
+  if (rawTarget && !invoiceQuery && !billQuery && !accountQuery) {
+    if (/^inv/i.test(rawTarget) || (tx.amount > 0 && /^\d+$/.test(rawTarget) && rawTarget.length >= 4)) {
+      invoiceQuery = rawTarget;
+    } else if (/^bill/i.test(rawTarget) || (tx.amount < 0 && /^bill/i.test(rawTarget))) {
+      billQuery = rawTarget;
+    } else if (/^\d{3,5}$/.test(rawTarget)) {
+      // numeric 4-digit code e.g. 5000, 4000, 7000
+      accountQuery = rawTarget;
+    } else {
+      // Check if target matches invoice
+      const maybeInv = await findInvoiceByNumber(ctx, rawTarget);
+      if (maybeInv) {
+        invoiceQuery = rawTarget;
+      } else {
+        const maybeBill = await findBillByNumber(ctx, rawTarget);
+        if (maybeBill) {
+          billQuery = rawTarget;
+        } else {
+          accountQuery = rawTarget;
+        }
+      }
+    }
+  }
+
+  // If no target specified at all, try auto-matching using suggestions
+  if (!invoiceQuery && !billQuery && !accountQuery) {
+    try {
+      const suggestionsRes = await executeMcpTool(ctx, "get_match_suggestions", {
+        transactionId: tx.id,
+      });
+      const topMatch = suggestionsRes?.suggestedMatches?.[0];
+      if (topMatch && topMatch.confidence >= 60) {
+        if (topMatch.candidate.type === "invoice") {
+          invoiceQuery = topMatch.candidate.id;
+        } else if (topMatch.candidate.type === "bill") {
+          billQuery = topMatch.candidate.id;
+        }
+      } else if (suggestionsRes?.suggestedAccounts?.[0]?.confidence >= 60) {
+        accountQuery = suggestionsRes.suggestedAccounts[0].accountCode;
+      }
+    } catch (e) {
+      // proceed
+    }
+  }
+
+  // If STILL no target, prompt user with options
+  if (!invoiceQuery && !billQuery && !accountQuery) {
+    const suggestionsRes = await executeMcpTool(ctx, "get_match_suggestions", {
+      transactionId: tx.id,
+    });
+    const candidates = suggestionsRes?.suggestedMatches || [];
+    const acctCandidates = suggestionsRes?.suggestedAccounts || [];
+
+    let msg = `🤔 <b>Reconciliation Options for [${tx.id.slice(0, 8)}]</b>\n\n`;
+    msg += `• <b>Description:</b> ${tx.description}\n`;
+    msg += `• <b>Amount:</b> ${tx.amount > 0 ? "🟢 +" : "🔴 -"}£${(Math.abs(tx.amount) / 100).toFixed(2)}\n\n`;
+
+    if (candidates.length > 0) {
+      msg += `<b>Matching Documents Found:</b>\n`;
+      for (const c of candidates) {
+        msg += `• ${c.candidate.type.toUpperCase()}: <b>${c.candidate.description}</b> (£${(Math.abs(c.candidate.amount) / 100).toFixed(2)}) — ${c.confidence}% match\n`;
+        msg += `  👉 <code>/reconcile ${tx.id.slice(0, 8)} ${c.candidate.reference || c.candidate.id}</code>\n`;
+      }
+      msg += `\n`;
+    }
+
+    if (acctCandidates.length > 0) {
+      msg += `<b>Suggested Categories:</b>\n`;
+      for (const a of acctCandidates.slice(0, 3)) {
+        msg += `• <code>${a.accountCode}</code> <b>${a.accountName}</b> (${a.confidence}% match)\n`;
+        msg += `  👉 <code>/reconcile ${tx.id.slice(0, 8)} ${a.accountCode}</code>\n`;
+      }
+      msg += `\n`;
+    }
+
+    msg += `Please specify what to reconcile with, e.g.:\n<code>/reconcile ${tx.id.slice(0, 8)} &lt;INV-# / BILL-# / Account&gt;</code>`;
+
+    return {
+      success: false,
+      error: "No target specified. Suggested options provided.",
+      formattedMessage: msg,
+    };
+  }
+
+  // 1. MATCH TO INVOICE
+  if (invoiceQuery) {
+    const inv = await findInvoiceByNumber(ctx, invoiceQuery);
+    if (!inv) {
+      return {
+        success: false,
+        error: `Invoice "${invoiceQuery}" not found.`,
+        formattedMessage: `⚠️ Invoice "<b>${invoiceQuery}</b>" not found. Please check the invoice number.`,
+      };
+    }
+
+    // If invoice is in draft, activate it so settlement succeeds
+    if (inv.status === "draft") {
+      try {
+        await createInvoiceJournalEntry(
+          { organizationId: ctx.organizationId, userId: ctx.userId },
+          {
+            invoiceNumber: inv.invoiceNumber,
+            total: inv.total,
+            taxTotal: inv.taxTotal,
+            subtotal: inv.subtotal,
+            lines: inv.lines.map((l: any) => ({
+              accountId: l.accountId,
+              amount: l.amount,
+              taxAmount: l.taxAmount,
+            })),
+            date: inv.issueDate,
+            currencyCode: inv.currencyCode,
+          }
+        );
+        await db
+          .update(invoice)
+          .set({ status: "sent", updatedAt: new Date() })
+          .where(eq(invoice.id, inv.id));
+      } catch (err) {
+        console.warn("[Bot Reconcile] Auto-posting draft invoice journal warning:", err);
+      }
+    }
+
+    const amountToApply = Math.min(Math.abs(tx.amount), inv.amountDue > 0 ? inv.amountDue : Math.abs(tx.amount));
+
+    const matchRes = await executeMcpTool(ctx, "match_to_invoice", {
+      transactionId: tx.id,
+      invoiceId: inv.id,
+      amount: amountToApply,
+    });
+
+    if (matchRes?.error) {
+      return {
+        success: false,
+        error: matchRes.error,
+        formattedMessage: `⚠️ Failed to match invoice: ${matchRes.error}`,
+      };
+    }
+
+    const remainingDue = Math.max(0, inv.amountDue - amountToApply);
+    const newStatus = (matchRes?.invoiceStatus || (remainingDue === 0 ? "paid" : "partial")).toUpperCase();
+    const paymentNum = matchRes?.payment?.paymentNumber || "Recorded";
+
+    const msg =
+      `✅ <b>Bank Transaction Reconciled!</b>\n\n` +
+      `• <b>Transaction:</b> <i>${tx.description}</i>\n` +
+      `• <b>Amount:</b> 🟢 +£${(Math.abs(tx.amount) / 100).toFixed(2)} (${account.accountName})\n` +
+      `• <b>Matched To:</b> Invoice <b>${inv.invoiceNumber}</b> (${inv.contact?.name || "Customer"})\n` +
+      `• <b>Payment Recorded:</b> <code>${paymentNum}</code>\n` +
+      `• <b>Invoice Status:</b> <b>${newStatus}</b>\n` +
+      `• <b>Remaining Balance:</b> £${(remainingDue / 100).toFixed(2)}\n` +
+      `• <b>Accounting Ledger:</b> Posted DR Bank (${account.accountName}) / CR Accounts Receivable\n\n` +
+      `🎉 <i>Transaction is now marked as Reconciled.</i>`;
+
+    return {
+      success: true,
+      actionType: "invoice" as const,
+      transaction: tx,
+      matchedEntity: inv,
+      formattedMessage: msg,
+    };
+  }
+
+  // 2. MATCH TO BILL
+  if (billQuery) {
+    const foundBill = await findBillByNumber(ctx, billQuery);
+    if (!foundBill) {
+      return {
+        success: false,
+        error: `Bill "${billQuery}" not found.`,
+        formattedMessage: `⚠️ Bill "<b>${billQuery}</b>" not found. Please check the bill number.`,
+      };
+    }
+
+    // If bill is in draft, activate it so settlement succeeds
+    if (foundBill.status === "draft") {
+      try {
+        await createBillJournalEntry(
+          { organizationId: ctx.organizationId, userId: ctx.userId },
+          {
+            billNumber: foundBill.billNumber,
+            total: foundBill.total,
+            taxTotal: foundBill.taxTotal,
+            lines: foundBill.lines.map((l: any) => ({
+              accountId: l.accountId,
+              amount: l.amount,
+              taxAmount: l.taxAmount,
+            })),
+            date: foundBill.issueDate,
+            currencyCode: foundBill.currencyCode,
+          }
+        );
+        await db
+          .update(bill)
+          .set({ status: "received", updatedAt: new Date() })
+          .where(eq(bill.id, foundBill.id));
+      } catch (err) {
+        console.warn("[Bot Reconcile] Auto-posting draft bill journal warning:", err);
+      }
+    }
+
+    const amountToApply = Math.min(Math.abs(tx.amount), foundBill.amountDue > 0 ? foundBill.amountDue : Math.abs(tx.amount));
+
+    const matchRes = await executeMcpTool(ctx, "match_to_bill", {
+      transactionId: tx.id,
+      billId: foundBill.id,
+      amount: amountToApply,
+    });
+
+    if (matchRes?.error) {
+      return {
+        success: false,
+        error: matchRes.error,
+        formattedMessage: `⚠️ Failed to match bill: ${matchRes.error}`,
+      };
+    }
+
+    const remainingDue = Math.max(0, foundBill.amountDue - amountToApply);
+    const newStatus = (matchRes?.billStatus || (remainingDue === 0 ? "paid" : "partial")).toUpperCase();
+    const paymentNum = matchRes?.payment?.paymentNumber || "Recorded";
+
+    const msg =
+      `✅ <b>Bank Transaction Reconciled!</b>\n\n` +
+      `• <b>Transaction:</b> <i>${tx.description}</i>\n` +
+      `• <b>Amount:</b> 🔴 -£${(Math.abs(tx.amount) / 100).toFixed(2)} (${account.accountName})\n` +
+      `• <b>Matched To:</b> Bill <b>${foundBill.billNumber}</b> (${foundBill.contact?.name || "Supplier"})\n` +
+      `• <b>Payment Recorded:</b> <code>${paymentNum}</code>\n` +
+      `• <b>Bill Status:</b> <b>${newStatus}</b>\n` +
+      `• <b>Remaining Balance:</b> £${(remainingDue / 100).toFixed(2)}\n` +
+      `• <b>Accounting Ledger:</b> Posted DR Accounts Payable / CR Bank (${account.accountName})\n\n` +
+      `🎉 <i>Transaction is now marked as Reconciled.</i>`;
+
+    return {
+      success: true,
+      actionType: "bill" as const,
+      transaction: tx,
+      matchedEntity: foundBill,
+      formattedMessage: msg,
+    };
+  }
+
+  // 3. CATEGORIZE TO CHART ACCOUNT
+  if (accountQuery) {
+    const acct = await findChartAccount(ctx, accountQuery);
+    if (!acct) {
+      return {
+        success: false,
+        error: `Chart of accounts category "${accountQuery}" not found.`,
+        formattedMessage: `⚠️ Category "<b>${accountQuery}</b>" not found. You can enter an account code (e.g. <code>5000</code>) or name (e.g. <code>Cost of Goods Sold</code>).`,
+      };
+    }
+
+    const catRes = await executeMcpTool(ctx, "categorize_bank_transaction", {
+      transactionId: tx.id,
+      accountId: acct.id,
+      memo: params.memo || tx.description,
+    });
+
+    if (catRes?.error) {
+      return {
+        success: false,
+        error: catRes.error,
+        formattedMessage: `⚠️ Failed to categorize transaction: ${catRes.error}`,
+      };
+    }
+
+    const isIncome = tx.amount > 0;
+    const debitCredit = isIncome
+      ? `DR Bank (${account.accountName}) / CR ${acct.name} (${acct.code})`
+      : `DR ${acct.name} (${acct.code}) / CR Bank (${account.accountName})`;
+
+    const msg =
+      `✅ <b>Bank Transaction Reconciled & Categorized!</b>\n\n` +
+      `• <b>Transaction:</b> <i>${tx.description}</i>\n` +
+      `• <b>Amount:</b> ${isIncome ? "🟢 +" : "🔴 -"}£${(Math.abs(tx.amount) / 100).toFixed(2)} (${account.accountName})\n` +
+      `• <b>Category:</b> <b>${acct.code} — ${acct.name}</b> (${acct.type})\n` +
+      `• <b>Double Entry:</b> <code>${debitCredit}</code>\n` +
+      `• <b>Status:</b> <b>RECONCILED</b>\n\n` +
+      `🎉 <i>Posted to general ledger and reconciled successfully.</i>`;
+
+    return {
+      success: true,
+      actionType: "account" as const,
+      transaction: tx,
+      matchedEntity: acct,
+      formattedMessage: msg,
+    };
+  }
+
+  return {
+    success: false,
+    error: "Unable to reconcile transaction.",
+    formattedMessage: "⚠️ Unable to determine reconciliation target. Type <b>/reconcile</b> to see suggestions.",
+  };
+}
+
+/**
+ * Generates reconciliation proof report for bank accounts.
+ */
+export async function getReconciliationReportAction(
+  ctx: AuthContext,
+  params?: {
+    bankAccountId?: string;
+    bankAccountName?: string;
+  }
+) {
+  let orgBankAccounts: any[] = [];
+  try {
+    orgBankAccounts = await db.query.bankAccount.findMany({
+      where: and(
+        eq(bankAccount.organizationId, ctx.organizationId),
+        notDeleted(bankAccount.deletedAt)
+      ),
+      orderBy: asc(bankAccount.accountName),
+    });
+  } catch (err: any) {
+    console.warn("[Bot Reconcile Report] Error fetching bank accounts:", err);
+    return {
+      reports: [],
+      formattedMessage: "⚠️ Database service is temporarily unavailable. Please try again shortly.",
+    };
+  }
+
+  if (orgBankAccounts.length === 0) {
+    return {
+      reports: [],
+      formattedMessage: "🏦 No bank accounts registered in this organization.",
+    };
+  }
+
+  let targetAccounts = orgBankAccounts;
+  if (params?.bankAccountId) {
+    targetAccounts = orgBankAccounts.filter((b) => b.id === params.bankAccountId);
+  } else if (params?.bankAccountName) {
+    const q = params.bankAccountName.toLowerCase();
+    const matched = orgBankAccounts.filter((b) => b.accountName.toLowerCase().includes(q));
+    if (matched.length > 0) targetAccounts = matched;
+  }
+
+  const reports: any[] = [];
+  let msg = `📊 <b>Bank Reconciliation Report</b>\n\n`;
+
+  for (const ba of targetAccounts) {
+    try {
+      const rep = await executeMcpTool(ctx, "reconciliation_report", {
+        bankAccountId: ba.id,
+      });
+
+      const stmtEnd = rep?.statementEndBalance ?? ba.balance;
+      const glBal = rep?.glBalance ?? stmtEnd;
+      const diff = rep?.difference ?? 0;
+      const isBalanced = rep?.isBalanced ?? diff === 0;
+
+      reports.push({
+        bankAccount: ba,
+        report: rep,
+      });
+
+      const stmtEndFormatted = `£${(stmtEnd / 100).toFixed(2)}`;
+      const glBalFormatted = `£${(glBal / 100).toFixed(2)}`;
+      const diffFormatted = `£${(Math.abs(diff) / 100).toFixed(2)}`;
+
+      msg += `🏦 <b>${ba.accountName}</b> (${ba.currencyCode})\n`;
+      msg += `• <b>Statement Closing Balance:</b> ${stmtEndFormatted}\n`;
+      msg += `• <b>General Ledger Balance:</b> ${glBalFormatted}\n`;
+      msg += `• <b>Variance:</b> ${isBalanced ? "£0.00 (Balanced ✅)" : `${diffFormatted} ⚠️`}\n`;
+      msg += `• <b>Reconciled Lines:</b> ${rep?.reconciled?.count || 0}\n`;
+      msg += `• <b>Unreconciled Lines:</b> ${rep?.unreconciled?.count || 0}\n\n`;
+    } catch (err: any) {
+      msg += `🏦 <b>${ba.accountName}</b>: ${err?.message || "Report unavailable"}\n\n`;
+    }
+  }
+
+  msg += `💡 Type <code>/reconcile</code> to review unreconciled statement lines.`;
+
+  return {
+    reports,
+    formattedMessage: msg.trim(),
+  };
+}
+
