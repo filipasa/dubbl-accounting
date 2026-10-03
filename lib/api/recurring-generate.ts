@@ -490,6 +490,7 @@ export async function processRecurringTemplates(
           amountPaid: 0,
           amountDue: total,
           currencyCode: tmpl.currencyCode,
+          paymentMethods: ["pay_by_bank"],
           paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: tmpl.createdBy,
         })

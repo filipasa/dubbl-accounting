@@ -92,6 +92,7 @@ export async function POST(request: Request) {
           total: subtotal,
           amountPaid: 0,
           amountDue: subtotal,
+          paymentMethods: ["pay_by_bank"],
           paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         }).returning();

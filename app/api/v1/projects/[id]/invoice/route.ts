@@ -160,6 +160,7 @@ export async function POST(
           amountPaid: 0,
           amountDue: subtotal,
           currencyCode: proj.currency,
+          paymentMethods: ["pay_by_bank"],
           paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         })

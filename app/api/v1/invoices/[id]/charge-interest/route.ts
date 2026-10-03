@@ -138,6 +138,7 @@ export async function POST(
         amountPaid: 0,
         amountDue: interestAmountCents,
         currencyCode: found.currencyCode,
+        paymentMethods: ["pay_by_bank"],
         paymentLinkToken: randomBytes(24).toString("hex"),
         createdBy: ctx.userId,
       })

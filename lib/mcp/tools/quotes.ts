@@ -240,6 +240,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               amountPaid: 0,
               amountDue: invoiceTotal,
               currencyCode: found.currencyCode,
+              paymentMethods: ["pay_by_bank"],
               paymentLinkToken: randomBytes(24).toString("hex"),
               createdBy: ctx.userId,
             })

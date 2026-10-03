@@ -26,8 +26,8 @@ interface PortalInvoice {
 }
 
 // Statuses for which the invoice can still be paid online. Mirrors the
-// payable check in /api/pay/[token]/checkout (rejects paid/void/draft).
-const PAYABLE_STATUSES = new Set(["sent", "partial", "overdue"]);
+// payable check in /api/pay/[token]/checkout (rejects paid/void).
+const PAYABLE_STATUSES = new Set(["draft", "sent", "partial", "overdue"]);
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",

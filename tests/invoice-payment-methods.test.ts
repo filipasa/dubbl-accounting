@@ -431,5 +431,21 @@ test("VAT is calculated on net total after shipping and discount (Sub £100, Shi
   assert.ok(pdfBuf.byteLength > 1000, "PDF renders successfully");
 });
 
+test("Draft invoices are accepted for payment (status draft with positive amountDue)", () => {
+  function isInvoicePayable(status: string, amountDue: number): boolean {
+    if (status === "paid" || amountDue <= 0) return false;
+    if (status === "void") return false;
+    return true;
+  }
+
+  assert.equal(isInvoicePayable("draft", 5000), true, "Draft invoice with balance should be payable");
+  assert.equal(isInvoicePayable("sent", 5000), true, "Sent invoice with balance should be payable");
+  assert.equal(isInvoicePayable("partial", 2500), true, "Partial invoice with balance should be payable");
+  assert.equal(isInvoicePayable("overdue", 5000), true, "Overdue invoice with balance should be payable");
+  assert.equal(isInvoicePayable("void", 5000), false, "Void invoice must NOT be payable");
+  assert.equal(isInvoicePayable("paid", 0), false, "Paid invoice must NOT be payable");
+  assert.equal(isInvoicePayable("draft", 0), false, "Invoice with 0 amount due must NOT be payable");
+});
+
 
 

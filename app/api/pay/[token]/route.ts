@@ -30,16 +30,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid payment link" }, { status: 404 });
   }
 
-  if (inv.status === "paid") {
+  if (inv.status === "paid" || inv.amountDue <= 0) {
     return NextResponse.json({ status: "paid", invoice: { invoiceNumber: inv.invoiceNumber } });
   }
 
-  if (inv.status === "void" || inv.status === "draft") {
+  if (inv.status === "void") {
     return NextResponse.json({ error: "Invoice is not payable" }, { status: 400 });
-  }
-
-  if (inv.paymentMethods && inv.paymentMethods.length === 0) {
-    return NextResponse.json({ error: "Online payments are not enabled for this invoice" }, { status: 400 });
   }
 
   const template = await db.query.documentTemplate.findFirst({

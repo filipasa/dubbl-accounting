@@ -669,6 +669,7 @@ function InvoiceDrawer({ open, onClose }: { open: boolean; onClose: () => void }
           notes: notes || null,
           invoiceType: isDepositRetainer ? invoiceType : "standard",
           depositPercent: isDepositRetainer ? depositBasisPoints : null,
+          paymentMethods: ["pay_by_bank"],
           ...(forApproval ? { submitForApproval: true } : {}),
           lines: finalLines,
         }),

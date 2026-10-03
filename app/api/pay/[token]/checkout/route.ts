@@ -23,12 +23,8 @@ export async function POST(
     with: { organization: true, contact: true },
   });
 
-  if (!inv || inv.status === "paid" || inv.status === "void" || inv.status === "draft") {
+  if (!inv || inv.status === "paid" || inv.status === "void" || inv.amountDue <= 0) {
     return NextResponse.json({ error: "Invoice not payable" }, { status: 400 });
-  }
-
-  if (inv.paymentMethods && inv.paymentMethods.length === 0) {
-    return NextResponse.json({ error: "Online payments are not enabled for this invoice" }, { status: 400 });
   }
 
   const methods = inv.paymentMethods && inv.paymentMethods.length > 0 ? inv.paymentMethods : ["pay_by_bank"];

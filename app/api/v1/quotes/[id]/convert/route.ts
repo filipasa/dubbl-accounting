@@ -296,6 +296,7 @@ export async function POST(
           currencyCode: found.currencyCode,
           senderSnapshot,
           recipientSnapshot,
+          paymentMethods: ["pay_by_bank"],
           paymentLinkToken: randomBytes(24).toString("hex"),
           createdBy: ctx.userId,
         })

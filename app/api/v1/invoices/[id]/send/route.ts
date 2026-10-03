@@ -36,7 +36,7 @@ const sendBodySchema = z.object({
   subject: z.string().min(1),
   templateProps: templatePropsSchema,
   attachPdf: z.boolean().default(true),
-  includePaymentLink: z.boolean().default(false),
+  includePaymentLink: z.boolean().default(true),
   paymentMethods: z.array(z.string()).optional(),
   passProcessingFee: z.boolean().optional().default(false),
 });
@@ -150,7 +150,9 @@ export async function POST(
       // Determine final payment methods to store and use
       const finalPaymentMethods = paymentMethods !== undefined
         ? paymentMethods
-        : (includePaymentLink ? ["pay_by_bank"] : []);
+        : (found.paymentMethods && found.paymentMethods.length > 0
+            ? found.paymentMethods
+            : (includePaymentLink ? ["pay_by_bank"] : ["pay_by_bank"]));
 
       const hasPaymentMethods = finalPaymentMethods.length > 0;
 
