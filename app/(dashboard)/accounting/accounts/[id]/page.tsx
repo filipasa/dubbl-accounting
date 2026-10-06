@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import {
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { motion, MotionConfig } from "motion/react";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { Button } from "@/components/ui/button";
@@ -33,6 +40,7 @@ const ledgerColumns: Column<LedgerEntry>[] = [
   {
     key: "number",
     header: "#",
+    sortKey: "number",
     className: "w-16",
     render: (r) => (
       <a
@@ -46,6 +54,7 @@ const ledgerColumns: Column<LedgerEntry>[] = [
   {
     key: "date",
     header: "Date",
+    sortKey: "date",
     className: "w-28",
     render: (r) => <span className="text-sm">{r.date}</span>,
   },
@@ -91,6 +100,7 @@ export default function AccountLedgerPage() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
@@ -99,12 +109,10 @@ export default function AccountLedgerPage() {
   const [sort, setSort] = useState("date:desc");
   const [entryType, setEntryType] = useState("all");
 
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(1);
   const [refetching, setRefetching] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
@@ -112,29 +120,37 @@ export default function AccountLedgerPage() {
 
   const pendingSearch = search !== debouncedSearch;
 
-  const buildParams = useCallback((pageNum: number) => {
-    const [sortBy, sortOrder] = sort.split(":");
-    const params = new URLSearchParams();
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    if (dateFrom) params.set("from", dateFrom);
-    if (dateTo) params.set("to", dateTo);
-    if (entryType !== "all") params.set("entryType", entryType);
-    if (sortBy !== "date") params.set("sortBy", sortBy);
-    if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
-    params.set("page", String(pageNum));
-    params.set("limit", "50");
-    return params;
-  }, [debouncedSearch, dateFrom, dateTo, entryType, sort]);
+  const buildParams = useCallback(
+    (pageNum: number, limitNum: number) => {
+      const [sortBy, sortOrder] = sort.split(":");
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
+      if (entryType !== "all") params.set("entryType", entryType);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
+      params.set("page", String(pageNum));
+      params.set("limit", String(limitNum));
+      return params;
+    },
+    [debouncedSearch, dateFrom, dateTo, entryType, sort]
+  );
+
+  const prevDebouncedSearchRef = useRef(debouncedSearch);
+  useEffect(() => {
+    if (prevDebouncedSearchRef.current !== debouncedSearch) {
+      prevDebouncedSearchRef.current = debouncedSearch;
+      setPage(1);
+    }
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
-    const isRefetch = !loading;
-    setPage(1);
-    setHasMore(true);
-    if (isRefetch) setRefetching(true);
+    setRefetching(true);
 
-    fetch(`/api/v1/accounts/${id}?${buildParams(1)}`, {
+    fetch(`/api/v1/accounts/${id}?${buildParams(page, pageSize)}`, {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
@@ -143,8 +159,15 @@ export default function AccountLedgerPage() {
         if (data.data) setLedger(data.data);
         if (data.pagination) {
           setTotal(data.pagination.total);
-          setHasMore(data.pagination.page < data.pagination.totalPages);
+          setTotalPages(
+            data.pagination.totalPages ||
+              Math.ceil((data.pagination.total || 0) / pageSize) ||
+              1
+          );
         }
+      })
+      .catch((err) => {
+        if (!cancelled) console.error("Failed to load account ledger:", err);
       })
       .finally(() => {
         if (!cancelled) {
@@ -154,57 +177,52 @@ export default function AccountLedgerPage() {
         }
       });
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, debouncedSearch, dateFrom, dateTo, entryType, sort]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, orgId, page, pageSize, debouncedSearch, dateFrom, dateTo, entryType, sort, buildParams]);
 
-  const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore || !orgId) return;
-    const nextPage = page + 1;
-    setLoadingMore(true);
+  const handlePageSizeChange = (val: string) => {
+    setPageSize(Number(val));
+    setPage(1);
+  };
 
-    fetch(`/api/v1/accounts/${id}?${buildParams(nextPage)}`, {
-      headers: { "x-organization-id": orgId },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.data) setLedger((prev) => [...prev, ...data.data]);
-        if (data.pagination) {
-          setPage(data.pagination.page);
-          setTotal(data.pagination.total);
-          setHasMore(data.pagination.page < data.pagination.totalPages);
-        }
-      })
-      .finally(() => setLoadingMore(false));
-  }, [loadingMore, hasMore, page, id, orgId, buildParams]);
+  const handleClearFilters = () => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setEntryType("all");
+    setPage(1);
+  };
 
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore]);
+  const [sortKey, sortOrder] = sort.split(":");
+  const handleColumnSort = (key: string) => {
+    if (sortKey === key) {
+      setSort(`${key}:${sortOrder === "asc" ? "desc" : "asc"}`);
+    } else {
+      setSort(`${key}:asc`);
+    }
+    setPage(1);
+  };
 
-  const summary = useMemo(() => {
-    const totalDebits = ledger.reduce((s, e) => s + parseFloat(e.debitAmount), 0);
-    const totalCredits = ledger.reduce((s, e) => s + parseFloat(e.creditAmount), 0);
-    return { totalDebits, totalCredits };
-  }, [ledger]);
-
-  const hasFilters = search || dateFrom || dateTo || entryType !== "all";
+  const hasFilters = Boolean(search || dateFrom || dateTo || entryType !== "all");
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Transactions</h3>
-        <span className="text-xs text-muted-foreground tabular-nums">{total} entries</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
+        </span>
       </div>
 
-      <Tabs value={entryType} onValueChange={setEntryType}>
+      <Tabs
+        value={entryType}
+        onValueChange={(val) => {
+          setEntryType(val);
+          setPage(1);
+        }}
+      >
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger
@@ -236,7 +254,10 @@ export default function AccountLedgerPage() {
           <span className="text-xs text-muted-foreground shrink-0">From</span>
           <DatePicker
             value={dateFrom}
-            onChange={(v) => setDateFrom(v)}
+            onChange={(v) => {
+              setDateFrom(v);
+              setPage(1);
+            }}
             placeholder="Start date"
             className="h-8 w-40 text-xs"
           />
@@ -245,12 +266,21 @@ export default function AccountLedgerPage() {
           <span className="text-xs text-muted-foreground shrink-0">To</span>
           <DatePicker
             value={dateTo}
-            onChange={(v) => setDateTo(v)}
+            onChange={(v) => {
+              setDateTo(v);
+              setPage(1);
+            }}
             placeholder="End date"
             className="h-8 w-40 text-xs"
           />
         </div>
-        <Select value={sort} onValueChange={setSort}>
+        <Select
+          value={sort}
+          onValueChange={(val) => {
+            setSort(val);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="h-8 w-44 text-xs">
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
@@ -268,12 +298,7 @@ export default function AccountLedgerPage() {
             variant="ghost"
             size="sm"
             className="h-8 text-xs text-muted-foreground"
-            onClick={() => {
-              setSearch("");
-              setDateFrom("");
-              setDateTo("");
-              setEntryType("all");
-            }}
+            onClick={handleClearFilters}
           >
             <X className="mr-1 size-3" />
             Clear filters
@@ -281,39 +306,120 @@ export default function AccountLedgerPage() {
         )}
       </div>
 
-      {refetching || pendingSearch ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="brand-loader" aria-label="Loading">
-            <div className="brand-loader-circle brand-loader-circle-1" />
-            <div className="brand-loader-circle brand-loader-circle-2" />
-          </div>
-        </div>
-      ) : (
-        <MotionConfig reducedMotion="never">
-          <motion.div
-            key={fetchKey}
-            initial={{ opacity: 0, y: 12, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.8, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            style={{ willChange: "opacity, transform, filter" }}
-            className="overflow-x-auto"
-          >
-            <DataTable
-              columns={ledgerColumns}
-              data={ledger}
-              emptyMessage={hasFilters ? "No entries match your filters." : "No transactions in this account yet."}
-            />
-          </motion.div>
-        </MotionConfig>
-      )}
+      <MotionConfig reducedMotion="never">
+        <motion.div
+          key={fetchKey}
+          initial={{ opacity: 0, y: 12, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.8, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          style={{ willChange: "opacity, transform, filter" }}
+          className="overflow-x-auto"
+        >
+          <DataTable
+            columns={ledgerColumns}
+            data={ledger}
+            loading={loading || refetching || pendingSearch}
+            sortBy={sortKey}
+            sortOrder={sortOrder as "asc" | "desc"}
+            onSort={handleColumnSort}
+            emptyMessage={
+              hasFilters
+                ? "No entries match your filters."
+                : "No transactions in this account yet."
+            }
+          />
+        </motion.div>
+      </MotionConfig>
 
-      {hasMore && !refetching && <div ref={sentinelRef} className="h-1" />}
-      {loadingMore && (
-        <div className="flex items-center justify-center py-4">
-          <div className="brand-loader" aria-label="Loading more">
-            <div className="brand-loader-circle brand-loader-circle-1" />
-            <div className="brand-loader-circle brand-loader-circle-2" />
+      {/* Pagination controls */}
+      {total > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {((page - 1) * pageSize + 1).toLocaleString()}
+              </span>
+              {"–"}
+              <span className="font-medium text-foreground">
+                {Math.min(page * pageSize, total).toLocaleString()}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-foreground">
+                {total.toLocaleString()}
+              </span>{" "}
+              entries
+            </span>
+
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-[11px]">Per page:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className="h-7 w-[70px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="250">250</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                disabled={page <= 1 || refetching}
+                onClick={() => setPage(1)}
+                title="First page"
+              >
+                <ChevronsLeft className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={page <= 1 || refetching}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="size-3.5 mr-0.5" />
+                Previous
+              </Button>
+
+              <div className="px-2 text-xs tabular-nums">
+                Page <span className="font-medium text-foreground">{page}</span> of{" "}
+                <span className="font-medium text-foreground">{totalPages}</span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={page >= totalPages || refetching}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+                <ChevronRight className="size-3.5 ml-0.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                disabled={page >= totalPages || refetching}
+                onClick={() => setPage(totalPages)}
+                title="Last page"
+              >
+                <ChevronsRight className="size-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
