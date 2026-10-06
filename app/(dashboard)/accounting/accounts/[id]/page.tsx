@@ -67,31 +67,55 @@ const ledgerColumns: Column<LedgerEntry>[] = [
     key: "debit",
     header: "Debit",
     className: "w-28 text-right",
-    render: (r) => (
-      <span className="font-mono text-sm tabular-nums">
-        {parseFloat(r.debitAmount) > 0 ? parseFloat(r.debitAmount).toFixed(2) : ""}
-      </span>
-    ),
+    render: (r) => {
+      const val = parseFloat(r.debitAmount);
+      return (
+        <span className="font-mono text-sm tabular-nums">
+          {val > 0
+            ? val.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
+            : ""}
+        </span>
+      );
+    },
   },
   {
     key: "credit",
     header: "Credit",
     className: "w-28 text-right",
-    render: (r) => (
-      <span className="font-mono text-sm tabular-nums">
-        {parseFloat(r.creditAmount) > 0 ? parseFloat(r.creditAmount).toFixed(2) : ""}
-      </span>
-    ),
+    render: (r) => {
+      const val = parseFloat(r.creditAmount);
+      return (
+        <span className="font-mono text-sm tabular-nums">
+          {val > 0
+            ? val.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
+            : ""}
+        </span>
+      );
+    },
   },
   {
     key: "balance",
     header: "Balance",
     className: "w-28 text-right",
-    render: (r) => (
-      <span className="font-mono text-sm font-medium tabular-nums">
-        {parseFloat(r.balance).toFixed(2)}
-      </span>
-    ),
+    render: (r) => {
+      const val = parseFloat(r.balance);
+      return (
+        <span className="font-mono text-sm font-medium tabular-nums">
+          {isNaN(val)
+            ? ""
+            : val.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+        </span>
+      );
+    },
   },
 ];
 

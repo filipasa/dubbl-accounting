@@ -6,6 +6,7 @@ import { getAuthContext, AuthError } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { logAudit, diffChanges } from "@/lib/api/audit";
 import { parsePagination, paginatedResponse } from "@/lib/api/pagination";
+import { centsToDecimal } from "@/lib/money";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -53,7 +54,8 @@ export async function GET(
         entryId: journalEntry.id,
         entryNumber: journalEntry.entryNumber,
         date: journalEntry.date,
-        description: journalEntry.description,
+        entryDescription: journalEntry.description,
+        lineDescription: journalLine.description,
         debitAmount: journalLine.debitAmount,
         creditAmount: journalLine.creditAmount,
       })
@@ -81,7 +83,15 @@ export async function GET(
       } else {
         balance += credit - debit;
       }
-      return { ...row, balance };
+      return {
+        entryId: row.entryId,
+        entryNumber: row.entryNumber,
+        date: row.date,
+        description: row.lineDescription || row.entryDescription || "",
+        debitAmount: debit,
+        creditAmount: credit,
+        balance,
+      };
     });
 
     // Apply filters
@@ -119,10 +129,24 @@ export async function GET(
     });
 
     const total = filtered.length;
-    const paged = filtered.slice(offset, offset + limit);
+    const paged = filtered.slice(offset, offset + limit).map((row) => ({
+      entryId: row.entryId,
+      entryNumber: row.entryNumber,
+      date: row.date,
+      description: row.description,
+      debitAmount: centsToDecimal(row.debitAmount),
+      creditAmount: centsToDecimal(row.creditAmount),
+      balance: centsToDecimal(row.balance),
+    }));
 
     return NextResponse.json({
-      account: { ...account, balance, totalDebits, totalCredits, entryCount: allLedger.length },
+      account: {
+        ...account,
+        balance: centsToDecimal(balance),
+        totalDebits: totalDebits / 100,
+        totalCredits: totalCredits / 100,
+        entryCount: allLedger.length,
+      },
       ...paginatedResponse(paged, total, page, limit),
     });
   } catch (err) {

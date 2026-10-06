@@ -291,6 +291,7 @@ export async function POST(
             accountId: l.accountId,
             amount: l.amount,
             taxAmount: l.taxAmount,
+            description: l.description,
           })),
           date: found.issueDate,
           currencyCode: found.currencyCode,

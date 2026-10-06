@@ -377,7 +377,7 @@ export async function createInvoiceJournalEntry(
     total: number;
     taxTotal: number;
     subtotal: number;
-    lines: { accountId: string | null; amount: number; taxAmount: number }[];
+    lines: { accountId: string | null; amount: number; taxAmount: number; description?: string | null }[];
     date: string;
     currencyCode?: string;
   },
@@ -415,11 +415,14 @@ export async function createInvoiceJournalEntry(
   // CR Revenue accounts per line (or DR if line.amount < 0, e.g. discount)
   for (const line of invoiceData.lines) {
     const accId = line.accountId || defaultRevenueAccount?.id;
+    const lineDesc = line.description
+      ? `Invoice ${invoiceData.invoiceNumber} - ${line.description}`
+      : `Invoice ${invoiceData.invoiceNumber}`;
     if (accId && line.amount > 0) {
       lines.push({
         journalEntryId: entry.id,
         accountId: accId,
-        description: `Invoice ${invoiceData.invoiceNumber}`,
+        description: lineDesc,
         debitAmount: 0,
         creditAmount: line.amount,
       });
@@ -427,7 +430,7 @@ export async function createInvoiceJournalEntry(
       lines.push({
         journalEntryId: entry.id,
         accountId: accId,
-        description: `Invoice ${invoiceData.invoiceNumber}`,
+        description: lineDesc,
         debitAmount: Math.abs(line.amount),
         creditAmount: 0,
       });
@@ -515,6 +518,7 @@ export async function createBillJournalEntry(
       // the rate's recoverablePercent (recoverable → 1500, blocked → cost) and
       // reverse_charge lines self-account output VAT. Omit for legacy behaviour.
       taxRateId?: string | null;
+      description?: string | null;
     }[];
     date: string;
     currencyCode?: string;
@@ -625,7 +629,9 @@ export async function createBillJournalEntry(
     lines.push({
       journalEntryId: entry.id,
       accountId: line.accountId,
-      description: `Bill ${billData.billNumber}`,
+      description: line.description
+        ? `Bill ${billData.billNumber} - ${line.description}`
+        : `Bill ${billData.billNumber}`,
       debitAmount: expenseDebit,
       creditAmount: 0,
     });
@@ -752,7 +758,7 @@ export async function createCreditNoteJournalEntry(
     creditNoteNumber: string;
     total: number;
     taxTotal: number;
-    lines: { accountId: string | null; amount: number; taxAmount: number }[];
+    lines: { accountId: string | null; amount: number; taxAmount: number; description?: string | null }[];
     date: string;
     currencyCode?: string;
   },
@@ -789,7 +795,9 @@ export async function createCreditNoteJournalEntry(
       lines.push({
         journalEntryId: entry.id,
         accountId: line.accountId,
-        description: `Credit Note ${data.creditNoteNumber}`,
+        description: line.description
+          ? `Credit Note ${data.creditNoteNumber} - ${line.description}`
+          : `Credit Note ${data.creditNoteNumber}`,
         debitAmount: line.amount,
         creditAmount: 0,
       });
@@ -854,7 +862,7 @@ export async function createDebitNoteJournalEntry(
     debitNoteNumber: string;
     total: number;
     taxTotal: number;
-    lines: { accountId: string | null; amount: number; taxAmount: number }[];
+    lines: { accountId: string | null; amount: number; taxAmount: number; description?: string | null }[];
     date: string;
     // Optional document currency. When supplied (and foreign), the entry is
     // posted in base currency; defaults to the org base currency.
@@ -888,7 +896,9 @@ export async function createDebitNoteJournalEntry(
       lines.push({
         journalEntryId: entry.id,
         accountId: line.accountId,
-        description: `Debit Note ${data.debitNoteNumber}`,
+        description: line.description
+          ? `Debit Note ${data.debitNoteNumber} - ${line.description}`
+          : `Debit Note ${data.debitNoteNumber}`,
         debitAmount: 0,
         creditAmount: line.amount,
       });
