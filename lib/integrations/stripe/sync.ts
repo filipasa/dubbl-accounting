@@ -263,7 +263,68 @@ export async function handleChargeSucceeded(
   integration: Integration,
   charge: Stripe.Charge
 ) {
-  if (await isDuplicate(integration.organizationId, "charge", charge.id)) return;
+  if (await isDuplicate(integration.organizationId, "charge", charge.id)) {
+    // If the charge was already recorded, ensure its fee entry exists; if not, backfill it
+    if (charge.balance_transaction && integration.feesAccountId && integration.clearingAccountId) {
+      const existingFee = await db.query.journalEntry.findFirst({
+        where: and(
+          eq(journalEntry.organizationId, integration.organizationId),
+          eq(journalEntry.reference, charge.id),
+          eq(journalEntry.sourceType, "stripe_fee")
+        ),
+      });
+
+      if (!existingFee) {
+        try {
+          const client = getStripeClient(integration);
+          const balanceTx = await client.balanceTransactions.retrieve(
+            charge.balance_transaction as string,
+            integration.accessToken ? undefined : { stripeAccount: integration.stripeAccountId }
+          );
+          const fee = balanceTx.fee;
+
+          if (fee > 0) {
+            const chargeDate = new Date(charge.created * 1000).toISOString().slice(0, 10);
+            const feeEntryNumber = await getNextEntryNumber(integration.organizationId);
+            const [feeEntry] = await db
+              .insert(journalEntry)
+              .values({
+                organizationId: integration.organizationId,
+                entryNumber: feeEntryNumber,
+                date: chargeDate,
+                description: `Stripe fee for ${charge.id}`,
+                reference: charge.id,
+                status: "posted",
+                sourceType: "stripe_fee",
+                postedAt: new Date(),
+                createdBy: integration.connectedBy,
+              })
+              .returning();
+
+            await db.insert(journalLine).values([
+              {
+                journalEntryId: feeEntry.id,
+                accountId: integration.feesAccountId,
+                description: `Stripe processing fee`,
+                debitAmount: fee,
+                creditAmount: 0,
+              },
+              {
+                journalEntryId: feeEntry.id,
+                accountId: integration.clearingAccountId,
+                description: `Stripe processing fee`,
+                debitAmount: 0,
+                creditAmount: fee,
+              },
+            ]);
+          }
+        } catch (feeErr) {
+          console.warn(`[Stripe Sync] Failed to backfill fee for charge ${charge.id}:`, feeErr);
+        }
+      }
+    }
+    return;
+  }
 
   if (
     !integration.clearingAccountId ||
