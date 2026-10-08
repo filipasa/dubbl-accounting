@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatMoney, minorUnitsToDecimal } from "@/lib/money";
 import { ContactPicker } from "@/components/dashboard/contact-picker";
-import { LineItemsEditor, type LineItem } from "@/components/dashboard/line-items-editor";
+import { LineItemsEditor, type LineItem, type AdjustmentState } from "@/components/dashboard/line-items-editor";
 import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { DualAmount } from "@/components/ui/dual-amount";
 import { RateNote, type RateInfo } from "@/components/ui/rate-note";
@@ -1412,6 +1412,8 @@ function EditInvoiceSheet({
   const [invoiceType, setInvoiceType] = useState<"deposit" | "retainer">("deposit");
   const [depositPercent, setDepositPercent] = useState("");
   const [lines, setLines] = useState<LineItem[]>([]);
+  const [discount, setDiscount] = useState<AdjustmentState | null>(null);
+  const [shipping, setShipping] = useState<AdjustmentState | null>(null);
 
   useEffect(() => {
     if (open && inv) {
@@ -1426,9 +1428,39 @@ function EditInvoiceSheet({
       setDepositPercent(
         inv.depositPercent ? (inv.depositPercent / 100).toString() : ""
       );
+
+      const partitioned = partitionDocumentLines(inv.lines || []);
+      const itemLines = partitioned.itemLines;
+      const shippingLine = partitioned.shippingLines[0];
+      const discountLine = partitioned.discountLines[0];
+
+      if (shippingLine) {
+        const rawShip = (shippingLine as any).unitPrice ?? (shippingLine as any).amount ?? 0;
+        const shipVal = Math.abs(rawShip) / 100;
+        setShipping({
+          type: "fixed",
+          value: shipVal > 0 ? shipVal.toString() : "",
+          taxRateId: (shippingLine as any).taxRate?.id || (shippingLine as any).taxRateId || null,
+        });
+      } else {
+        setShipping(null);
+      }
+
+      if (discountLine) {
+        const rawDisc = (discountLine as any).unitPrice ?? (discountLine as any).amount ?? 0;
+        const discVal = Math.abs(rawDisc) / 100;
+        setDiscount({
+          type: "fixed",
+          value: discVal > 0 ? discVal.toString() : "",
+          taxRateId: (discountLine as any).taxRate?.id || (discountLine as any).taxRateId || null,
+        });
+      } else {
+        setDiscount(null);
+      }
+
       setLines(
-        inv.lines && inv.lines.length > 0
-          ? inv.lines.map((l) => ({
+        itemLines && itemLines.length > 0
+          ? itemLines.map((l: any) => ({
               description: l.description,
               quantity: String(l.quantity / 100),
               unitPrice: minorUnitsToDecimal(l.unitPrice, inv.currencyCode),
@@ -1463,6 +1495,67 @@ function EditInvoiceSheet({
         : null;
 
     try {
+      const subtotal = lines.reduce((sum, l) => {
+        const qty = parseFloat(l.quantity) || 0;
+        const pr = parseFloat(l.unitPrice) || 0;
+        return sum + qty * pr;
+      }, 0);
+
+      const discountVal = parseFloat(discount?.value || "0") || 0;
+      const discountAmount = discount && discountVal > 0
+        ? discount.type === "percent"
+          ? Math.round((subtotal * discountVal) / 100 * 100) / 100
+          : discountVal
+        : 0;
+
+      const shippingVal = parseFloat(shipping?.value || "0") || 0;
+      const shippingAmount = shipping && shippingVal > 0
+        ? shipping.type === "percent"
+          ? Math.round((subtotal * shippingVal) / 100 * 100) / 100
+          : shippingVal
+        : 0;
+
+      const defaultRevenueAccountId = lines.find((l) => l.accountId)?.accountId || null;
+      const applicableTaxRateId =
+        discount?.taxRateId ||
+        shipping?.taxRateId ||
+        lines.find((l) => Boolean(l.taxRateId))?.taxRateId ||
+        null;
+
+      const finalLines: any[] = lines.map((l) => ({
+        description: l.description,
+        quantity: parseFloat(l.quantity) || 1,
+        unitPrice: parseFloat(l.unitPrice) || 0,
+        accountId: l.accountId || null,
+        taxRateId: l.taxRateId || null,
+        imageUrl: l.imageUrl || null,
+        shortDescription: l.shortDescription || null,
+      }));
+
+      if (shipping && shippingAmount > 0) {
+        finalLines.push({
+          description: shipping.type === "percent" ? `Shipping (${shipping.value}%)` : "Shipping",
+          quantity: 1,
+          unitPrice: shippingAmount,
+          accountId: defaultRevenueAccountId,
+          taxRateId: applicableTaxRateId,
+          imageUrl: null,
+          shortDescription: null,
+        });
+      }
+
+      if (discount && discountAmount > 0) {
+        finalLines.push({
+          description: discount.type === "percent" ? `Discount (${discount.value}%)` : "Discount",
+          quantity: 1,
+          unitPrice: -discountAmount,
+          accountId: defaultRevenueAccountId,
+          taxRateId: applicableTaxRateId,
+          imageUrl: null,
+          shortDescription: null,
+        });
+      }
+
       const res = await fetch(`/api/v1/invoices/${inv.id}`, {
         method: "PATCH",
         headers: {
@@ -1477,15 +1570,7 @@ function EditInvoiceSheet({
           notes: notes || null,
           invoiceType: isDepositRetainer ? invoiceType : "standard",
           depositPercent: isDepositRetainer ? depositBasisPoints : null,
-          lines: lines.map((l) => ({
-            description: l.description,
-            quantity: parseFloat(l.quantity) || 1,
-            unitPrice: parseFloat(l.unitPrice) || 0,
-            accountId: l.accountId || null,
-            taxRateId: l.taxRateId || null,
-            imageUrl: l.imageUrl || null,
-            shortDescription: l.shortDescription || null,
-          })),
+          lines: finalLines,
         }),
       });
 
@@ -1603,6 +1688,12 @@ function EditInvoiceSheet({
                 accountTypeFilter={["revenue"]}
                 taxContext="sales"
                 defaultToStandardRate={false}
+                allowAdjustments={true}
+                shipping={shipping}
+                onShippingChange={setShipping}
+                discount={discount}
+                onDiscountChange={setDiscount}
+                currencySymbol={inv.currencyCode === "GBP" ? "£" : undefined}
               />
             </div>
 

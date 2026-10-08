@@ -417,6 +417,12 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               .string()
               .optional()
               .describe("Per-line price list override; falls back to the document-level priceListId"),
+            imageUrl: z.string().nullable().optional().describe("Image URL for line item"),
+            shortDescription: z
+              .string()
+              .nullable()
+              .optional()
+              .describe("Short secondary description, specifications, dimensions, attributes, or size"),
           })
         )
         .min(1)
@@ -503,6 +509,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             discountPercent: l.discountPercent,
             taxAmount,
             amount,
+            imageUrl: l.imageUrl || null,
+            shortDescription: l.shortDescription || null,
             sortOrder: i,
           };
         });
@@ -565,6 +573,12 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             accountId: z.string().nullable().optional(),
             taxRateId: z.string().nullable().optional(),
             discountPercent: z.number().int().min(0).max(10000).default(0),
+            imageUrl: z.string().nullable().optional().describe("Image URL for line item"),
+            shortDescription: z
+              .string()
+              .nullable()
+              .optional()
+              .describe("Short secondary description, specifications, dimensions, attributes, or size"),
           })
         )
         .optional()
@@ -625,6 +639,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               discountPercent: l.discountPercent,
               taxAmount,
               amount,
+              imageUrl: l.imageUrl || null,
+              shortDescription: l.shortDescription || null,
               sortOrder: i,
             };
           });

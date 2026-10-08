@@ -43,7 +43,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "create_quote",
     description:
-      "Create a sales quote / estimate in Fixbooks. Use this when the user asks for a 'quote', 'estimate', or 'pricing proposal'. Put ALL items (doors, materials, delivery fees, installation, etc.) as separate objects inside the 'lines' array of a SINGLE quote. NEVER create multiple quotes for one request.",
+      "Create a sales quote / estimate in Fixbooks. Use this when the user asks for a 'quote', 'estimate', or 'pricing proposal'. Put all product line items into the 'lines' array. Put shipping or delivery fees in the dedicated 'shipping' parameter. NEVER create multiple quotes for one request.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -66,14 +66,19 @@ const TOOL_DEFINITIONS = [
         lines: {
           type: "ARRAY",
           description:
-            "Array of line items. Include products, materials, and any delivery fee as separate items in this array.",
+            "Array of line items. For each line, put ONLY the product/service name in description, and any size, dimension, or technical detail in shortDescription.",
           items: {
             type: "OBJECT",
             properties: {
               description: {
                 type: "STRING",
                 description:
-                  "Description of the good, service, or fee (e.g. 'frameless door with concealed design' or 'Delivery Fee')",
+                  "Product name or main service title ONLY (e.g. 'Pocket Door Kit'). Do NOT include size, dimensions, or specifications here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762'). NEVER merge into description.",
               },
               quantity: {
                 type: "NUMBER",
@@ -81,11 +86,16 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 580 for £580, 90 for £90)",
+                description: "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50)",
               },
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description:
+            "Shipping, delivery, or carriage fee in pounds (e.g. 15 for £15). This populates the dedicated shipping field below subtotal, NOT an ordinary line item.",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -122,7 +132,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "create_invoice",
     description:
-      "Create a sales invoice for a customer in Fixbooks. Use this when the user asks to invoice a customer, bill a customer, or create a sales invoice. DO NOT use this for vendor/supplier bills (use create_bill instead). Put ALL items and delivery fees into the 'lines' array of a SINGLE invoice.",
+      "Create a sales invoice for a customer in Fixbooks. Use this when the user asks to invoice a customer, bill a customer, or create a sales invoice. DO NOT use this for vendor/supplier bills (use create_bill instead). Put product items in 'lines' and shipping/delivery in 'shipping'.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -145,13 +155,18 @@ const TOOL_DEFINITIONS = [
         lines: {
           type: "ARRAY",
           description:
-            "Array of invoice line items. Include products, services, and delivery fees.",
+            "Array of invoice line items. For each line, put ONLY the product/service name in description, and any size, dimension, or technical detail in shortDescription.",
           items: {
             type: "OBJECT",
             properties: {
               description: {
                 type: "STRING",
-                description: "Description of the good or service",
+                description: "Product name or main service title ONLY (e.g. 'Pocket Door Kit'). Do NOT include size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762'). NEVER merge into description.",
               },
               quantity: {
                 type: "NUMBER",
@@ -164,6 +179,10 @@ const TOOL_DEFINITIONS = [
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15). Adds shipping under the dedicated shipping field below subtotal.",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -415,7 +434,12 @@ const TOOL_DEFINITIONS = [
             properties: {
               description: {
                 type: "STRING",
-                description: "Line item description",
+                description: "Product name or service title ONLY (e.g. 'Pocket Door Kit'). Do NOT put size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762').",
               },
               quantity: {
                 type: "NUMBER",
@@ -428,6 +452,10 @@ const TOOL_DEFINITIONS = [
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
         },
         description: {
           type: "STRING",
@@ -488,7 +516,12 @@ const TOOL_DEFINITIONS = [
             properties: {
               description: {
                 type: "STRING",
-                description: "Line item description",
+                description: "Product name or service title ONLY (e.g. 'Pocket Door Kit'). Do NOT put size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762').",
               },
               quantity: {
                 type: "NUMBER",
@@ -501,6 +534,10 @@ const TOOL_DEFINITIONS = [
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
         },
         description: {
           type: "STRING",
@@ -1259,16 +1296,8 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
   }
 }
 
-/**
- * Handles natural language via Gemini REST API
- */
-async function handleGeminiNaturalLanguage(
-  ctx: AuthContext,
-  userMessage: string,
-  apiKey: string
-): Promise<string> {
-  const org = await getOrganizationDetails(ctx);
-  const systemPrompt = `You are a friendly, professional accounting assistant on Telegram for "${org.name}", a UK company.
+function buildTelegramSystemPrompt(orgName: string): string {
+  return `You are a friendly, professional accounting assistant on Telegram for "${orgName}", a UK company.
 All company transactions and amounts are in British Pounds (£ / GBP). Always display figures with the £ symbol (e.g. £250.00).
 
 CRITICAL INSTRUCTIONS:
@@ -1276,24 +1305,31 @@ CRITICAL INSTRUCTIONS:
    - When the user asks to create a "Quote", "Estimate", or "Pricing proposal", you MUST execute the \`create_quote\` tool. NEVER call \`create_invoice\` or \`create_bill\` when a quote was requested!
    - When the user asks for a sales "Invoice" to a customer, execute the \`create_invoice\` tool.
    - When the user asks to create, add, or record a "Bill", vendor/supplier bill, or purchase bill (e.g. from a supplier/store like Screwfix, Travis Perkins, Toolstation, or paying for materials, tools, or supplies), you MUST execute the \`create_bill\` tool.
-2. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
-   - NEVER create multiple separate quotes, invoices, or bills for a single transaction.
-   - When the user provides multiple items, materials, or fees (such as products, delivery fees, installation, shipping), put ALL items into the \`lines\` array of ONE single quote, invoice, or bill.
-   - Example \`lines\` array:
-     [
-       { "description": "1x frameless door with concealed design", "quantity": 1, "unitPrice": 580 },
-       { "description": "Delivery Fee", "quantity": 1, "unitPrice": 90 }
-     ]
-3. CUSTOMER DETAILS & TAX:
+2. PRODUCT NAME vs SHORT DESCRIPTION (CRITICAL):
+   - In Fixbooks, line items have two distinct fields:
+     * \`description\`: The product title or service name ONLY (e.g. "Pocket Door Kit").
+     * \`shortDescription\`: The specifications, dimensions, attributes, or size (e.g. "Size: 1981 x 762").
+   - If the user provides a product description/size (e.g. "Product Name: Pocket Door Kit Description: Size: 1981 x 762", or "Pocket Door Kit, Size: 1981 x 762"):
+     * \`description\` MUST be ONLY "Pocket Door Kit".
+     * \`shortDescription\` MUST be "Size: 1981 x 762".
+     * NEVER concatenate the size or specifications into the description field!
+3. SHIPPING & DELIVERY FEES (CRITICAL):
+   - When the user specifies shipping, delivery, or carriage (e.g. "Shipping: 15£", "Delivery: £20", "Shipping fee: £15"):
+     * Pass this amount in the top-level \`shipping\` argument of \`create_quote\` or \`create_invoice\` (e.g. \`shipping: 15\`).
+     * Do NOT add shipping as a regular product line inside the \`lines\` array! The top-level \`shipping\` argument places it in the dedicated Shipping field below subtotal in Fixbooks.
+4. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
+   - NEVER create multiple separate quotes, invoices, or bills for a single request.
+   - Put all product/material/service items into the \`lines\` array of ONE single quote, invoice, or bill.
+5. CUSTOMER DETAILS & TAX:
    - If the customer details include both a person name and a business/company name (e.g. "ILIE Sula" and "Zamos Construction LTD"), use the business name for customerName (e.g. "Zamos Construction LTD" or "Zamos Construction LTD (ILIE Sula)").
    - If the user provides an address, email, phone, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, customerPhone, and taxRatePercent.
-4. INVOICE NUMBERS & DATES:
+6. INVOICE NUMBERS & DATES:
    - If user provides an explicit invoice number (e.g. "Invoice Number: 146233"), ALWAYS pass it into the "invoiceNumber" argument.
    - If user provides dates (e.g. "Date of issue: 09/08/2026", "Date due: 09/08/2026"), pass them into "issueDate" and "dueDate". Note that dates in the UK are DD/MM/YYYY.
-5. NOTES:
+7. NOTES:
    - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
-6. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
+8. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
    - When the user asks to create a quote and get the link, or asks for a quote link/PDF (e.g. "Create quote for... and give me the link", "Give me link for quote QTE-00007", "Quote link"):
      * Call \`get_quote_link\` (or use the URLs returned from \`create_quote\`).
      * ALWAYS provide both the customer view/accept link (portalUrl) and the PDF download link (pdfUrl), and the Fixbooks dashboard link (viewUrl):
@@ -1301,15 +1337,15 @@ CRITICAL INSTRUCTIONS:
        📄 Download PDF: <pdfUrl>
        🔗 View in Fixbooks: <viewUrl>
    - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), call \`get_invoice_pdf\` and provide the PDF download link (Download PDF: <downloadUrl>).
-7. EDITING INVOICES & QUOTES:
+9. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
    - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
    - Only DRAFT documents can be edited.
-8. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
+10. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
    - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"), execute the \`send_invoice_email\` tool.
    - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00007 to customer email", "Email quote QTE-00007 to client@example.com"), execute the \`send_quote_email\` tool.
    - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
-9. BANK RECONCILIATION & TRANSACTIONS:
+11. BANK RECONCILIATION & TRANSACTIONS:
    - When the user asks to see unreconciled transactions, review bank accounts, or asks what needs reconciling, call the \`list_unreconciled_transactions\` tool.
    - When the user asks for candidate matches or suggestions for a specific transaction (e.g. "What matches transaction 6ab9e4fc?"), call \`get_reconciliation_suggestions\`.
    - When the user asks to reconcile, match, or categorize a bank transaction (e.g. "Reconcile transaction 6ab9e4fc with invoice INV-00017", "Match 6ab9e4fc to INV-00017", "Categorize 93ce783a as Cost of Goods Sold", "Reconcile 93ce783a to 5000", "Match 9b4425d3 to bill BILL-00001"), call the \`reconcile_bank_transaction\` tool with transactionId and the corresponding invoiceNumber, billNumber, accountCodeOrName, or target.
@@ -1321,6 +1357,18 @@ TELEGRAM FORMATTING RULES:
 - NEVER use <h3>, <h2>, <h1>, <p>, <br>, <div>, or markdown (no ###, no ---).
 - For section titles or totals, use bold text with an emoji, e.g. <b>Total: £685.00</b>.
 When confirming actions, display clean breakdowns with emojis.`;
+}
+
+/**
+ * Handles natural language via Gemini REST API
+ */
+async function handleGeminiNaturalLanguage(
+  ctx: AuthContext,
+  userMessage: string,
+  apiKey: string
+): Promise<string> {
+  const org = await getOrganizationDetails(ctx);
+  const systemPrompt = buildTelegramSystemPrompt(org.name);
 
   const candidateModels = [
     "gemini-2.5-flash",
@@ -1417,6 +1465,26 @@ When confirming actions, display clean breakdowns with emojis.`;
   return `⚠️ AI service is momentarily busy. You can use shortcut commands like <code>/invoices</code> or <code>/quotes</code>.`;
 }
 
+function convertToOpenAiSchema(schema: any): any {
+  if (!schema || typeof schema !== "object") return schema;
+  const result: any = {};
+  if (schema.type) result.type = schema.type.toLowerCase();
+  if (schema.description) result.description = schema.description;
+  if (schema.required) result.required = schema.required;
+  if (schema.properties) {
+    result.properties = Object.fromEntries(
+      Object.entries(schema.properties).map(([k, v]: [string, any]) => [
+        k,
+        convertToOpenAiSchema(v),
+      ])
+    );
+  }
+  if (schema.items) {
+    result.items = convertToOpenAiSchema(schema.items);
+  }
+  return result;
+}
+
 /**
  * Handles natural language via OpenAI REST API
  */
@@ -1437,7 +1505,7 @@ async function handleOpenAiNaturalLanguage(
           properties: Object.fromEntries(
             Object.entries(t.parameters.properties).map(([k, v]: [string, any]) => [
               k,
-              { type: v.type.toLowerCase(), description: v.description },
+              convertToOpenAiSchema(v),
             ])
           ),
           required: t.parameters.required || [],
@@ -1448,7 +1516,7 @@ async function handleOpenAiNaturalLanguage(
     const messages: any[] = [
       {
         role: "system",
-        content: `You are a friendly accounting assistant for "${org.name}" on Telegram. Currency: ${org.defaultCurrency || "GBP"}. Format response with HTML tags <b>, <i>, <code> where suitable with emojis.`,
+        content: buildTelegramSystemPrompt(org.name),
       },
       { role: "user", content: userMessage },
     ];

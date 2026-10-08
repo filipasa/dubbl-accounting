@@ -446,8 +446,10 @@ export async function resolveContact(
 
 export interface LineItemInput {
   description: string;
+  shortDescription?: string | null;
   quantity?: number;
   unitPrice: number;
+  imageUrl?: string | null;
 }
 
 /**
@@ -462,6 +464,7 @@ export async function createQuoteAction(
     customerPhone?: string;
     lines?: LineItemInput[];
     description?: string;
+    shortDescription?: string | null;
     unitPrice?: number;
     quantity?: number;
     taxRatePercent?: number | string;
@@ -471,6 +474,8 @@ export async function createQuoteAction(
     quoteNumber?: string;
     reference?: string;
     notes?: string;
+    shipping?: number | string;
+    imageUrl?: string | null;
   }
 ) {
   const org = await getOrganizationDetails(ctx);
@@ -496,8 +501,10 @@ export async function createQuoteAction(
       rawLines = [
         {
           description: params.description,
+          shortDescription: params.shortDescription || null,
           quantity: params.quantity || 1,
           unitPrice: params.unitPrice,
+          imageUrl: params.imageUrl || null,
         },
       ];
     } else {
@@ -505,18 +512,36 @@ export async function createQuoteAction(
     }
   }
 
-  const formattedLines = rawLines.map((l) => {
+  const formattedLines: any[] = rawLines.map((l) => {
     const rawPrice = Number(l.unitPrice || 0);
     // Integer cents/pence for create_quote MCP tool
     const centsPrice = Math.round(rawPrice * 100);
     return {
       description: l.description,
+      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: centsPrice,
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     };
   });
+
+  if (params.shipping != null && Number(params.shipping) > 0) {
+    const hasShippingLine = formattedLines.some((l) =>
+      l.description.toLowerCase().startsWith("shipping") ||
+      l.description.toLowerCase().startsWith("delivery")
+    );
+    if (!hasShippingLine) {
+      formattedLines.push({
+        description: "Shipping",
+        quantity: 1,
+        unitPrice: Math.round(Number(params.shipping) * 100),
+        ...(account?.id ? { accountId: account.id } : {}),
+        ...(taxRateId ? { taxRateId } : {}),
+      });
+    }
+  }
 
   const issueDate =
     normalizeDateInput(params.issueDate) ||
@@ -590,6 +615,7 @@ export async function createInvoiceAction(
     customerPhone?: string;
     lines?: LineItemInput[];
     description?: string;
+    shortDescription?: string | null;
     unitPrice?: number;
     quantity?: number;
     taxRatePercent?: number | string;
@@ -599,6 +625,8 @@ export async function createInvoiceAction(
     invoiceNumber?: string;
     reference?: string;
     notes?: string;
+    shipping?: number | string;
+    imageUrl?: string | null;
   }
 ) {
   const org = await getOrganizationDetails(ctx);
@@ -624,8 +652,10 @@ export async function createInvoiceAction(
       rawLines = [
         {
           description: params.description,
+          shortDescription: params.shortDescription || null,
           quantity: params.quantity || 1,
           unitPrice: params.unitPrice,
+          imageUrl: params.imageUrl || null,
         },
       ];
     } else {
@@ -634,16 +664,34 @@ export async function createInvoiceAction(
   }
 
   // create_invoice MCP tool expects unitPrice in decimal (pounds), not integer pence
-  const formattedLines = rawLines.map((l) => {
+  const formattedLines: any[] = rawLines.map((l) => {
     const rawPrice = Number(l.unitPrice || 0);
     return {
       description: l.description,
+      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: rawPrice,
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     };
   });
+
+  if (params.shipping != null && Number(params.shipping) > 0) {
+    const hasShippingLine = formattedLines.some((l) =>
+      l.description.toLowerCase().startsWith("shipping") ||
+      l.description.toLowerCase().startsWith("delivery")
+    );
+    if (!hasShippingLine) {
+      formattedLines.push({
+        description: "Shipping",
+        quantity: 1,
+        unitPrice: Number(params.shipping),
+        ...(account?.id ? { accountId: account.id } : {}),
+        ...(taxRateId ? { taxRateId } : {}),
+      });
+    }
+  }
 
   const issueDate =
     normalizeDateInput(params.issueDate) ||
@@ -990,6 +1038,9 @@ export async function updateInvoiceAction(
     dueDate?: string;
     reference?: string;
     notes?: string;
+    shipping?: number | string;
+    shortDescription?: string | null;
+    imageUrl?: string | null;
   }
 ) {
   const inv = await findInvoiceByNumber(ctx, params.invoiceNumber);
@@ -1019,8 +1070,10 @@ export async function updateInvoiceAction(
     rawLines = [
       {
         description: params.description,
+        shortDescription: params.shortDescription || null,
         quantity: params.quantity || 1,
         unitPrice: params.unitPrice,
+        imageUrl: params.imageUrl || null,
       },
     ];
   }
@@ -1034,11 +1087,29 @@ export async function updateInvoiceAction(
 
     formattedLines = rawLines.map((l) => ({
       description: l.description,
+      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: Number(l.unitPrice || 0), // decimal pounds
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     }));
+
+    if (params.shipping != null && Number(params.shipping) > 0) {
+      const hasShippingLine = formattedLines.some((l) =>
+        l.description.toLowerCase().startsWith("shipping") ||
+        l.description.toLowerCase().startsWith("delivery")
+      );
+      if (!hasShippingLine) {
+        formattedLines.push({
+          description: "Shipping",
+          quantity: 1,
+          unitPrice: Number(params.shipping),
+          ...(account?.id ? { accountId: account.id } : {}),
+          ...(taxRateId ? { taxRateId } : {}),
+        });
+      }
+    }
   }
 
   const patch: Record<string, any> = {
@@ -1098,6 +1169,9 @@ export async function updateQuoteAction(
     expiryDate?: string;
     reference?: string;
     notes?: string;
+    shipping?: number | string;
+    shortDescription?: string | null;
+    imageUrl?: string | null;
   }
 ) {
   const q = await findQuoteByNumber(ctx, params.quoteNumber);
@@ -1127,8 +1201,10 @@ export async function updateQuoteAction(
     rawLines = [
       {
         description: params.description,
+        shortDescription: params.shortDescription || null,
         quantity: params.quantity || 1,
         unitPrice: params.unitPrice,
+        imageUrl: params.imageUrl || null,
       },
     ];
   }
@@ -1142,11 +1218,29 @@ export async function updateQuoteAction(
 
     formattedLines = rawLines.map((l) => ({
       description: l.description,
+      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: Number(l.unitPrice || 0), // decimal pounds
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     }));
+
+    if (params.shipping != null && Number(params.shipping) > 0) {
+      const hasShippingLine = formattedLines.some((l) =>
+        l.description.toLowerCase().startsWith("shipping") ||
+        l.description.toLowerCase().startsWith("delivery")
+      );
+      if (!hasShippingLine) {
+        formattedLines.push({
+          description: "Shipping",
+          quantity: 1,
+          unitPrice: Number(params.shipping),
+          ...(account?.id ? { accountId: account.id } : {}),
+          ...(taxRateId ? { taxRateId } : {}),
+        });
+      }
+    }
   }
 
   const patch: Record<string, any> = {

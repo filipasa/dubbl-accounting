@@ -140,4 +140,18 @@ test("handleTelegramCommand /quote and /quotelink validate usage and arguments",
   assert.ok(invalidAmount.includes("Invalid amount"), "Should reject non-numeric amount");
 });
 
+test("create_quote and create_invoice tool definitions include shortDescription and shipping", async () => {
+  // Read handler file content to verify schema integrity
+  const fs = await import("fs");
+  const path = await import("path");
+  const handlerContent = fs.readFileSync(path.join(process.cwd(), "lib/integrations/telegram/handler.ts"), "utf-8");
+
+  assert.ok(handlerContent.includes('"create_quote"'), "Contains create_quote tool");
+  assert.ok(handlerContent.includes('"create_invoice"'), "Contains create_invoice tool");
+  assert.ok(handlerContent.includes("shortDescription:"), "Contains shortDescription in line items");
+  assert.ok(handlerContent.includes("shipping:"), "Contains shipping parameter in tool schema");
+  assert.ok(handlerContent.includes("PRODUCT NAME vs SHORT DESCRIPTION"), "Contains prompt instructions for product name and short description separation");
+});
+
+
 
