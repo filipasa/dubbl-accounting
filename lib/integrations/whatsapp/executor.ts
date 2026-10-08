@@ -536,10 +536,46 @@ export async function createQuoteAction(
     lines: formattedLines,
   });
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const token = await getOrCreatePortalToken(ctx.organizationId, contact.id);
+  const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
+  const viewUrl = `${baseUrl}/sales/quotes/${res.quote.id}`;
+  const pdfUrl = token
+    ? `${baseUrl}/api/v1/portal/${token.token}/quotes/${res.quote.id}/pdf`
+    : `${baseUrl}/api/v1/quotes/${res.quote.id}/pdf?format=pdf`;
+
   return {
     quote: res.quote,
     contact,
+    portalUrl,
+    viewUrl,
+    pdfUrl,
+    downloadUrl: pdfUrl,
   };
+}
+
+export async function getOrCreatePortalToken(organizationId: string, contactId: string | null) {
+  if (!contactId) return null;
+  let token = await db.query.portalAccessToken.findFirst({
+    where: and(
+      eq(portalAccessToken.organizationId, organizationId),
+      eq(portalAccessToken.contactId, contactId),
+      isNull(portalAccessToken.revokedAt)
+    ),
+  });
+  if (!token) {
+    const [created] = await db
+      .insert(portalAccessToken)
+      .values({
+        organizationId,
+        contactId,
+        token: randomBytes(32).toString("hex"),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .returning();
+    token = created;
+  }
+  return token;
 }
 
 /**
@@ -787,6 +823,36 @@ export async function getInvoicePdfAction(ctx: AuthContext, invoiceNumber: strin
     status: inv.status,
   };
 }
+
+export async function getQuoteLinkAction(ctx: AuthContext, quoteNumberOrId: string) {
+  const q = await findQuoteByNumber(ctx, quoteNumberOrId);
+  if (!q) {
+    return { error: `Quote "${quoteNumberOrId}" not found.` };
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const token = await getOrCreatePortalToken(ctx.organizationId, q.contactId);
+  const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
+  const viewUrl = `${baseUrl}/sales/quotes/${q.id}`;
+  const pdfUrl = token
+    ? `${baseUrl}/api/v1/portal/${token.token}/quotes/${q.id}/pdf`
+    : `${baseUrl}/api/v1/quotes/${q.id}/pdf?format=pdf`;
+  const totalFormatted = `£${(q.total / 100).toFixed(2)}`;
+
+  return {
+    quoteNumber: q.quoteNumber,
+    customerName: q.contact?.name || "Customer",
+    total: totalFormatted,
+    status: q.status,
+    expiryDate: q.expiryDate,
+    portalUrl,
+    viewUrl,
+    pdfUrl,
+    downloadUrl: pdfUrl,
+  };
+}
+
+export const getQuotePdfAction = getQuoteLinkAction;
 
 export async function getBankAccountsAction(ctx: AuthContext) {
   const bankAccounts = await db.query.bankAccount.findMany({
@@ -1360,28 +1426,7 @@ export async function sendQuoteEmailAction(
     };
   }
 
-  let token: any = null;
-  if (q.contactId) {
-    token = await db.query.portalAccessToken.findFirst({
-      where: and(
-        eq(portalAccessToken.organizationId, ctx.organizationId),
-        eq(portalAccessToken.contactId, q.contactId),
-        isNull(portalAccessToken.revokedAt)
-      ),
-    });
-    if (!token) {
-      const [created] = await db
-        .insert(portalAccessToken)
-        .values({
-          organizationId: ctx.organizationId,
-          contactId: q.contactId,
-          token: randomBytes(32).toString("hex"),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        })
-        .returning();
-      token = created;
-    }
-  }
+  const token = await getOrCreatePortalToken(ctx.organizationId, q.contactId);
 
   const org = await db.query.organization.findFirst({
     where: eq(organization.id, ctx.organizationId),

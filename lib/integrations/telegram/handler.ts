@@ -17,6 +17,8 @@ import {
   createBillAction,
   normalizeDateInput,
   getInvoicePdfAction,
+  getQuoteLinkAction,
+  getQuotePdfAction,
   getBankAccountsAction,
   updateInvoiceAction,
   updateQuoteAction,
@@ -337,6 +339,36 @@ const TOOL_DEFINITIONS = [
         },
       },
       required: ["invoiceNumber"],
+    },
+  },
+  {
+    name: "get_quote_link",
+    description:
+      "Get the customer portal link (to view & accept quote) and PDF download URL for a sales quote / estimate by quote number (e.g. QTE-00007) or UUID.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        quoteNumber: {
+          type: "STRING",
+          description: "The quote number (e.g. QTE-00007) or quote ID",
+        },
+      },
+      required: ["quoteNumber"],
+    },
+  },
+  {
+    name: "get_quote_pdf",
+    description:
+      "Get the download URL and view link for a sales quote / estimate PDF by quote number (e.g. QTE-00007) or UUID.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        quoteNumber: {
+          type: "STRING",
+          description: "The quote number (e.g. QTE-00007) or quote ID",
+        },
+      },
+      required: ["quoteNumber"],
     },
   },
   {
@@ -709,6 +741,9 @@ async function executeTool(ctx: AuthContext, name: string, args: Record<string, 
       return await getOrganizationDetails(ctx);
     case "get_invoice_pdf":
       return await getInvoicePdfAction(ctx, args.invoiceNumber);
+    case "get_quote_link":
+    case "get_quote_pdf":
+      return await getQuoteLinkAction(ctx, args.quoteNumber || args.quoteId || args.id);
     case "edit_invoice":
     case "update_invoice":
       return await updateInvoiceAction(ctx, args as any);
@@ -758,6 +793,10 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         `I can create quotes, generate invoices, record supplier bills, edit them, email them to your customers with PDFs and payment links, and reconcile your bank transactions.\n\n` +
         `<b>Available Commands:</b>\n` +
         `• <b>/quotes</b> — List recent estimates & quotes\n` +
+        `• <b>/quote &lt;Customer&gt;, &lt;Amount&gt;, &lt;Description&gt; [ExpiryDate]</b> — Fast quote creation & link\n` +
+        `  <i>Example:</i> <code>/quote John Doe, 450, Frameless Door</code>\n` +
+        `• <b>/quote &lt;Quote #&gt;</b> or <b>/quotelink &lt;Quote #&gt;</b> — Get link & details for quote\n` +
+        `  <i>Example:</i> <code>/quotelink QTE-00007</code>\n` +
         `• <b>/invoices</b> — List recent sales invoices\n` +
         `• <b>/bills</b> — List recent supplier & vendor bills\n` +
         `• <b>/invoice &lt;Customer&gt;, &lt;Amount&gt;, &lt;Description&gt;</b> — Fast invoice creation\n` +
@@ -776,7 +815,8 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         `• <b>/org</b> — Company profile, currency, and VAT\n` +
         `• <b>/balance</b> — Registered bank accounts & balances\n\n` +
         `💡 <i>You can also message me in full natural language:</i>\n` +
-        `• "Create a quote for Login Construction for 2 doors at £450 each"\n` +
+        `• "Create a quote for Login Construction for 2 doors at £450 each and give me the link"\n` +
+        `• "Give me the link for quote QTE-00007"\n` +
         `• "Create a bill from Screwfix for £120 for building materials"\n` +
         `• "Edit invoice INV-00017 with 3 doors at £600 each"\n` +
         `• "Edit quote QTE-00007: change price to £450"\n` +
@@ -806,6 +846,7 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         return "📭 No quotes found in this organization.";
       }
 
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
       let reply = `📑 <b>Recent Quotes (${quotes.length})</b>\n\n`;
       for (const q of quotes) {
         const contactName = q.contact?.name || "Unknown Customer";
@@ -814,9 +855,107 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
           q.status === "accepted" ? "✅" : q.status === "sent" ? "📬" : q.status === "draft" ? "📝" : "📄";
         reply += `${statusEmoji} <b>${q.quoteNumber || q.id}</b> — ${q.currencyCode} ${total}\n`;
         reply += `   Customer: ${contactName}\n`;
-        reply += `   Status: <b>${(q.status || "").toUpperCase()}</b> | Expiry: ${q.expiryDate || "N/A"}\n\n`;
+        reply += `   Status: <b>${(q.status || "").toUpperCase()}</b> | Expiry: ${q.expiryDate || "N/A"}\n`;
+        reply += `   🔗 <a href="${appUrl}/sales/quotes/${q.id}">View in Fixbooks</a> | 📄 <a href="${appUrl}/api/v1/quotes/${q.id}/pdf?format=pdf">PDF</a>\n\n`;
       }
       return reply.trim();
+    }
+
+    case "/quotelink": {
+      if (!argsString) {
+        return (
+          `⚠️ <b>Usage:</b> <code>/quotelink &lt;Quote #&gt;</code>\n\n` +
+          `<i>Example:</i> <code>/quotelink QTE-00007</code>`
+        );
+      }
+      const res = await getQuoteLinkAction(ctx, argsString.trim());
+      if (res.error) {
+        return `⚠️ ${res.error}`;
+      }
+      return (
+        `📑 <b>Quote ${res.quoteNumber}</b>\n\n` +
+        `• <b>Customer:</b> ${res.customerName}\n` +
+        `• <b>Amount:</b> ${res.total}\n` +
+        `• <b>Status:</b> ${res.status?.toUpperCase()}\n` +
+        `• <b>Expiry Date:</b> ${res.expiryDate || "N/A"}\n\n` +
+        (res.portalUrl ? `🔗 <a href="${res.portalUrl}">Customer Quote Link</a> (View & Accept)\n` : "") +
+        `🔗 <a href="${res.viewUrl}">View in Fixbooks</a>\n` +
+        `📄 <a href="${res.pdfUrl}">Download PDF</a>`
+      );
+    }
+
+    case "/quote": {
+      if (!argsString) {
+        return (
+          `⚠️ <b>Quote Commands:</b>\n\n` +
+          `• <b>Create Quote:</b>\n` +
+          `  <code>/quote &lt;Customer&gt;, &lt;Amount&gt;, &lt;Description&gt; [optional ExpiryDate]</code>\n` +
+          `  <i>Example:</i> <code>/quote John Doe, 450, Frameless Door</code>\n` +
+          `  <i>Example:</i> <code>/quote ABC Ltd, 1200, 2x Hidden Doors, 2026-11-15</code>\n\n` +
+          `• <b>Get Quote Link:</b>\n` +
+          `  <code>/quote &lt;Quote #&gt;</code> or <code>/quotelink &lt;Quote #&gt;</code>\n` +
+          `  <i>Example:</i> <code>/quote QTE-00007</code>`
+        );
+      }
+
+      // If user passed a single quote reference without commas, treat it as a lookup for quote link
+      if (!argsString.includes(",")) {
+        const res = await getQuoteLinkAction(ctx, argsString.trim());
+        if (!res.error) {
+          return (
+            `📑 <b>Quote ${res.quoteNumber}</b>\n\n` +
+            `• <b>Customer:</b> ${res.customerName}\n` +
+            `• <b>Amount:</b> ${res.total}\n` +
+            `• <b>Status:</b> ${res.status?.toUpperCase()}\n` +
+            `• <b>Expiry Date:</b> ${res.expiryDate || "N/A"}\n\n` +
+            (res.portalUrl ? `🔗 <a href="${res.portalUrl}">Customer Quote Link</a> (View & Accept)\n` : "") +
+            `🔗 <a href="${res.viewUrl}">View in Fixbooks</a>\n` +
+            `📄 <a href="${res.pdfUrl}">Download PDF</a>`
+          );
+        }
+        return `⚠️ ${res.error}\n\nTo create a quote, separate customer, amount, and description with commas:\n<code>/quote &lt;Customer&gt;, &lt;Amount&gt;, &lt;Description&gt;</code>`;
+      }
+
+      const segments = argsString
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (segments.length < 2) {
+        return (
+          `⚠️ Please separate customer, amount, and description with commas.\n\n` +
+          `<i>Example:</i> <code>/quote John Doe, 450, Frameless Door</code>`
+        );
+      }
+
+      const customerName = segments[0];
+      const amount = parseFloat(segments[1].replace(/[^0-9.]/g, ""));
+      const description = segments[2] || "Products / Services";
+      const expiryDate = segments[3] ? normalizeDateInput(segments[3]) : undefined;
+
+      if (isNaN(amount) || amount <= 0) {
+        return "⚠️ Invalid amount. Please enter a valid number (e.g. 450 or 99.50).";
+      }
+
+      const { quote: createdQuote, contact, portalUrl, viewUrl, pdfUrl } = await createQuoteAction(ctx, {
+        customerName,
+        unitPrice: amount,
+        description,
+        expiryDate,
+      });
+
+      const totalFormatted = (createdQuote.total / 100).toFixed(2);
+      return (
+        `✅ <b>Quote Created Successfully!</b>\n\n` +
+        `• <b>Quote #:</b> ${createdQuote.quoteNumber}\n` +
+        `• <b>Customer:</b> ${contact.name}\n` +
+        `• <b>Amount:</b> ${createdQuote.currencyCode} ${totalFormatted}\n` +
+        `• <b>Item:</b> ${description}\n` +
+        `• <b>Status:</b> ${createdQuote.status.toUpperCase()}\n` +
+        `• <b>Expiry Date:</b> ${createdQuote.expiryDate}\n\n` +
+        (portalUrl ? `🔗 <a href="${portalUrl}">Customer Quote Link</a> (View & Accept)\n` : "") +
+        `🔗 <a href="${viewUrl}">View in Fixbooks</a>\n` +
+        `📄 <a href="${pdfUrl}">Download PDF</a>`
+      );
     }
 
     case "/invoices": {
@@ -891,7 +1030,10 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         );
       }
 
-      const segments = argsString.split(",").map((s) => s.trim());
+      const segments = argsString
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (segments.length < 2) {
         return (
           `⚠️ Please separate customer, amount, and description with commas.\n\n` +
@@ -936,7 +1078,10 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         );
       }
 
-      const segments = argsString.split(",").map((s) => s.trim());
+      const segments = argsString
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (segments.length < 2) {
         return (
           `⚠️ Please separate supplier, amount, and description with commas.\n\n` +
@@ -1148,9 +1293,14 @@ CRITICAL INSTRUCTIONS:
 5. NOTES:
    - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
-6. INVOICE LINKS & PDF DOWNLOADS:
-   - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), ONLY provide the PDF download link (Download PDF: <downloadUrl>).
-   - NEVER output internal web app dashboard links like "View Online" or "/sales/" URLs.
+6. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
+   - When the user asks to create a quote and get the link, or asks for a quote link/PDF (e.g. "Create quote for... and give me the link", "Give me link for quote QTE-00007", "Quote link"):
+     * Call \`get_quote_link\` (or use the URLs returned from \`create_quote\`).
+     * ALWAYS provide both the customer view/accept link (portalUrl) and the PDF download link (pdfUrl), and the Fixbooks dashboard link (viewUrl):
+       🔗 Customer Link: <portalUrl> (View & Accept)
+       📄 Download PDF: <pdfUrl>
+       🔗 View in Fixbooks: <viewUrl>
+   - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), call \`get_invoice_pdf\` and provide the PDF download link (Download PDF: <downloadUrl>).
 7. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
    - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
@@ -1336,7 +1486,7 @@ async function handleOpenAiNaturalLanguage(
           console.log(`[Telegram OpenAI Tool Call] ${call.function.name}:`, args);
           let result: any;
           try {
-            result = await executeTool(ctx, call.name, args);
+            result = await executeTool(ctx, call.function?.name || (call as any).name, args);
           } catch (err: any) {
             result = { error: err.message || String(err) };
           }

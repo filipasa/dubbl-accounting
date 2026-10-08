@@ -110,4 +110,34 @@ test("handleTelegramCommand /bill validates usage and arguments", async () => {
   assert.ok(invalidAmount.includes("Invalid amount"), "Should reject non-numeric amount");
 });
 
+test("handleTelegramCommand renders help with quote creation and link commands", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const help = await handleTelegramCommand(dummyCtx, "/help");
+  assert.ok(help.includes("/quotes"), "Help includes /quotes");
+  assert.ok(help.includes("/quote"), "Help includes /quote");
+  assert.ok(help.includes("/quotelink"), "Help includes /quotelink");
+  assert.ok(help.includes("Frameless Door"), "Help includes quote example");
+});
+
+test("handleTelegramCommand /quote and /quotelink validate usage and arguments", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const quoteUsage = await handleTelegramCommand(dummyCtx, "/quote");
+  assert.ok(quoteUsage.includes("Quote Commands:"), "Should return usage for /quote without arguments");
+  assert.ok(quoteUsage.includes("&lt;Customer&gt;"), "Should explain create quote format");
+  assert.ok(quoteUsage.includes("/quotelink"), "Should explain quote link format");
+
+  const quoteLinkUsage = await handleTelegramCommand(dummyCtx, "/quotelink");
+  assert.ok(quoteLinkUsage.includes("Usage:"), "Should return usage for /quotelink without arguments");
+
+  const invalidSegments = await handleTelegramCommand(dummyCtx, "/quote John Doe,");
+  assert.ok(invalidSegments.includes("Please separate"), "Should prompt for comma-separated arguments");
+
+  const invalidAmount = await handleTelegramCommand(dummyCtx, "/quote John Doe, notanumber, Door");
+  assert.ok(invalidAmount.includes("Invalid amount"), "Should reject non-numeric amount");
+});
+
 
