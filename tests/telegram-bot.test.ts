@@ -86,3 +86,28 @@ test("handleTelegramCommand renders help with bank reconciliation commands", asy
   assert.ok(help.includes("Categorize transaction"), "Help includes categorize transaction example");
 });
 
+test("handleTelegramCommand renders help with bill commands", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const help = await handleTelegramCommand(dummyCtx, "/help");
+  assert.ok(help.includes("/bills"), "Help includes /bills");
+  assert.ok(help.includes("/bill"), "Help includes /bill");
+  assert.ok(help.includes("Screwfix"), "Help includes bill example");
+});
+
+test("handleTelegramCommand /bill validates usage and arguments", async () => {
+  const { handleTelegramCommand } = await import("../lib/integrations/telegram/handler");
+  const dummyCtx = { userId: "test-user", organizationId: "test-org", role: "owner" as const };
+
+  const billUsage = await handleTelegramCommand(dummyCtx, "/bill");
+  assert.ok(billUsage.includes("Usage:"), "Should return usage for /bill without arguments");
+
+  const invalidSegments = await handleTelegramCommand(dummyCtx, "/bill ScrewfixOnly");
+  assert.ok(invalidSegments.includes("Please separate"), "Should prompt for comma-separated arguments");
+
+  const invalidAmount = await handleTelegramCommand(dummyCtx, "/bill Screwfix, abc, Tools");
+  assert.ok(invalidAmount.includes("Invalid amount"), "Should reject non-numeric amount");
+});
+
+

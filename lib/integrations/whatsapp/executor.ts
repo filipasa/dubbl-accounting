@@ -148,6 +148,11 @@ export async function listRecentQuotes(ctx: AuthContext, limit = 5) {
   return result?.quotes || [];
 }
 
+export async function listRecentBills(ctx: AuthContext, limit = 5) {
+  const result = await executeMcpTool(ctx, "list_bills", { limit });
+  return result?.bills || [];
+}
+
 export async function listAllContacts(ctx: AuthContext, search = "") {
   const args: Record<string, unknown> = { limit: 50 };
   if (search) args.search = search;
@@ -369,7 +374,7 @@ export function parseAddressString(rawAddress: string): {
 }
 
 /**
- * Finds or creates a customer contact
+ * Finds or creates a customer or supplier contact
  */
 export async function resolveContact(
   ctx: AuthContext,
@@ -378,6 +383,7 @@ export async function resolveContact(
     customerEmail?: string;
     customerAddress?: string;
     customerPhone?: string;
+    type?: "customer" | "supplier" | "both";
   }
 ) {
   const effectiveName = cleanCustomerName(params.customerName);
@@ -399,7 +405,7 @@ export async function resolveContact(
   if (!found) {
     const newContactRes = await executeMcpTool(ctx, "create_contact", {
       name: effectiveName,
-      type: "customer",
+      type: params.type || "customer",
       currencyCode: "GBP",
       ...(params.customerEmail ? { email: params.customerEmail } : {}),
       ...(params.customerPhone ? { phone: params.customerPhone } : {}),
@@ -409,6 +415,15 @@ export async function resolveContact(
       ...(parsedAddr.country ? { country: parsedAddr.country } : {}),
     });
     return newContactRes.contact;
+  }
+
+  // If supplier contact needed and existing contact is only a customer, upgrade to both
+  if (params.type === "supplier" && found.type === "customer") {
+    await executeMcpTool(ctx, "update_contact", {
+      contactId: found.id,
+      type: "both",
+    }).catch(() => {});
+    found.type = "both";
   }
 
   // Update contact if email or address provided and missing
@@ -618,6 +633,133 @@ export async function createInvoiceAction(
 
   return {
     invoice: res.invoice,
+    contact,
+  };
+}
+
+/**
+ * Creates a Supplier / Vendor Bill with support for multi-line items
+ */
+export async function createBillAction(
+  ctx: AuthContext,
+  params: {
+    supplierName: string;
+    supplierEmail?: string;
+    supplierAddress?: string;
+    supplierPhone?: string;
+    lines?: LineItemInput[];
+    description?: string;
+    unitPrice?: number;
+    quantity?: number;
+    taxRatePercent?: number | string;
+    currencyCode?: string;
+    issueDate?: string;
+    dueDate?: string;
+    billNumber?: string;
+    reference?: string;
+    notes?: string;
+    accountCodeOrName?: string;
+  }
+) {
+  const rawSupplierName =
+    params.supplierName ||
+    (params as any).vendorName ||
+    (params as any).customerName;
+  if (!rawSupplierName || !rawSupplierName.trim()) {
+    throw new Error("Supplier name is required to create a bill.");
+  }
+
+  const org = await getOrganizationDetails(ctx);
+  const contact = await resolveContact(ctx, {
+    customerName: rawSupplierName,
+    customerEmail: params.supplierEmail,
+    customerAddress: params.supplierAddress,
+    customerPhone: params.supplierPhone,
+    type: "supplier",
+  });
+
+  const currency = params.currencyCode || org.defaultCurrency || "GBP";
+
+  // Resolve default expense account
+  let accountId: string | undefined = contact?.defaultExpenseAccountId || undefined;
+
+  const accountsRes = await executeMcpTool(ctx, "list_accounts", { type: "expense" });
+  const accounts: any[] = accountsRes?.accounts || [];
+
+  if (!accountId && params.accountCodeOrName) {
+    const search = params.accountCodeOrName.trim().toLowerCase();
+    const foundAcc = accounts.find(
+      (a: any) =>
+        a.code?.toLowerCase() === search ||
+        a.name?.toLowerCase() === search ||
+        a.name?.toLowerCase().includes(search)
+    );
+    if (foundAcc) accountId = foundAcc.id;
+  }
+
+  if (!accountId && accounts.length > 0) {
+    const defaultAcc =
+      accounts.find((a: any) => a.code === "5000") || // Cost of Goods Sold / Materials
+      accounts.find((a: any) => a.code === "6000") || // General Expenses
+      accounts.find((a: any) => a.code?.startsWith("5")) ||
+      accounts.find((a: any) => a.code?.startsWith("6")) ||
+      accounts[0];
+    if (defaultAcc) accountId = defaultAcc.id;
+  }
+
+  const taxRateId =
+    contact?.defaultTaxRateId && params.taxRatePercent == null
+      ? contact.defaultTaxRateId
+      : await resolveTaxRateId(ctx, params.taxRatePercent, "purchase");
+
+  let rawLines = params.lines;
+  if (!rawLines || rawLines.length === 0) {
+    if (params.description && params.unitPrice != null) {
+      rawLines = [
+        {
+          description: params.description,
+          quantity: params.quantity || 1,
+          unitPrice: params.unitPrice,
+        },
+      ];
+    } else {
+      throw new Error("Bill must have at least one line item with description and unit price.");
+    }
+  }
+
+  // create_bill MCP tool expects unitPrice in decimal (pounds), not integer pence
+  const formattedLines = rawLines.map((l) => {
+    const rawPrice = Number(l.unitPrice || 0);
+    return {
+      description: l.description,
+      quantity: Number(l.quantity || 1),
+      unitPrice: rawPrice,
+      ...(accountId ? { accountId } : {}),
+      ...(taxRateId ? { taxRateId } : {}),
+    };
+  });
+
+  const issueDate =
+    normalizeDateInput(params.issueDate) ||
+    new Date().toISOString().split("T")[0];
+  const calculatedDue =
+    normalizeDateInput(params.dueDate) ||
+    new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+
+  const reference = (params.reference || params.billNumber || "").trim() || undefined;
+
+  const res = await executeMcpTool(ctx, "create_bill", {
+    contactId: contact.id,
+    currencyCode: currency,
+    issueDate,
+    dueDate: calculatedDue,
+    ...(reference ? { reference } : {}),
+    notes: sanitizeNotes(params.notes) || undefined,
+    lines: formattedLines,
+  });
+
+  return {
+    bill: res.bill,
     contact,
   };
 }
