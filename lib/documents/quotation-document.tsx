@@ -149,13 +149,21 @@ const s = StyleSheet.create({
     color: "#ffffff",
   },
   tableRow: {
-    flexDirection: "row",
     backgroundColor: "#fef2e8",
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
-    alignItems: "flex-start",
     borderBottomWidth: 1,
     borderBottomColor: "#ffffff",
+  },
+  tableRowTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  tableRowBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 4,
   },
   colItem: {
     flex: 3.2,
@@ -209,13 +217,11 @@ const s = StyleSheet.create({
     marginBottom: 2,
   },
   itemThumb: {
-    width: 44,
-    height: 28,
+    width: 48,
+    height: 26,
     borderRadius: 2,
     objectFit: "cover",
     alignSelf: "flex-end",
-    marginTop: 6,
-    marginLeft: 6,
     borderWidth: 0.5,
     borderColor: "#e5e7eb",
   },
@@ -514,62 +520,66 @@ export function QuotationDocument({
 
             return (
               <View key={`row-${idx}`} style={s.tableRow}>
-                {/* Item Column: Number, Title, Attributes & Thumbnail */}
-                <View style={s.colItem}>
-                  <View style={s.itemTitleRow}>
+                {/* Top Row: Item Index & Title + 6 Columns */}
+                <View style={s.tableRowTop}>
+                  <View style={[s.colItem, { flexDirection: "row", alignItems: "flex-start" }]}>
                     <Text style={s.itemIndex}>{idx + 1}.</Text>
-                    <View style={{ flex: 1, paddingRight: 4 }}>
-                      <Text style={s.itemDesc}>{mainTitle}</Text>
-                      {attrLines.length > 0 && (
-                        <View style={{ marginTop: 2 }}>
-                          {attrLines.map((attr, aIdx) => (
-                            <Text key={`attr-${aIdx}`} style={s.itemAttr}>
-                              {attr}
-                            </Text>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                    {line.imageUrl && (
-                      <Image src={line.imageUrl} style={s.itemThumb} />
-                    )}
+                    <Text style={[s.itemDesc, { flex: 1, marginBottom: 0 }]}>{mainTitle}</Text>
                   </View>
+
+                  {/* VAT Rate */}
+                  <Text style={[s.colVatRate, { fontSize: 8, color: "#1c1c1c" }]}>
+                    {vatRateStr}
+                  </Text>
+
+                  {/* Quantity */}
+                  <Text style={[s.colQty, { fontSize: 8, color: "#1c1c1c" }]}>
+                    {qtyStr}
+                  </Text>
+
+                  {/* Unit Price Rate */}
+                  <Text style={[s.colRate, { fontSize: 8, color: "#1c1c1c" }]}>
+                    {fmtMoney(line.unitPrice, inv.currencyCode)}
+                  </Text>
+
+                  {/* Net Amount */}
+                  <Text style={[s.colAmount, { fontSize: 8, color: "#1c1c1c" }]}>
+                    {fmtMoney(line.amount, inv.currencyCode)}
+                  </Text>
+
+                  {/* VAT Amount */}
+                  <Text style={[s.colVat, { fontSize: 8, color: "#1c1c1c" }]}>
+                    {fmtMoney(line.taxAmount, inv.currencyCode)}
+                  </Text>
+
+                  {/* Line Total */}
+                  <Text
+                    style={[
+                      s.colTotal,
+                      { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#1c1c1c" },
+                    ]}
+                  >
+                    {fmtMoney(rowGrossTotal, inv.currencyCode)}
+                  </Text>
                 </View>
 
-                {/* VAT Rate */}
-                <Text style={[s.colVatRate, { fontSize: 8, color: "#1c1c1c" }]}>
-                  {vatRateStr}
-                </Text>
-
-                {/* Quantity */}
-                <Text style={[s.colQty, { fontSize: 8, color: "#1c1c1c" }]}>
-                  {qtyStr}
-                </Text>
-
-                {/* Unit Price Rate */}
-                <Text style={[s.colRate, { fontSize: 8, color: "#1c1c1c" }]}>
-                  {fmtMoney(line.unitPrice, inv.currencyCode)}
-                </Text>
-
-                {/* Net Amount */}
-                <Text style={[s.colAmount, { fontSize: 8, color: "#1c1c1c" }]}>
-                  {fmtMoney(line.amount, inv.currencyCode)}
-                </Text>
-
-                {/* VAT Amount */}
-                <Text style={[s.colVat, { fontSize: 8, color: "#1c1c1c" }]}>
-                  {fmtMoney(line.taxAmount, inv.currencyCode)}
-                </Text>
-
-                {/* Line Total */}
-                <Text
-                  style={[
-                    s.colTotal,
-                    { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#1c1c1c" },
-                  ]}
-                >
-                  {fmtMoney(rowGrossTotal, inv.currencyCode)}
-                </Text>
+                {/* Bottom Row: Attributes on left, Product thumbnail aligned right under Total */}
+                {(attrLines.length > 0 || line.imageUrl) && (
+                  <View style={s.tableRowBottom}>
+                    <View style={{ flex: 1, paddingLeft: 12, paddingRight: 8 }}>
+                      {attrLines.map((attr, aIdx) => (
+                        <Text key={`attr-${aIdx}`} style={s.itemAttr}>
+                          {attr}
+                        </Text>
+                      ))}
+                    </View>
+                    {line.imageUrl ? (
+                      <View style={{ width: 50, alignItems: "flex-end" }}>
+                        <Image src={line.imageUrl} style={s.itemThumb} />
+                      </View>
+                    ) : null}
+                  </View>
+                )}
               </View>
             );
           })}

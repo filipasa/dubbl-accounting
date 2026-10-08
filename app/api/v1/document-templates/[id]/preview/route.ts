@@ -84,8 +84,8 @@ export async function POST(
       issueDate: "2026-09-08",
       secondDate: "2026-09-23",
       dateFormat: org?.dateFormat || null,
-      contactName: "Sophie Brown",
-      contactEmail: "sophie.brown@example.com",
+      contactName: "Sample Name",
+      contactEmail: "sample@example.com",
       contactAddress: "United Kingdom (UK)",
       contactTaxNumber: null,
       lines: [

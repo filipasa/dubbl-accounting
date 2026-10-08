@@ -508,27 +508,39 @@ export function generateQuotationHtml(doc: DocumentData, org: OrgInfo, template:
       const qtyStr = Number.isInteger(qtyNum) ? `${qtyNum}` : qtyNum.toFixed(2);
       const rowGrossTotal = line.amount + line.taxAmount;
 
-      return `
-      <tr style="background:#fef2e8;border-bottom:1px solid #ffffff;font-size:12.5px;vertical-align:top;">
-        <td style="padding:12px 10px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-            <div style="display:flex;align-items:flex-start;gap:6px;">
-              <span style="font-weight:700;color:#1c1c1c;flex-shrink:0;">${idx + 1}.</span>
-              <div>
-                <div style="font-weight:700;color:#1c1c1c;">${escapeHtml(mainTitle)}</div>
-                ${attrLines.length > 0 ? `<div style="font-size:11px;color:#444444;margin-top:6px;line-height:1.35;">${attrLines.map((a) => `<div>${escapeHtml(a)}</div>`).join("")}</div>` : ""}
-              </div>
-            </div>
-            ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;border:0.5px solid #e5e7eb;flex-shrink:0;" alt="${escapeHtml(mainTitle)}" />` : ""}
+      const hasSubRow = attrLines.length > 0 || !!line.imageUrl;
+      const topRowBorder = hasSubRow ? "" : "border-bottom:1px solid #ffffff;";
+      const topRowPadding = hasSubRow ? "padding:10px 10px 4px 10px;" : "padding:10px 10px;";
+
+      const topRow = `
+      <tr style="background:#fef2e8;${topRowBorder}font-size:12.5px;vertical-align:top;">
+        <td style="${topRowPadding}">
+          <div style="display:flex;align-items:flex-start;gap:6px;">
+            <span style="font-weight:700;color:#1c1c1c;flex-shrink:0;">${idx + 1}.</span>
+            <span style="font-weight:700;color:#1c1c1c;">${escapeHtml(mainTitle)}</span>
           </div>
         </td>
-        <td style="padding:12px 10px;text-align:center;">${vatRateStr}</td>
-        <td style="padding:12px 10px;text-align:center;">${qtyStr}</td>
-        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
-        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.amount, doc.currencyCode)}</td>
-        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.taxAmount, doc.currencyCode)}</td>
-        <td style="padding:12px 10px;text-align:right;font-weight:700;">${formatMoney(rowGrossTotal, doc.currencyCode)}</td>
+        <td style="${topRowPadding}text-align:center;">${vatRateStr}</td>
+        <td style="${topRowPadding}text-align:center;">${qtyStr}</td>
+        <td style="${topRowPadding}text-align:right;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
+        <td style="${topRowPadding}text-align:right;">${formatMoney(line.amount, doc.currencyCode)}</td>
+        <td style="${topRowPadding}text-align:right;">${formatMoney(line.taxAmount, doc.currencyCode)}</td>
+        <td style="${topRowPadding}text-align:right;font-weight:700;">${formatMoney(rowGrossTotal, doc.currencyCode)}</td>
       </tr>`;
+
+      const subRow = hasSubRow
+        ? `
+      <tr style="background:#fef2e8;border-bottom:1px solid #ffffff;font-size:11px;vertical-align:bottom;">
+        <td colspan="5" style="padding:0 10px 10px 24px;color:#444444;line-height:1.35;">
+          ${attrLines.map((a) => `<div>${escapeHtml(a)}</div>`).join("")}
+        </td>
+        <td colspan="2" style="padding:0 10px 10px 10px;text-align:right;">
+          ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:50px;height:28px;object-fit:cover;border-radius:2px;border:0.5px solid #e5e7eb;display:inline-block;" alt="${escapeHtml(mainTitle)}" />` : ""}
+        </td>
+      </tr>`
+        : "";
+
+      return topRow + subRow;
     })
     .join("");
 

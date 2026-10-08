@@ -15,7 +15,8 @@ const sampleQuote = {
   documentNumber: "75295",
   issueDate: "2026-09-08",
   secondDate: "2026-09-23",
-  contactName: "Sophie Brown",
+  contactName: "Sample Name",
+  contactEmail: "sample@example.com",
   contactAddress: "United Kingdom (UK)",
   lines: [
     {
@@ -65,7 +66,8 @@ test("generateQuoteHtml renders quotation layout matching example.pdf", () => {
   assert.ok(html.includes("Quotation From"), "Should render Quotation From section");
   assert.ok(html.includes("Quotation For"), "Should render Quotation For section");
   assert.ok(html.includes("Legacy line Ventures LTD T/N DOORS DELIVERED"), "Should render trade name");
-  assert.ok(html.includes("Sophie Brown"), "Should render customer name");
+  assert.ok(html.includes("Sample Name"), "Should render customer name");
+  assert.ok(html.includes("sample@example.com"), "Should render customer email");
   assert.ok(html.includes("VAT Rate"), "Should render VAT Rate column");
   assert.ok(html.includes("Bank Details"), "Should render Bank Details section");
   assert.ok(html.includes("LEGACY LINE VENTURES LTD"), "Should render bank account name");
