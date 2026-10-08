@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { telegramMessageLog } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 import {
   getTelegramConfig,
   sendTelegramMessage,
@@ -1361,6 +1361,15 @@ CRITICAL INSTRUCTIONS:
    - When the user asks for a bank reconciliation report or proof of balances, call \`get_reconciliation_report\`.
    - The tool outputs will already contain formatted HTML messages. Present them clearly and directly to the user.
 
+12. CONVERSATION CONTEXT & MULTI-TURN MEMORY:
+   - Always retain and remember the context of prior messages in the conversation.
+   - When the user provides follow-up information (such as customer name, email, price, specifications, size, or answers to questions you asked earlier):
+     * Merge this new information with the details provided in earlier conversation turns.
+     * Execute the requested tool (e.g. \`create_quote\`, \`create_invoice\`, \`send_quote_email\`, \`send_invoice_email\`) using the combined data.
+   - If you asked the user for clarification or confirmation (e.g. "Would you like me to list your recent quotes so you can pick the right one?"), and the user replies "yes", "sure", "ok", or similar:
+     * Immediately proceed to execute that action (e.g. call \`list_quotes\`).
+   - NEVER treat follow-up details as an isolated new inquiry or forget what was discussed previously!
+
 TELEGRAM FORMATTING RULES:
 - ONLY use Telegram-supported HTML tags: <b>bold</b>, <i>italic</i>, and <code>code</code>.
 - NEVER use <h3>, <h2>, <h1>, <p>, <br>, <div>, or markdown (no ###, no ---).
@@ -1369,12 +1378,80 @@ When confirming actions, display clean breakdowns with emojis.`;
 }
 
 /**
+ * Loads recent multi-turn conversation history for a Telegram chat.
+ * Returns messages structured for conversational LLMs, ensuring strict alternating turns.
+ */
+async function getRecentTelegramConversationHistory(
+  chatId: string,
+  excludeLogId?: string | null,
+  limit = 8
+): Promise<Array<{ role: "user" | "model"; text: string }>> {
+  try {
+    const logs = await db.query.telegramMessageLog.findMany({
+      where: and(
+        eq(telegramMessageLog.chatId, chatId),
+        excludeLogId ? ne(telegramMessageLog.id, excludeLogId) : undefined
+      ),
+      orderBy: desc(telegramMessageLog.createdAt),
+      limit: limit + 6,
+    });
+
+    if (!logs || logs.length === 0) return [];
+
+    // Filter out slash commands, linking codes, and error messages
+    const valid = logs
+      .filter((l) => {
+        const body = (l.messageBody || "").trim();
+        if (!body) return false;
+        if (body.startsWith("/") || body.toLowerCase() === "help") return false;
+        if (body.includes("AI service is momentarily busy")) return false;
+        if (body.includes("Fixbooks Access Restricted")) return false;
+        if (body.includes("This Telegram chat is not connected")) return false;
+        return true;
+      })
+      .slice(0, limit)
+      .reverse(); // Chronological order (oldest to newest)
+
+    const history: Array<{ role: "user" | "model"; text: string }> = [];
+
+    for (const item of valid) {
+      const role: "user" | "model" = item.direction === "inbound" ? "user" : "model";
+      const text = item.messageBody!.trim();
+
+      const last = history[history.length - 1];
+      if (last && last.role === role) {
+        last.text += `\n${text}`;
+      } else {
+        history.push({ role, text });
+      }
+    }
+
+    // Ensure history starts with 'user' for Gemini compatibility
+    while (history.length > 0 && history[0].role !== "user") {
+      history.shift();
+    }
+
+    // Ensure history ends with 'model' so that appending the current userMessage alternates properly
+    while (history.length > 0 && history[history.length - 1].role === "user") {
+      history.pop();
+    }
+
+    return history;
+  } catch (err) {
+    console.warn("[Telegram History] Failed to load conversation history:", err);
+    return [];
+  }
+}
+
+/**
  * Handles natural language via Gemini REST API
  */
 async function handleGeminiNaturalLanguage(
   ctx: AuthContext,
+  chatId: string,
   userMessage: string,
-  apiKey: string
+  apiKey: string,
+  currentInboundId?: string | null
 ): Promise<string> {
   const org = await getOrganizationDetails(ctx);
   const systemPrompt = buildTelegramSystemPrompt(org.name);
@@ -1386,15 +1463,21 @@ async function handleGeminiNaturalLanguage(
 
   let lastError: any = null;
 
+  // Load prior conversation history for multi-turn context
+  const history = await getRecentTelegramConversationHistory(chatId, currentInboundId);
+  const initialContents: any[] = history.map((h) => ({
+    role: h.role,
+    parts: [{ text: h.text }],
+  }));
+  initialContents.push({
+    role: "user",
+    parts: [{ text: userMessage }],
+  });
+
   for (const model of candidateModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const contents: any[] = [
-        {
-          role: "user",
-          parts: [{ text: userMessage }],
-        },
-      ];
+      const contents: any[] = JSON.parse(JSON.stringify(initialContents));
 
       for (let turn = 0; turn < 5; turn++) {
         const payload = {
@@ -1495,8 +1578,10 @@ function convertToOpenAiSchema(schema: any): any {
  */
 async function handleOpenAiNaturalLanguage(
   ctx: AuthContext,
+  chatId: string,
   userMessage: string,
-  apiKey: string
+  apiKey: string,
+  currentInboundId?: string | null
 ): Promise<string> {
   try {
     const org = await getOrganizationDetails(ctx);
@@ -1518,11 +1603,17 @@ async function handleOpenAiNaturalLanguage(
       },
     }));
 
+    const history = await getRecentTelegramConversationHistory(chatId, currentInboundId);
+
     const messages: any[] = [
       {
         role: "system",
         content: buildTelegramSystemPrompt(org.name),
       },
+      ...history.map((h) => ({
+        role: h.role === "model" ? ("assistant" as const) : ("user" as const),
+        content: h.text,
+      })),
       { role: "user", content: userMessage },
     ];
 
@@ -1804,9 +1895,9 @@ export async function processIncomingTelegramUpdate(
     if (trimmed.startsWith("/") || trimmed.toLowerCase() === "help") {
       replyText = await handleTelegramCommand(ctx, trimmed);
     } else if (config.geminiApiKey) {
-      replyText = await handleGeminiNaturalLanguage(ctx, trimmed, config.geminiApiKey);
+      replyText = await handleGeminiNaturalLanguage(ctx, chatId, trimmed, config.geminiApiKey, inboundLogId);
     } else if (config.openaiApiKey) {
-      replyText = await handleOpenAiNaturalLanguage(ctx, trimmed, config.openaiApiKey);
+      replyText = await handleOpenAiNaturalLanguage(ctx, chatId, trimmed, config.openaiApiKey, inboundLogId);
     } else {
       replyText =
         `👋 <b>Fixbooks Telegram Bookkeeper</b>\n\n` +

@@ -153,6 +153,7 @@ test("create_quote and create_invoice tool definitions include shortDescription 
   assert.ok(handlerContent.includes("PRODUCT NAME vs SHORT DESCRIPTION"), "Contains prompt instructions for product name and short description separation");
   assert.ok(handlerContent.includes("QUOTE & INVOICE LINKS & PDF DOWNLOADS"), "Contains prompt instructions for quote links");
   assert.ok(handlerContent.includes("SENDING INVOICES & QUOTES TO CUSTOMER EMAIL"), "Contains prompt instructions for quote sending");
+  assert.ok(handlerContent.includes("CONVERSATION CONTEXT & MULTI-TURN MEMORY"), "Contains prompt instructions for multi-turn memory");
 });
 
 test("findInvoiceByNumber, findQuoteByNumber, and findBillByNumber safely handle document numbers without Postgres UUID errors", async () => {
