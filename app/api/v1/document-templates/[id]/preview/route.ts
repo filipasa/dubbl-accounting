@@ -77,41 +77,104 @@ export async function POST(
       dateFormat: org?.dateFormat || null,
     };
 
+    const isQuote = template.type === "quote" || template.layout === "quotation";
+
+    const sampleQuoteData = {
+      documentNumber: "75295",
+      issueDate: "2026-09-08",
+      secondDate: "2026-09-23",
+      dateFormat: org?.dateFormat || null,
+      contactName: "Sophie Brown",
+      contactEmail: "sophie.brown@example.com",
+      contactAddress: "United Kingdom (UK)",
+      contactTaxNumber: null,
+      lines: [
+        {
+          description: "Frameless Hidden Door with Concealed Design",
+          shortDescription:
+            "Door Size: 1981 x 838\nHinge & Latch Finish: Matt Black\nMagnetic Latch Type: Key Cylinder",
+          quantity: 800,
+          unitPrice: 55495,
+          taxAmount: 88792,
+          amount: 443960,
+          imageUrl: "/doors-thumbnail.png",
+          taxRate: { name: "VAT", rate: 2000 },
+        },
+        {
+          description: "Discounts",
+          quantity: 100,
+          unitPrice: -32900,
+          taxAmount: 0,
+          amount: -32900,
+        },
+        {
+          description: "Delivery",
+          quantity: 100,
+          unitPrice: 15000,
+          taxAmount: 0,
+          amount: 15000,
+        },
+      ],
+      subtotal: 443960,
+      taxTotal: 88792,
+      taxLabel: "VAT (20%)",
+      total: 514852,
+      currencyCode: "GBP",
+      reference: null,
+      notes: template.notes || "This quotation is valid for 15 days from the issue date.",
+    };
+
     if (format === "pdf") {
       const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
       const pdfBuffer = await renderInvoicePdf(
         {
-          invoiceNumber: sampleData.invoiceNumber,
-          issueDate: sampleData.issueDate,
-          dueDate: sampleData.dueDate,
+          invoiceNumber: isQuote ? sampleQuoteData.documentNumber : sampleData.invoiceNumber,
+          issueDate: isQuote ? sampleQuoteData.issueDate : sampleData.issueDate,
+          dueDate: isQuote ? (sampleQuoteData.secondDate || sampleQuoteData.issueDate) : sampleData.dueDate,
           dateFormat: org?.dateFormat || null,
-          lines: sampleData.lines,
-          subtotal: sampleData.subtotal,
-          taxTotal: sampleData.taxTotal,
-          taxLabel: sampleData.taxLabel,
-          total: sampleData.total,
+          lines: isQuote ? sampleQuoteData.lines : sampleData.lines,
+          subtotal: isQuote ? sampleQuoteData.subtotal : sampleData.subtotal,
+          taxTotal: isQuote ? sampleQuoteData.taxTotal : sampleData.taxTotal,
+          taxLabel: isQuote ? sampleQuoteData.taxLabel : sampleData.taxLabel,
+          total: isQuote ? sampleQuoteData.total : sampleData.total,
           amountPaid: 0,
-          amountDue: sampleData.total,
-          currencyCode: sampleData.currencyCode,
-          reference: sampleData.reference,
-          notes: sampleData.notes,
-          paymentUrl: sampleData.paymentUrl,
+          amountDue: isQuote ? sampleQuoteData.total : sampleData.total,
+          currencyCode: isQuote ? sampleQuoteData.currencyCode : sampleData.currencyCode,
+          reference: isQuote ? sampleQuoteData.reference : sampleData.reference,
+          notes: isQuote ? sampleQuoteData.notes : sampleData.notes,
+          paymentUrl: isQuote ? null : sampleData.paymentUrl,
         },
         orgInfo,
         {
-          name: sampleData.contactName,
-          email: sampleData.contactEmail,
-          address: sampleData.contactAddress,
-          taxNumber: sampleData.contactTaxNumber,
+          name: isQuote ? sampleQuoteData.contactName : sampleData.contactName,
+          email: isQuote ? sampleQuoteData.contactEmail : sampleData.contactEmail,
+          address: isQuote ? sampleQuoteData.contactAddress : sampleData.contactAddress,
+          taxNumber: isQuote ? sampleQuoteData.contactTaxNumber : sampleData.contactTaxNumber,
         },
-        template
+        template,
+        isQuote
+          ? {
+              title: "Quotation",
+              numberLabel: "Quotation No #",
+              partyLabel: "Quotation For",
+              dateLabel: "Valid Till Date",
+            }
+          : undefined
       );
 
       return new NextResponse(pdfBuffer, {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="sample-invoice.pdf"`,
+          "Content-Disposition": `attachment; filename="sample-${template.type}.pdf"`,
         },
+      });
+    }
+
+    if (isQuote) {
+      const { generateQuoteHtml } = await import("@/lib/documents/pdf-generator");
+      const html = generateQuoteHtml(sampleQuoteData, orgInfo, template);
+      return new NextResponse(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 

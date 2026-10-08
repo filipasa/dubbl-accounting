@@ -17,6 +17,7 @@ import {
 import { resolveTaxLabel } from "./tax-label";
 import { formatDate } from "@/lib/date";
 import { partitionDocumentLines } from "./line-adjustments";
+import { QuotationDocument } from "./quotation-document";
 
 export interface OrgInfo {
   name: string;
@@ -69,6 +70,7 @@ export interface PdfInvoiceData {
 }
 
 export interface PdfTemplateSettings {
+  layout?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
   showTaxBreakdown?: boolean;
@@ -575,13 +577,35 @@ export async function renderInvoicePdf(
     logoUrl: resolvedLogoUrl,
   };
 
+  // Resolve line item images as data URIs if needed
+  const resolvedLines = await Promise.all(
+    invoice.lines.map(async (line) => {
+      if (line.imageUrl) {
+        try {
+          const resolvedImg = await fetchImageAsDataUri(line.imageUrl);
+          return { ...line, imageUrl: resolvedImg || line.imageUrl };
+        } catch {
+          return line;
+        }
+      }
+      return line;
+    })
+  );
+
   const effectiveInvoice: PdfInvoiceData = {
     ...invoice,
+    lines: resolvedLines,
     qrCodeDataUri,
   };
 
+  const isQuotation =
+    template.layout === "quotation" ||
+    (labels?.title === "Quotation" && template.layout !== "standard");
+
+  const DocComponent = isQuotation ? QuotationDocument : InvoiceDocument;
+
   const buffer = await renderToBuffer(
-    <InvoiceDocument invoice={effectiveInvoice} org={org} contact={contact} template={effectiveTemplate} labels={labels} />
+    <DocComponent invoice={effectiveInvoice} org={org} contact={contact} template={effectiveTemplate} labels={labels} />
   );
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }

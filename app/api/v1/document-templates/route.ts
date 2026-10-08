@@ -29,6 +29,7 @@ export async function GET(request: Request) {
 const createSchema = z.object({
   name: z.string().min(1),
   type: z.enum(["invoice", "quote", "receipt", "payslip", "purchase_order"]),
+  layout: z.string().optional(),
   headerHtml: z.string().nullable().optional(),
   footerHtml: z.string().nullable().optional(),
   logoUrl: z.string().nullable().optional(),

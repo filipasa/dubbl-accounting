@@ -5,6 +5,7 @@ import { generateQrCodePngDataUri } from "./qr-code";
 import { partitionDocumentLines } from "./line-adjustments";
 
 interface TemplateSettings {
+  layout?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
   headerHtml?: string | null;
@@ -444,7 +445,238 @@ export function generateDocumentHtml(
 }
 
 export function generateQuoteHtml(doc: DocumentData, org: OrgInfo, template: TemplateSettings): string {
+  if (template.layout === "quotation") {
+    return generateQuotationHtml(doc, org, template);
+  }
   return generateDocumentHtml("quote", doc, org, template);
+}
+
+export function generateQuotationHtml(doc: DocumentData, org: OrgInfo, template: TemplateSettings): string {
+  const accent = template.accentColor || "#fe8f3d";
+  const activeDateFormat = doc.dateFormat || org.dateFormat || null;
+  const formattedIssueDate = formatDate(doc.issueDate, activeDateFormat);
+  const formattedSecondDate = doc.secondDate ? formatDate(doc.secondDate, activeDateFormat) : formattedIssueDate;
+
+  const { itemLines, discountLines, shippingLines, hasAdjustments, itemsSubtotal } =
+    partitionDocumentLines(doc.lines);
+  const discountTotal = discountLines.reduce((acc, d) => acc + Math.abs(d.amount), 0);
+  const shippingTotal = shippingLines.reduce((acc, s) => acc + Math.abs(s.amount), 0);
+
+  const isDoorsDelivered =
+    org.name.toLowerCase().includes("doors delivered") ||
+    org.registrationNumber === "14814854";
+
+  const companyDisplayName = isDoorsDelivered
+    ? "Legacy line Ventures LTD T/N DOORS DELIVERED"
+    : org.name;
+  const companyEmail = org.email || (isDoorsDelivered ? "sales@doorsdelivered.com" : null);
+
+  const companyAddressLines: string[] = [];
+  if (isDoorsDelivered && !org.address) {
+    companyAddressLines.push("Unit A, 82 James Carter Road,");
+    companyAddressLines.push("Bury St. Edmunds,");
+    companyAddressLines.push("Mildenhall, United Kingdom (UK) - IP28 7DE");
+  } else if (org.address) {
+    companyAddressLines.push(...org.address.split(",").map((s) => s.trim()));
+  }
+
+  const logoHtml = template.logoUrl
+    ? `<div style="max-width:180px;max-height:65px;display:flex;justify-content:flex-end;">
+      <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:65px;max-width:180px;object-fit:contain;" />
+    </div>`
+    : "";
+
+  const tableRowsHtml = itemLines
+    .map((line, idx) => {
+      const descParts = line.description
+        .split("\n")
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const mainTitle = descParts[0] || line.description;
+      const extraLines = descParts.slice(1);
+      const attrLines = line.shortDescription
+        ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
+        : extraLines;
+
+      const vatRateStr = line.taxRate?.rate
+        ? `${(line.taxRate.rate / 100).toFixed(0)}%`
+        : line.amount > 0 && line.taxAmount > 0
+        ? `${Math.round((line.taxAmount / line.amount) * 100)}%`
+        : "-";
+
+      const qtyNum = line.quantity / 100;
+      const qtyStr = Number.isInteger(qtyNum) ? `${qtyNum}` : qtyNum.toFixed(2);
+      const rowGrossTotal = line.amount + line.taxAmount;
+
+      return `
+      <tr style="background:#fef2e8;border-bottom:1px solid #ffffff;font-size:12.5px;vertical-align:top;">
+        <td style="padding:12px 10px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="font-weight:700;color:#1c1c1c;flex-shrink:0;">${idx + 1}.</span>
+              <div>
+                <div style="font-weight:700;color:#1c1c1c;">${escapeHtml(mainTitle)}</div>
+                ${attrLines.length > 0 ? `<div style="font-size:11px;color:#444444;margin-top:6px;line-height:1.35;">${attrLines.map((a) => `<div>${escapeHtml(a)}</div>`).join("")}</div>` : ""}
+              </div>
+            </div>
+            ${line.imageUrl ? `<img src="${escapeHtml(line.imageUrl)}" style="width:45px;height:45px;object-fit:cover;border-radius:4px;border:0.5px solid #e5e7eb;flex-shrink:0;" alt="${escapeHtml(mainTitle)}" />` : ""}
+          </div>
+        </td>
+        <td style="padding:12px 10px;text-align:center;">${vatRateStr}</td>
+        <td style="padding:12px 10px;text-align:center;">${qtyStr}</td>
+        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.unitPrice, doc.currencyCode)}</td>
+        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.amount, doc.currencyCode)}</td>
+        <td style="padding:12px 10px;text-align:right;">${formatMoney(line.taxAmount, doc.currencyCode)}</td>
+        <td style="padding:12px 10px;text-align:right;font-weight:700;">${formatMoney(rowGrossTotal, doc.currencyCode)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const parsedBankRows: { label: string; value: string }[] = [];
+  if (template.bankDetails) {
+    const lines = template.bankDetails.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (const l of lines) {
+      const colonIdx = l.indexOf(":");
+      if (colonIdx > -1) {
+        parsedBankRows.push({
+          label: l.slice(0, colonIdx).trim(),
+          value: l.slice(colonIdx + 1).trim(),
+        });
+      } else {
+        parsedBankRows.push({ label: "", value: l });
+      }
+    }
+  }
+
+  const bankDetailsHtml =
+    parsedBankRows.length > 0
+      ? `<div style="width:300px;background:#fef2e8;border-radius:8px;padding:14px 18px;">
+        <h4 style="color:${accent};font-size:13px;font-weight:700;margin:0 0 8px;">Bank Details</h4>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          ${parsedBankRows.map((r) => `<tr><td style="padding:2.5px 12px 2.5px 0;font-weight:700;color:#1c1c1c;width:110px;">${escapeHtml(r.label)}</td><td style="padding:2.5px 0;color:#1c1c1c;">${escapeHtml(r.value)}</td></tr>`).join("")}
+        </table>
+      </div>`
+      : `<div style="flex:1;"></div>`;
+
+  const notesText = (template.notes || doc.notes || "").trim();
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Quotation ${doc.documentNumber}</title>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;margin:0;padding:0;color:#1c1c1c;background:#ffffff;">
+  <div style="max-width:800px;margin:0 auto;padding:40px 48px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
+      <div>
+        <h1 style="color:${accent};font-size:26px;font-weight:500;margin:0 0 14px;">Quotation</h1>
+        <table style="font-size:12.5px;border-collapse:collapse;color:#212121;">
+          <tr>
+            <td style="padding:2.5px 24px 2.5px 0;">Quotation No #</td>
+            <td style="padding:2.5px 0;font-weight:700;">${doc.documentNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding:2.5px 24px 2.5px 0;">Quotation Date</td>
+            <td style="padding:2.5px 0;font-weight:700;">${formattedIssueDate}</td>
+          </tr>
+          <tr>
+            <td style="padding:2.5px 24px 2.5px 0;">Valid Till Date</td>
+            <td style="padding:2.5px 0;font-weight:700;">${formattedSecondDate}</td>
+          </tr>
+          ${doc.reference ? `<tr><td style="padding:2.5px 24px 2.5px 0;">Reference</td><td style="padding:2.5px 0;font-weight:700;">${escapeHtml(doc.reference)}</td></tr>` : ""}
+        </table>
+      </div>
+      ${logoHtml}
+    </div>
+
+    <!-- Cards: Quotation From & Quotation For -->
+    <div style="display:flex;gap:18px;margin-bottom:24px;">
+      <div style="flex:1;background:#fef2e8;border-radius:8px;padding:14px 18px;">
+        <h3 style="color:${accent};font-size:14px;font-weight:700;margin:0 0 8px;">Quotation From</h3>
+        <div style="font-size:12px;line-height:1.45;color:#333333;">
+          <div style="font-weight:700;color:#1c1c1c;margin-bottom:2px;">${escapeHtml(companyDisplayName)}</div>
+          ${companyAddressLines.map((a) => `<div>${escapeHtml(a)}</div>`).join("")}
+          ${companyEmail ? `<div>Email: ${escapeHtml(companyEmail)}</div>` : ""}
+          ${org.phone ? `<div>Phone: ${escapeHtml(org.phone)}</div>` : ""}
+          ${org.taxId ? `<div>VAT: ${escapeHtml(org.taxId)}</div>` : ""}
+        </div>
+      </div>
+      <div style="flex:1;background:#fef2e8;border-radius:8px;padding:14px 18px;">
+        <h3 style="color:${accent};font-size:14px;font-weight:700;margin:0 0 8px;">Quotation For</h3>
+        <div style="font-size:12px;line-height:1.45;color:#333333;">
+          <div style="font-weight:700;color:#1c1c1c;margin-bottom:2px;">${escapeHtml(doc.contactName)}</div>
+          ${doc.contactAddress ? `<div>${escapeHtml(doc.contactAddress)}</div>` : ""}
+          ${doc.contactEmail ? `<div>Email: ${escapeHtml(doc.contactEmail)}</div>` : ""}
+          ${doc.contactTaxNumber ? `<div>VAT: ${escapeHtml(doc.contactTaxNumber)}</div>` : ""}
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+      <thead>
+        <tr style="background:${accent};color:#ffffff;font-size:12px;font-weight:700;">
+          <th style="padding:10px 10px;text-align:left;border-top-left-radius:4px;">Item</th>
+          <th style="padding:10px 10px;text-align:center;white-space:nowrap;">VAT Rate</th>
+          <th style="padding:10px 10px;text-align:center;">Quantity</th>
+          <th style="padding:10px 10px;text-align:right;">Rate</th>
+          <th style="padding:10px 10px;text-align:right;">Amount</th>
+          <th style="padding:10px 10px;text-align:right;">VAT</th>
+          <th style="padding:10px 10px;text-align:right;border-top-right-radius:4px;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRowsHtml}
+      </tbody>
+    </table>
+
+    <!-- Bottom: Bank Details on left, Totals on right -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
+      ${bankDetailsHtml}
+      <div style="width:260px;">
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr>
+            <td style="padding:3px 0;color:#1c1c1c;">Amount</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(hasAdjustments ? itemsSubtotal : doc.subtotal, doc.currencyCode)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;color:#1c1c1c;">VAT</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(doc.taxTotal, doc.currencyCode)}</td>
+          </tr>
+          ${discountTotal > 0 ? `<tr>
+            <td style="padding:3px 0;color:#1c1c1c;">Discounts</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">(${formatMoney(discountTotal, doc.currencyCode)})</td>
+          </tr>` : ""}
+          ${shippingTotal > 0 ? `<tr>
+            <td style="padding:3px 0;color:#1c1c1c;">Delivery</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(shippingTotal, doc.currencyCode)}</td>
+          </tr>` : ""}
+          <tr style="border-top:1px solid #000000;border-bottom:2px solid #000000;">
+            <td style="padding:7px 0;font-weight:700;font-size:14px;color:#000000;">Total (${doc.currencyCode})</td>
+            <td style="padding:7px 0;text-align:right;font-weight:700;font-size:14px;color:#000000;">${formatMoney(doc.total, doc.currencyCode)}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    ${notesText ? `<div style="margin-top:20px;font-size:11.5px;color:#6b7280;">${escapeHtml(notesText)}</div>` : ""}
+
+    <!-- Footer -->
+    <div style="margin-top:36px;padding-top:10px;border-top:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:10px;color:#9ca3af;">${doc.documentNumber}</span>
+      <a href="https://www.fixbooks.io" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+        <svg viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="9">
+          <path d="M18 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10h-8V4z" fill="#d1d5db"/>
+          <path d="M4 4h8a10 10 0 0 1 10 10v4a10 10 0 0 1-10 10H4V4z" fill="#9ca3af"/>
+        </svg>
+        <span style="font-size:9px;color:#d1d5db;letter-spacing:0.5px;">fixbooks</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 export function generateCreditNoteHtml(doc: DocumentData, org: OrgInfo, template: TemplateSettings): string {

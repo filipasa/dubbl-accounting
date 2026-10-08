@@ -24,6 +24,7 @@ export const documentTemplate = pgTable("document_template", {
     .references(() => organization.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: documentTemplateTypeEnum("type").notNull(),
+  layout: text("layout").default("standard"),
   headerHtml: text("header_html"),
   footerHtml: text("footer_html"),
   logoUrl: text("logo_url"),

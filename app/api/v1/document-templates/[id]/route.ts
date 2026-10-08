@@ -33,6 +33,7 @@ export async function GET(
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
+  layout: z.string().optional(),
   headerHtml: z.string().nullable().optional(),
   footerHtml: z.string().nullable().optional(),
   logoUrl: z.string().nullable().optional(),

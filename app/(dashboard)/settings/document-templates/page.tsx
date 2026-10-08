@@ -53,6 +53,7 @@ interface Template {
   id: string;
   name: string;
   type: string;
+  layout: string | null;
   logoUrl: string | null;
   accentColor: string | null;
   headerHtml: string | null;
@@ -95,6 +96,7 @@ export default function DocumentTemplatesPage() {
   // Form state
   const [name, setName] = useState("");
   const [type, setType] = useState("invoice");
+  const [layout, setLayout] = useState("standard");
   const [logoUrl, setLogoUrl] = useState("");
   const [accentColor, setAccentColor] = useState("#10b981");
   const [headerHtml, setHeaderHtml] = useState("");
@@ -124,6 +126,7 @@ export default function DocumentTemplatesPage() {
     setEditing(null);
     setName("");
     setType("invoice");
+    setLayout("standard");
     setLogoUrl("");
     setAccentColor("#10b981");
     setHeaderHtml("");
@@ -141,6 +144,7 @@ export default function DocumentTemplatesPage() {
     setEditing(t);
     setName(t.name);
     setType(t.type);
+    setLayout(t.layout || "standard");
     setLogoUrl(t.logoUrl || "");
     setAccentColor(t.accentColor || "#10b981");
     setHeaderHtml(t.headerHtml || "");
@@ -159,6 +163,7 @@ export default function DocumentTemplatesPage() {
     const payload = {
       name,
       type,
+      layout,
       logoUrl: logoUrl || null,
       accentColor,
       headerHtml: headerHtml || null,
@@ -284,6 +289,7 @@ export default function DocumentTemplatesPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {TYPE_LABELS[t.type] || t.type}
+                      {t.layout === "quotation" && " · Quotation Layout"}
                     </p>
                   </div>
                   <DropdownMenu>
@@ -346,6 +352,16 @@ export default function DocumentTemplatesPage() {
                   </Select>
                 </div>
               )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Layout Style</Label>
+                <Select value={layout} onValueChange={setLayout}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="quotation">Quotation (Doors Delivered)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-xs">Default Template</Label>
