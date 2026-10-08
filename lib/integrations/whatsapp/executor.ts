@@ -929,6 +929,11 @@ export async function getBankAccountsAction(ctx: AuthContext) {
   );
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(str: string): boolean {
+  return UUID_REGEX.test(str.trim());
+}
+
 /**
  * Finds an invoice by invoiceNumber or UUID within the current organization.
  */
@@ -936,42 +941,55 @@ export async function findInvoiceByNumber(ctx: AuthContext, invoiceNumberOrId: s
   const query = (invoiceNumberOrId || "").trim();
   if (!query) return null;
 
-  const found = await db.query.invoice.findFirst({
-    where: and(
-      or(
-        ilike(invoice.invoiceNumber, query),
-        eq(invoice.id, query)
+  try {
+    const isId = isUuid(query);
+    const found = await db.query.invoice.findFirst({
+      where: and(
+        isId ? eq(invoice.id, query) : ilike(invoice.invoiceNumber, query),
+        eq(invoice.organizationId, ctx.organizationId),
+        notDeleted(invoice.deletedAt)
       ),
-      eq(invoice.organizationId, ctx.organizationId),
-      notDeleted(invoice.deletedAt)
-    ),
-    with: {
-      lines: { with: { taxRate: true } },
-      contact: true,
-    },
-  });
-  if (found) return found;
+      with: {
+        lines: { with: { taxRate: true } },
+        contact: true,
+      },
+    });
+    if (found) return found;
 
-  // Fallback: check recent invoices in case query was e.g. "17" instead of "INV-00017"
-  const recent = await db.query.invoice.findMany({
-    where: and(
-      eq(invoice.organizationId, ctx.organizationId),
-      notDeleted(invoice.deletedAt)
-    ),
-    with: {
-      lines: { with: { taxRate: true } },
-      contact: true,
-    },
-    limit: 50,
-  });
+    // Fallback: check recent invoices in case query was e.g. "17" instead of "INV-00017"
+    const recent = await db.query.invoice.findMany({
+      where: and(
+        eq(invoice.organizationId, ctx.organizationId),
+        notDeleted(invoice.deletedAt)
+      ),
+      with: {
+        lines: { with: { taxRate: true } },
+        contact: true,
+      },
+      orderBy: desc(invoice.createdAt),
+      limit: 50,
+    });
 
-  return (
-    recent.find((i) =>
-      i.invoiceNumber.toLowerCase() === query.toLowerCase() ||
-      i.invoiceNumber.toLowerCase().replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "") ||
-      i.id.toLowerCase() === query.toLowerCase()
-    ) || null
-  );
+    const digitsOnly = query.replace(/[^0-9]/g, "");
+    const queryNum = digitsOnly ? parseInt(digitsOnly, 10) : null;
+
+    return (
+      recent.find((i) => {
+        const invNum = (i.invoiceNumber || "").toLowerCase();
+        const qClean = query.toLowerCase();
+        if (invNum === qClean) return true;
+        if (i.id.toLowerCase() === qClean) return true;
+        if (queryNum !== null) {
+          const itemDigits = invNum.replace(/[^0-9]/g, "");
+          if (itemDigits && parseInt(itemDigits, 10) === queryNum) return true;
+        }
+        return false;
+      }) || null
+    );
+  } catch (err) {
+    console.warn("[Bot Invoice Finder] Error finding invoice:", err);
+    return null;
+  }
 }
 
 /**
@@ -981,41 +999,54 @@ export async function findQuoteByNumber(ctx: AuthContext, quoteNumberOrId: strin
   const query = (quoteNumberOrId || "").trim();
   if (!query) return null;
 
-  const found = await db.query.quote.findFirst({
-    where: and(
-      or(
-        ilike(quote.quoteNumber, query),
-        eq(quote.id, query)
+  try {
+    const isId = isUuid(query);
+    const found = await db.query.quote.findFirst({
+      where: and(
+        isId ? eq(quote.id, query) : ilike(quote.quoteNumber, query),
+        eq(quote.organizationId, ctx.organizationId),
+        notDeleted(quote.deletedAt)
       ),
-      eq(quote.organizationId, ctx.organizationId),
-      notDeleted(quote.deletedAt)
-    ),
-    with: {
-      lines: { with: { taxRate: true } },
-      contact: true,
-    },
-  });
-  if (found) return found;
+      with: {
+        lines: { with: { taxRate: true } },
+        contact: true,
+      },
+    });
+    if (found) return found;
 
-  const recent = await db.query.quote.findMany({
-    where: and(
-      eq(quote.organizationId, ctx.organizationId),
-      notDeleted(quote.deletedAt)
-    ),
-    with: {
-      lines: { with: { taxRate: true } },
-      contact: true,
-    },
-    limit: 50,
-  });
+    const recent = await db.query.quote.findMany({
+      where: and(
+        eq(quote.organizationId, ctx.organizationId),
+        notDeleted(quote.deletedAt)
+      ),
+      with: {
+        lines: { with: { taxRate: true } },
+        contact: true,
+      },
+      orderBy: desc(quote.createdAt),
+      limit: 50,
+    });
 
-  return (
-    recent.find((q) =>
-      q.quoteNumber?.toLowerCase() === query.toLowerCase() ||
-      (q.quoteNumber && q.quoteNumber.replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "")) ||
-      q.id.toLowerCase() === query.toLowerCase()
-    ) || null
-  );
+    const digitsOnly = query.replace(/[^0-9]/g, "");
+    const queryNum = digitsOnly ? parseInt(digitsOnly, 10) : null;
+
+    return (
+      recent.find((q) => {
+        const qNum = (q.quoteNumber || "").toLowerCase();
+        const qClean = query.toLowerCase();
+        if (qNum === qClean) return true;
+        if (q.id.toLowerCase() === qClean) return true;
+        if (queryNum !== null) {
+          const itemDigits = qNum.replace(/[^0-9]/g, "");
+          if (itemDigits && parseInt(itemDigits, 10) === queryNum) return true;
+        }
+        return false;
+      }) || null
+    );
+  } catch (err) {
+    console.warn("[Bot Quote Finder] Error finding quote:", err);
+    return null;
+  }
 }
 
 /**
@@ -1371,6 +1402,8 @@ export async function sendInvoiceEmailAction(
         currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
         lines: inv.lines.map((l: any) => ({
           description: l.description,
+          shortDescription: l.shortDescription,
+          imageUrl: l.imageUrl,
           quantity: l.quantity,
           unitPrice: l.unitPrice,
           taxAmount: l.taxAmount,
@@ -1568,6 +1601,8 @@ export async function sendQuoteEmailAction(
         dateFormat: org?.dateFormat || null,
         lines: q.lines.map((l: any) => ({
           description: l.description,
+          shortDescription: l.shortDescription,
+          imageUrl: l.imageUrl,
           quantity: l.quantity,
           unitPrice: l.unitPrice,
           taxAmount: l.taxAmount,
@@ -1722,9 +1757,10 @@ export async function findBillByNumber(ctx: AuthContext, billNumberOrId: string)
   if (!query) return null;
 
   try {
+    const isId = isUuid(query);
     const found = await db.query.bill.findFirst({
       where: and(
-        or(ilike(bill.billNumber, query), eq(bill.id, query)),
+        isId ? eq(bill.id, query) : ilike(bill.billNumber, query),
         eq(bill.organizationId, ctx.organizationId),
         notDeleted(bill.deletedAt)
       ),
@@ -1744,19 +1780,28 @@ export async function findBillByNumber(ctx: AuthContext, billNumberOrId: string)
         contact: true,
         lines: true,
       },
+      orderBy: desc(bill.createdAt),
       limit: 50,
     });
 
+    const digitsOnly = query.replace(/[^0-9]/g, "");
+    const queryNum = digitsOnly ? parseInt(digitsOnly, 10) : null;
+
     return (
-      recent.find(
-        (b) =>
-          b.billNumber.toLowerCase() === query.toLowerCase() ||
-          b.billNumber.toLowerCase().replace(/[^0-9]/g, "") === query.replace(/[^0-9]/g, "") ||
-          b.id.toLowerCase() === query.toLowerCase()
-      ) || null
+      recent.find((b) => {
+        const bNum = (b.billNumber || "").toLowerCase();
+        const qClean = query.toLowerCase();
+        if (bNum === qClean) return true;
+        if (b.id.toLowerCase() === qClean) return true;
+        if (queryNum !== null) {
+          const itemDigits = bNum.replace(/[^0-9]/g, "");
+          if (itemDigits && parseInt(itemDigits, 10) === queryNum) return true;
+        }
+        return false;
+      }) || null
     );
   } catch (err) {
-    console.warn("[Bot Bill] Query warning:", err);
+    console.warn("[Bot Bill Finder] Error finding bill:", err);
     return null;
   }
 }

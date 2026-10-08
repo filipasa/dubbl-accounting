@@ -1330,20 +1330,29 @@ CRITICAL INSTRUCTIONS:
    - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
 8. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
-   - When the user asks to create a quote and get the link, or asks for a quote link/PDF (e.g. "Create quote for... and give me the link", "Give me link for quote QTE-00007", "Quote link"):
-     * Call \`get_quote_link\` (or use the URLs returned from \`create_quote\`).
-     * ALWAYS provide both the customer view/accept link (portalUrl) and the PDF download link (pdfUrl), and the Fixbooks dashboard link (viewUrl):
+   - When the user asks for a link, download link, or PDF for ANY document (quote or invoice), you MUST provide it!
+   - For quotes (e.g. "give me link for QTE-00008", "send link for quote 8", "link for quote", "quote pdf", "quote link"):
+     * Call \`get_quote_link\` with quoteNumber (e.g. "QTE-00008").
+     * Provide both the customer view/accept link (portalUrl) and the PDF download link (pdfUrl), and the Fixbooks dashboard link (viewUrl):
        🔗 Customer Link: <portalUrl> (View & Accept)
        📄 Download PDF: <pdfUrl>
        🔗 View in Fixbooks: <viewUrl>
-   - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), call \`get_invoice_pdf\` and provide the PDF download link (Download PDF: <downloadUrl>).
+   - For invoices (e.g. "give me link for INV-00017", "link for invoice", "invoice pdf"):
+     * Call \`get_invoice_pdf\` with invoiceNumber (e.g. "INV-00017").
+     * Provide the PDF download link (Download PDF: <downloadUrl>).
+   - If the user says "give me link for <NUMBER>" without specifying quote or invoice:
+     * If the number starts with "QTE" or contains "quote", call \`get_quote_link\`.
+     * If the number starts with "INV" or contains "invoice", call \`get_invoice_pdf\`.
+     * NEVER say "I can only provide download links for invoices, not quotes"! You CAN provide links for BOTH quotes and invoices!
 9. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
    - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
    - Only DRAFT documents can be edited.
 10. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
-   - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"), execute the \`send_invoice_email\` tool.
-   - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00007 to customer email", "Email quote QTE-00007 to client@example.com"), execute the \`send_quote_email\` tool.
+   - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"):
+     * Execute the \`send_invoice_email\` tool.
+   - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00008 to customers email", "Email quote QTE-00008 to client@example.com", "Send quote QTE-00008 to customer email"):
+     * Execute the \`send_quote_email\` tool with quoteNumber (e.g. "QTE-00008").
    - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
 11. BANK RECONCILIATION & TRANSACTIONS:
    - When the user asks to see unreconciled transactions, review bank accounts, or asks what needs reconciling, call the \`list_unreconciled_transactions\` tool.
@@ -1371,7 +1380,6 @@ async function handleGeminiNaturalLanguage(
   const systemPrompt = buildTelegramSystemPrompt(org.name);
 
   const candidateModels = [
-    "gemini-2.5-flash",
     "gemini-1.5-flash",
     "gemini-2.0-flash",
   ];
@@ -1454,10 +1462,7 @@ async function handleGeminiNaturalLanguage(
     } catch (err: any) {
       console.warn(`[Telegram Gemini] Model ${model} failed:`, err.message || err);
       lastError = err;
-      if (err.message?.includes("429") || err.message?.includes("503") || err.message?.includes("demand")) {
-        continue;
-      }
-      break;
+      continue;
     }
   }
 

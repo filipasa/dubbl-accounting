@@ -151,6 +151,24 @@ test("create_quote and create_invoice tool definitions include shortDescription 
   assert.ok(handlerContent.includes("shortDescription:"), "Contains shortDescription in line items");
   assert.ok(handlerContent.includes("shipping:"), "Contains shipping parameter in tool schema");
   assert.ok(handlerContent.includes("PRODUCT NAME vs SHORT DESCRIPTION"), "Contains prompt instructions for product name and short description separation");
+  assert.ok(handlerContent.includes("QUOTE & INVOICE LINKS & PDF DOWNLOADS"), "Contains prompt instructions for quote links");
+  assert.ok(handlerContent.includes("SENDING INVOICES & QUOTES TO CUSTOMER EMAIL"), "Contains prompt instructions for quote sending");
+});
+
+test("findInvoiceByNumber, findQuoteByNumber, and findBillByNumber safely handle document numbers without Postgres UUID errors", async () => {
+  const { findInvoiceByNumber, findQuoteByNumber, findBillByNumber } = await import(
+    "../lib/integrations/whatsapp/executor"
+  );
+  const dummyCtx = { userId: "test-user", organizationId: "00000000-0000-0000-0000-000000000001", role: "owner" as const };
+
+  const quoteResult = await findQuoteByNumber(dummyCtx, "QTE-00008");
+  assert.strictEqual(quoteResult, null, "Should safely return null when quote not found in dummy org without throwing UUID error");
+
+  const invResult = await findInvoiceByNumber(dummyCtx, "INV-00017");
+  assert.strictEqual(invResult, null, "Should safely return null when invoice not found in dummy org without throwing UUID error");
+
+  const billResult = await findBillByNumber(dummyCtx, "BILL-00001");
+  assert.strictEqual(billResult, null, "Should safely return null when bill not found in dummy org without throwing UUID error");
 });
 
 
