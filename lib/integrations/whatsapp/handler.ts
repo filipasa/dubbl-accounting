@@ -893,9 +893,10 @@ WHATSAPP FORMATTING RULES:
 When confirming actions, display clean breakdowns with emojis.`;
 
   const candidateModels = [
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
   ];
 
   let lastError: any = null;

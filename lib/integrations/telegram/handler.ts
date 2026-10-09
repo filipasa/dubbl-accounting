@@ -1457,8 +1457,10 @@ async function handleGeminiNaturalLanguage(
   const systemPrompt = buildTelegramSystemPrompt(org.name);
 
   const candidateModels = [
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
   ];
 
   let lastError: any = null;
@@ -1896,6 +1898,10 @@ export async function processIncomingTelegramUpdate(
       replyText = await handleTelegramCommand(ctx, trimmed);
     } else if (config.geminiApiKey) {
       replyText = await handleGeminiNaturalLanguage(ctx, chatId, trimmed, config.geminiApiKey, inboundLogId);
+      if (replyText.includes("AI service is momentarily busy") && config.openaiApiKey) {
+        console.log("[Telegram] Gemini busy, falling back to OpenAI...");
+        replyText = await handleOpenAiNaturalLanguage(ctx, chatId, trimmed, config.openaiApiKey, inboundLogId);
+      }
     } else if (config.openaiApiKey) {
       replyText = await handleOpenAiNaturalLanguage(ctx, chatId, trimmed, config.openaiApiKey, inboundLogId);
     } else {
