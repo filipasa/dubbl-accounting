@@ -653,18 +653,18 @@ export function generateQuotationHtml(doc: DocumentData, org: OrgInfo, template:
             <td style="padding:3px 0;color:#1c1c1c;">Amount</td>
             <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(hasAdjustments ? itemsSubtotal : doc.subtotal, doc.currencyCode)}</td>
           </tr>
-          <tr>
-            <td style="padding:3px 0;color:#1c1c1c;">VAT</td>
-            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(doc.taxTotal, doc.currencyCode)}</td>
-          </tr>
-          ${discountTotal > 0 ? `<tr>
-            <td style="padding:3px 0;color:#1c1c1c;">Discounts</td>
-            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">(${formatMoney(discountTotal, doc.currencyCode)})</td>
-          </tr>` : ""}
           ${shippingTotal > 0 ? `<tr>
             <td style="padding:3px 0;color:#1c1c1c;">Delivery</td>
             <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(shippingTotal, doc.currencyCode)}</td>
           </tr>` : ""}
+          ${discountTotal > 0 ? `<tr>
+            <td style="padding:3px 0;color:#1c1c1c;">Discounts</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">(${formatMoney(discountTotal, doc.currencyCode)})</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding:3px 0;color:#1c1c1c;">VAT</td>
+            <td style="padding:3px 0;text-align:right;color:#1c1c1c;">${formatMoney(doc.taxTotal, doc.currencyCode)}</td>
+          </tr>
           <tr style="border-top:1px solid #000000;border-bottom:2px solid #000000;">
             <td style="padding:7px 0;font-weight:700;font-size:14px;color:#000000;">Total (${doc.currencyCode})</td>
             <td style="padding:7px 0;text-align:right;font-weight:700;font-size:14px;color:#000000;">${formatMoney(doc.total, doc.currencyCode)}</td>

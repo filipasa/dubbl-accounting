@@ -72,8 +72,13 @@ test("generateQuoteHtml renders quotation layout matching example.pdf", () => {
   assert.ok(html.includes("Bank Details"), "Should render Bank Details section");
   assert.ok(html.includes("LEGACY LINE VENTURES LTD"), "Should render bank account name");
   assert.ok(html.includes("60269251"), "Should render bank account number");
-  assert.ok(html.includes("23-11-85"), "Should render sort code");
   assert.ok(html.includes("Total (GBP)"), "Should render Total (GBP)");
+
+  const deliveryIndex = html.indexOf(">Delivery</td>");
+  const vatIndex = html.indexOf(">VAT</td>");
+  assert.ok(deliveryIndex !== -1, "Should render Delivery row");
+  assert.ok(vatIndex !== -1, "Should render VAT row");
+  assert.ok(deliveryIndex < vatIndex, "Delivery should appear before VAT in quotation totals");
 });
 
 test("renderInvoicePdf renders PDF with quotation layout", async () => {

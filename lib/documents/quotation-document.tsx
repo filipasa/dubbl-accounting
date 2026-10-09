@@ -617,12 +617,14 @@ export function QuotationDocument({
               </Text>
             </View>
 
-            <View style={s.totalRow}>
-              <Text style={s.totalLabel}>VAT</Text>
-              <Text style={s.totalValue}>
-                {fmtMoney(inv.taxTotal, inv.currencyCode)}
-              </Text>
-            </View>
+            {shippingTotal > 0 && (
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>Delivery</Text>
+                <Text style={s.totalValue}>
+                  {fmtMoney(shippingTotal, inv.currencyCode)}
+                </Text>
+              </View>
+            )}
 
             {discountTotal > 0 && (
               <View style={s.totalRow}>
@@ -633,14 +635,12 @@ export function QuotationDocument({
               </View>
             )}
 
-            {shippingTotal > 0 && (
-              <View style={s.totalRow}>
-                <Text style={s.totalLabel}>Delivery</Text>
-                <Text style={s.totalValue}>
-                  {fmtMoney(shippingTotal, inv.currencyCode)}
-                </Text>
-              </View>
-            )}
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>VAT</Text>
+              <Text style={s.totalValue}>
+                {fmtMoney(inv.taxTotal, inv.currencyCode)}
+              </Text>
+            </View>
 
             {/* Solid separator line */}
             <View style={s.totalDividerTop}>
