@@ -23,6 +23,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 
 interface Payment {
@@ -72,7 +73,7 @@ function buildColumns(): Column<Payment>[] {
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.date}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.date)}</span>,
     },
     {
       key: "method",

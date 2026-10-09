@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -67,7 +68,7 @@ function getFilingStatus(period: TaxPeriod): {
       label: "Submitted",
       variant: "filed",
       daysText: period.filedAt
-        ? `Submitted ${new Date(period.filedAt).toLocaleDateString()}`
+        ? `Submitted ${formatDate(period.filedAt)}`
         : "Submitted",
     };
   }
@@ -599,18 +600,11 @@ export default function TaxPeriodsPage() {
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">
                         <span className="whitespace-nowrap">
-                          {new Date(p.startDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {formatDate(p.startDate)}
                         </span>
                         {" · "}
                         <span className="whitespace-nowrap">
-                          {new Date(p.endDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {formatDate(p.endDate)}
                         </span>
                       </td>
                       <td className="hidden px-4 py-2.5 capitalize text-muted-foreground sm:table-cell">

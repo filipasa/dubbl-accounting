@@ -24,6 +24,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { formatMoney, parseMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 
@@ -254,7 +255,7 @@ export default function PaymentBatchesPage() {
                   </span>
                   <span className="text-border">{"\u00B7"}</span>
                   <span>
-                    {new Date(batch.createdAt).toLocaleDateString()}
+                    {formatDate(batch.createdAt)}
                   </span>
                 </div>
               </div>

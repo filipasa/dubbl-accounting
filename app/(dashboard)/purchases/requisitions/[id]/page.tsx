@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import {
@@ -299,8 +300,8 @@ export default function RequisitionDetailPage() {
           {req.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          Requested {req.requestDate}
-          {req.requiredDate ? ` · Required by ${req.requiredDate}` : ""}
+          Requested {formatDate(req.requestDate)}
+          {req.requiredDate ? ` · Required by ${formatDate(req.requiredDate)}` : ""}
         </span>
       </div>
 

@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney, minorUnitsToDecimal, decimalToMinorUnits } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 
 interface Allocation {
@@ -267,7 +268,7 @@ export default function PaymentDetailPage() {
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Badge variant="outline">{methodLabels[pmt.method] || pmt.method}</Badge>
-        <span className="text-xs sm:text-sm text-muted-foreground">Received {pmt.date}</span>
+        <span className="text-xs sm:text-sm text-muted-foreground">Received {formatDate(pmt.date)}</span>
         {pmt.reference && (
           <span className="text-xs sm:text-sm text-muted-foreground">Ref: {pmt.reference}</span>
         )}

@@ -33,6 +33,7 @@ import { formatMoney } from "@/lib/money";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface PayrollRunDetail {
@@ -389,7 +390,7 @@ export default function PayrollRunDetailPage() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-semibold">
-                {run.payPeriodStart} to {run.payPeriodEnd}
+                {formatDate(run.payPeriodStart)} to {formatDate(run.payPeriodEnd)}
               </h1>
               <Badge variant="outline" className={statusColors[run.status] || ""}>
                 {statusLabels[run.status] || run.status.replace(/_/g, " ")}

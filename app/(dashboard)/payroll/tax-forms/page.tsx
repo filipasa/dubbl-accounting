@@ -22,6 +22,7 @@ import {
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 interface TaxFormItem {
   id: string;
@@ -245,7 +246,7 @@ export default function TaxFormsPage() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {gen.generatedAt
-                        ? new Date(gen.generatedAt).toLocaleDateString()
+                        ? formatDate(gen.generatedAt)
                         : "-"}
                     </TableCell>
                   </TableRow>

@@ -35,6 +35,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
@@ -95,7 +96,7 @@ function buildColumns(): Column<Requisition>[] {
       header: "Request Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.requestDate}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.requestDate)}</span>,
     },
     {
       key: "status",

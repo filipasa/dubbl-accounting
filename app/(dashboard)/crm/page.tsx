@@ -28,6 +28,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { SearchInput } from "@/components/ui/search-input";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDebounce } from "@/lib/hooks/use-debounce";
+import { formatDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
 import {
   Select,
@@ -640,10 +641,7 @@ export default function CRMPage() {
                     {deal.expectedCloseDate && (
                       <span className="flex items-center gap-1">
                         <Calendar className="size-3" />
-                        {new Date(deal.expectedCloseDate).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {formatDate(deal.expectedCloseDate)}
                       </span>
                     )}
                     {deal.source && <span className="capitalize">{deal.source.replace("_", " ")}</span>}

@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useProject, type NoteData } from "../project-context";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 export default function NotesPage() {
   const { project: proj, orgId, projectId, refresh } = useProject();
@@ -349,7 +350,7 @@ function NoteCard({
           </div>
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Calendar className="size-2.5" />
-            {new Date(note.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {formatDate(note.createdAt)}
             <span className="text-muted-foreground/50 ml-0.5">
               {new Date(note.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </span>

@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BackToReports, ReportHelp } from "../_components";
+import { formatDate } from "@/lib/date";
 
 interface SavedReport {
   id: string;
@@ -324,7 +325,7 @@ export default function ReportSchedulesPage() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {s.nextRunAt
-                        ? new Date(s.nextRunAt).toLocaleString()
+                        ? formatDate(s.nextRunAt)
                         : "—"}
                     </TableCell>
                     <TableCell>

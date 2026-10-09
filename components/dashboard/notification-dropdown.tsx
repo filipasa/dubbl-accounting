@@ -23,6 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date";
 
 interface Notification {
   id: string;
@@ -103,7 +104,7 @@ function relativeTime(date: string) {
   if (diffHrs < 24) return `${diffHrs}h ago`;
   const diffDays = Math.floor(diffHrs / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(d);
 }
 
 export function NotificationDropdown() {

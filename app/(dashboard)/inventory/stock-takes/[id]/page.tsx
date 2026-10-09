@@ -37,6 +37,7 @@ import {
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 type SortKey = "name" | "code" | "expected" | "counted" | "discrepancy";
@@ -603,12 +604,7 @@ export default function StockTakeDetailPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground">
-                Created{" "}
-                {new Date(stockTake.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                Created {formatDate(stockTake.createdAt)}
                 {stockTake.warehouse && (
                   <>
                     {" · "}
@@ -618,11 +614,7 @@ export default function StockTakeDetailPage() {
                 {stockTake.completedAt && (
                   <>
                     {" · Completed "}
-                    {new Date(stockTake.completedAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {formatDate(stockTake.completedAt)}
                   </>
                 )}
               </p>

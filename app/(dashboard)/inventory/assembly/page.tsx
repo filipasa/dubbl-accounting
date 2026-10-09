@@ -9,6 +9,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 interface AssemblyOrder {
   id: string;
@@ -206,7 +207,7 @@ export default function AssemblyOrdersPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     BOM: {order.bom?.name || "Unknown"}
-                    {order.completedAt && ` · Completed ${new Date(order.completedAt).toLocaleDateString()}`}
+                    {order.completedAt && ` · Completed ${formatDate(order.completedAt)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">

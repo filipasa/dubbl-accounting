@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/shared/logo";
 import { setDefaultCurrency } from "@/lib/money";
+import { setGlobalDateFormat } from "@/lib/date";
 
 export function OrgLoader({ children }: { children: React.ReactNode }) {
   const FADE_DURATION_MS = 400;
@@ -42,6 +43,10 @@ export function OrgLoader({ children }: { children: React.ReactNode }) {
           if (org.defaultCurrency) {
             localStorage.setItem("activeOrgCurrency", org.defaultCurrency);
             setDefaultCurrency(org.defaultCurrency);
+          }
+          if (org.dateFormat) {
+            localStorage.setItem("activeOrgDateFormat", org.dateFormat);
+            setGlobalDateFormat(org.dateFormat);
           }
           if (org.country === null) {
             window.location.href = "/onboarding";

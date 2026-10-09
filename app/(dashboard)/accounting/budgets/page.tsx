@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { cn } from "@/lib/utils";
@@ -450,7 +451,7 @@ export default function BudgetsPage() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {b.startDate} · {b.endDate}
+                        {formatDate(b.startDate)} · {formatDate(b.endDate)}
                       </p>
                     </div>
                     <span className="font-mono text-sm font-medium tabular-nums shrink-0 text-muted-foreground">

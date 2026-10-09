@@ -19,6 +19,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { centsToDecimal, formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { setEntityTitle } from "@/lib/hooks/use-entity-title";
@@ -361,7 +362,7 @@ export default function InventoryItemDetailsPage() {
                   <div className="text-right">
                     <p className="text-sm font-mono tabular-nums font-medium">{ws.quantity}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {new Date(ws.updatedAt).toLocaleDateString()}
+                      {formatDate(ws.updatedAt)}
                     </p>
                   </div>
                 </div>

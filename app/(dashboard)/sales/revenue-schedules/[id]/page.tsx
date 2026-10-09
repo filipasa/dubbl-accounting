@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import Link from "next/link";
@@ -138,7 +139,7 @@ export default function RevenueScheduleDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Revenue schedule" description={`${rs.startDate} – ${rs.endDate} · ${methodLabels[rs.method] || rs.method}`}>
+      <PageHeader title="Revenue schedule" description={`${formatDate(rs.startDate)} – ${formatDate(rs.endDate)} · ${methodLabels[rs.method] || rs.method}`}>
         <Button variant="outline" size="sm" asChild>
           <Link href="/sales/revenue-schedules"><ArrowLeft className="mr-2 size-4" />Back</Link>
         </Button>
@@ -192,7 +193,7 @@ export default function RevenueScheduleDetailPage() {
         </div>
         {sortedEntries.map((entry) => (
           <div key={entry.id} className="grid min-w-[400px] grid-cols-[1fr_140px_120px] gap-2 border-b px-4 py-2 last:border-b-0 items-center">
-            <span className="text-sm">{entry.periodDate}</span>
+            <span className="text-sm">{formatDate(entry.periodDate)}</span>
             <span className="text-right text-sm font-mono font-medium">{formatMoney(entry.amount)}</span>
             <span className="text-right text-sm">
               {entry.recognized ? (

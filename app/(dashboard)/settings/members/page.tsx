@@ -25,6 +25,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 
 interface CustomRole {
   id: string;
@@ -452,11 +453,7 @@ export default function MembersPage() {
         <div className="divide-y rounded-lg border">
           {members.map((m) => {
             const RoleIcon = ROLE_ICONS[m.role];
-            const joinDate = new Date(m.createdAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            });
+            const joinDate = formatDate(m.createdAt);
             return (
               <div
                 key={m.id}
@@ -661,7 +658,7 @@ export default function MembersPage() {
                       Role: <span className="capitalize">{link.defaultRole}</span>
                       {link.maxUses && ` · ${link.useCount}/${link.maxUses} uses`}
                       {!link.maxUses && link.useCount > 0 && ` · ${link.useCount} uses`}
-                      {link.expiresAt && ` · Expires ${new Date(link.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                      {link.expiresAt && ` · Expires ${formatDate(link.expiresAt)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">

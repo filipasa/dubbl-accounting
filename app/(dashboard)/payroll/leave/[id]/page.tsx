@@ -20,6 +20,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface LeaveRequestDetail {
@@ -149,7 +150,7 @@ export default function LeaveRequestDetailPage() {
               <Badge variant="outline" className={cn("text-[10px]", statusColors[req.status] || "")}>{req.status}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {req.policy?.name || "-"} · {req.startDate} to {req.endDate} · {req.hours}h
+              {req.policy?.name || "-"} · {formatDate(req.startDate)} to {formatDate(req.endDate)} · {req.hours}h
             </p>
           </div>
         </div>
@@ -186,7 +187,7 @@ export default function LeaveRequestDetailPage() {
         </div>
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-sm text-muted-foreground">Dates</span>
-          <span className="text-sm font-medium">{req.startDate} to {req.endDate}</span>
+          <span className="text-sm font-medium">{formatDate(req.startDate)} to {formatDate(req.endDate)}</span>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
           <span className="text-sm text-muted-foreground">Hours</span>
@@ -195,7 +196,7 @@ export default function LeaveRequestDetailPage() {
         {req.status === "approved" && req.approvedAt && (
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-muted-foreground">Approved on</span>
-            <span className="text-sm font-medium">{new Date(req.approvedAt).toLocaleDateString()}</span>
+            <span className="text-sm font-medium">{formatDate(req.approvedAt)}</span>
           </div>
         )}
       </div>

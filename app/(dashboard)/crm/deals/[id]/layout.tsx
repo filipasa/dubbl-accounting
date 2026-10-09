@@ -23,6 +23,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -79,7 +80,7 @@ export function timeAgo(dateStr: string) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDate(dateStr);
 }
 
 // ---------------------------------------------------------------------------

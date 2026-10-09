@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date";
 
 interface BillingInfo {
   plan: "free" | "pro";
@@ -335,7 +336,7 @@ export default function BillingPage() {
         {isPro && billing?.currentPeriodEnd && (
           <p className="mt-3 text-xs text-muted-foreground">
             {billing.cancelAtPeriodEnd ? "Cancels" : "Renews"} on{" "}
-            {new Date(billing.currentPeriodEnd).toLocaleDateString()}
+            {formatDate(billing.currentPeriodEnd)}
           </p>
         )}
       </div>

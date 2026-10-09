@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Mail, RotateCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/date";
 
 interface EmailLogEntry {
   id: string;
@@ -28,7 +29,7 @@ function timeAgo(dateStr: string) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return formatDate(dateStr);
 }
 
 export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {

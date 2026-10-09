@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 interface LedgerEntry {
   entryId: string;
@@ -56,7 +57,7 @@ const ledgerColumns: Column<LedgerEntry>[] = [
     header: "Date",
     sortKey: "date",
     className: "w-28",
-    render: (r) => <span className="text-sm">{r.date}</span>,
+    render: (r) => <span className="text-sm">{formatDate(r.date)}</span>,
   },
   {
     key: "description",

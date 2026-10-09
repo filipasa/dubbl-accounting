@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { CashFlowWidget } from "@/components/dashboard/cash-flow-widget";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 const GREETINGS_MORNING = [
   "Good morning",
@@ -150,7 +151,7 @@ const columns: Column<Entry>[] = [
     key: "date",
     header: "Date",
     className: "w-28",
-    render: (r) => <span className="text-sm">{r.date}</span>,
+    render: (r) => <span className="text-sm">{formatDate(r.date)}</span>,
   },
   {
     key: "description",

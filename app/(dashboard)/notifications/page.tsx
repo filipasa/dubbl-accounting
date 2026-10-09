@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface Notification {
@@ -75,7 +76,7 @@ function relativeTime(date: string) {
   if (diffHrs < 24) return `${diffHrs}h ago`;
   const diffDays = Math.floor(diffHrs / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(d);
 }
 
 function groupByDate(notifications: Notification[]) {
@@ -96,7 +97,7 @@ function groupByDate(notifications: Notification[]) {
 
     if (ds === todayStr) label = "Today";
     else if (ds === yesterdayStr) label = "Yesterday";
-    else label = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    else label = formatDate(d);
 
     if (!map.has(label)) map.set(label, []);
     map.get(label)!.push(n);

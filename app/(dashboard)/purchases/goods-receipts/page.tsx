@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
@@ -78,7 +79,7 @@ function buildColumns(): Column<GoodsReceipt>[] {
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.date}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.date)}</span>,
     },
     {
       key: "status",

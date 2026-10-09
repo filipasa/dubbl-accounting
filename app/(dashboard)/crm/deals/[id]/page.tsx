@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date";
 import { useDealContext, SOURCE_LABELS, timeAgo } from "./layout";
 
 const ACTIVITY_ICONS: Record<string, typeof MessageSquare> = {
@@ -83,7 +84,7 @@ export default function DealOverviewPage() {
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Expected Close</p>
                 <p className="text-sm">
                   {deal.expectedCloseDate
-                    ? new Date(deal.expectedCloseDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                    ? formatDate(deal.expectedCloseDate)
                     : "-"}
                 </p>
               </div>
@@ -251,16 +252,16 @@ export default function DealOverviewPage() {
         {/* Created date */}
         <div className="rounded-xl border bg-card p-4">
           <p className="text-[11px] text-muted-foreground">
-            Created {new Date(deal.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+            Created {formatDate(deal.createdAt)}
           </p>
           {deal.wonAt && (
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
-              Won {new Date(deal.wonAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+              Won {formatDate(deal.wonAt)}
             </p>
           )}
           {deal.lostAt && (
             <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">
-              Lost {new Date(deal.lostAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+              Lost {formatDate(deal.lostAt)}
             </p>
           )}
         </div>

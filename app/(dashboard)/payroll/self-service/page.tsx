@@ -13,6 +13,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { formatMoney } from "@/lib/money";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface Profile {
@@ -180,8 +181,8 @@ export default function SelfServicePage() {
               {payslips.slice(0, 10).map((ps) => (
                 <div key={ps.id} className="flex items-center justify-between px-4 py-2.5">
                   <div>
-                    <p className="text-sm">{ps.payrollRun?.payPeriodStart} to {ps.payrollRun?.payPeriodEnd}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(ps.generatedAt).toLocaleDateString()}</p>
+                    <p className="text-sm">{ps.payrollRun ? `${formatDate(ps.payrollRun.payPeriodStart)} to ${formatDate(ps.payrollRun.payPeriodEnd)}` : ""}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(ps.generatedAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-mono tabular-nums">{formatMoney(ps.grossAmount)}</p>

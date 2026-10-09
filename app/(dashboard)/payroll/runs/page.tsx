@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatMoney } from "@/lib/money";
@@ -537,7 +538,7 @@ export default function PayrollRunsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {run.payPeriodStart} to {run.payPeriodEnd}
+                        {formatDate(run.payPeriodStart)} to {formatDate(run.payPeriodEnd)}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <Badge variant="outline" className={cn("text-[11px]", statusColors[run.status] || "")}>

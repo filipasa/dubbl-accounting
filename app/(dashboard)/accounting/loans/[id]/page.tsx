@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import Link from "next/link";
@@ -133,7 +134,7 @@ export default function LoanDetailPage() {
           {statusLabels[ln.status] || ln.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          Started {ln.startDate}
+          Started {formatDate(ln.startDate)}
         </span>
       </div>
 
@@ -174,7 +175,7 @@ export default function LoanDetailPage() {
             }`}
           >
             <span className="text-sm font-mono">{entry.periodNumber}</span>
-            <span className="text-sm">{entry.date || "-"}</span>
+            <span className="text-sm">{entry.date ? formatDate(entry.date) : "-"}</span>
             <span className="text-right text-sm font-mono">{formatMoney(entry.principalAmount)}</span>
             <span className="text-right text-sm font-mono">{formatMoney(entry.interestAmount)}</span>
             <span className="text-right text-sm font-mono font-medium">{formatMoney(entry.totalPayment)}</span>

@@ -61,6 +61,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatMoney, centsToDecimal } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { AccountPicker } from "@/components/dashboard/account-picker";
 import { ContactPicker } from "@/components/dashboard/contact-picker";
@@ -432,7 +433,7 @@ export function TransactionRow({
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {tx.date}
+          {formatDate(tx.date)}
           {tx.reference && <> · {tx.reference}</>}
           {tx.payee && <> · {tx.payee}</>}
         </p>
@@ -576,7 +577,7 @@ export function TransactionRow({
                 "mt-1 font-mono text-xs tabular-nums",
                 isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
               )}>
-                {tx.date} · {isCredit ? "+" : ""}{formatMoney(tx.amount, cur)}
+                {formatDate(tx.date)} · {isCredit ? "+" : ""}{formatMoney(tx.amount, cur)}
               </p>
             </div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
@@ -618,7 +619,7 @@ export function TransactionRow({
                 "mt-1 font-mono text-xs tabular-nums",
                 isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
               )}>
-                {tx.date} · {isCredit ? "+" : ""}{formatMoney(tx.amount, cur)}
+                {formatDate(tx.date)} · {isCredit ? "+" : ""}{formatMoney(tx.amount, cur)}
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -658,9 +659,9 @@ export function ImportRow({ imp, isLast }: { imp: StatementImport; isLast: boole
             <Badge variant="outline" className="text-[10px]">{imp.format.toUpperCase()}</Badge>
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-            <span>{new Date(imp.createdAt).toLocaleDateString()}</span>
+            <span>{formatDate(imp.createdAt)}</span>
             {imp.statementStartDate && imp.statementEndDate && (
-              <span>{imp.statementStartDate} to {imp.statementEndDate}</span>
+              <span>{formatDate(imp.statementStartDate)} to {formatDate(imp.statementEndDate)}</span>
             )}
             {imp.duplicateCount > 0 && <span>{imp.duplicateCount} duplicates skipped</span>}
           </div>
@@ -839,7 +840,7 @@ export function ImportSheet({
                         key={`${tx.date}-${tx.description}-${i}`}
                         className={cn("grid min-w-[320px] grid-cols-[90px_1fr_100px] gap-2 px-3 py-2.5", i < preview.transactions.length - 1 && "border-b")}
                       >
-                        <span className="text-xs text-muted-foreground">{tx.date}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(tx.date)}</span>
                         <p className="text-xs font-medium truncate">{tx.description}</p>
                         <span className={cn("text-right font-mono text-xs tabular-nums", tx.amount < 0 ? "text-red-600" : "text-emerald-600")}>
                           {formatMoney(tx.amount, currencyCode)}
@@ -2704,7 +2705,7 @@ export function CashCodingGrid({
               <div key={tx.id} className="grid min-w-[900px] grid-cols-[150px_minmax(0,1fr)_220px_150px_180px] items-center gap-2 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate" title={tx.description}>{tx.description}</p>
-                  <p className="text-[10px] text-muted-foreground">{tx.date}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(tx.date)}</p>
                 </div>
                 <span className={cn(
                   "font-mono text-xs font-medium tabular-nums",
@@ -2944,7 +2945,7 @@ function RecLineList({
           <div key={tx.id} className="flex items-center gap-3 px-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{tx.description}</p>
-              <p className="text-[10px] text-muted-foreground">{tx.date}{tx.accountName ? ` · ${tx.accountName}` : ""}</p>
+              <p className="text-[10px] text-muted-foreground">{formatDate(tx.date)}{tx.accountName ? ` · ${tx.accountName}` : ""}</p>
             </div>
             <span className={cn(
               "font-mono text-xs font-medium tabular-nums shrink-0",

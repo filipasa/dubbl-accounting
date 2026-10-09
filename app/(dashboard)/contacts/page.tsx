@@ -24,6 +24,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { motion, MotionConfig } from "motion/react";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useConfirm } from "@/lib/hooks/use-confirm";
@@ -224,11 +225,7 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
       className: "w-28 text-right",
       render: (r) => (
         <span className="text-sm tabular-nums text-muted-foreground">
-          {new Date(r.createdAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          {formatDate(r.createdAt)}
         </span>
       ),
     },

@@ -54,6 +54,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/date";
 
 interface StatusResponse {
   isConfigured: boolean;
@@ -433,7 +434,7 @@ export default function WhatsAppSettingsPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Linked on {new Date(status.userLink.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}. Voice notes, text messages, and invoice requests from this phone will execute strictly under your user account and permissions.
+                  Linked on {formatDate(status.userLink.createdAt)}. Voice notes, text messages, and invoice requests from this phone will execute strictly under your user account and permissions.
                 </p>
               </div>
 

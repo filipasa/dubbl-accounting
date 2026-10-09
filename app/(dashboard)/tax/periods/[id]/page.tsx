@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { AccountPicker } from "@/components/dashboard/account-picker";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 
@@ -74,11 +75,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function fmtDate(d: string | null): string {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDate(d);
 }
 
 /* ------------------------------------------------------------------ */

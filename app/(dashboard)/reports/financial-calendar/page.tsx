@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface CalendarEvent {
@@ -182,7 +183,7 @@ export default function FinancialCalendarPage() {
 
               {selectedDate ? (
                 <div>
-                  <p className="text-sm font-medium mb-2">{new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+                  <p className="text-sm font-medium mb-2">{formatDate(selectedDate)}</p>
                   {selectedEvents.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No events on this date.</p>
                   ) : (
@@ -219,7 +220,7 @@ export default function FinancialCalendarPage() {
                       <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className={cn("size-1.5 rounded-full shrink-0", typeColors[e.type]?.dot)} />
-                          <span className="text-muted-foreground w-16 shrink-0">{new Date(e.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                          <span className="text-muted-foreground w-16 shrink-0">{formatDate(e.date)}</span>
                           <span className="truncate">{e.title}</span>
                         </div>
                         {e.amount !== undefined && (

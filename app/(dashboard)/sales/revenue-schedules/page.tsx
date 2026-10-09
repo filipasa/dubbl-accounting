@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -61,7 +62,7 @@ function buildColumns(): Column<RevenueSchedule>[] {
       header: "Period",
       render: (r) => (
         <span className="text-sm">
-          {r.startDate} &ndash; {r.endDate}
+          {formatDate(r.startDate)} &ndash; {formatDate(r.endDate)}
         </span>
       ),
     },

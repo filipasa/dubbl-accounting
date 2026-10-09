@@ -29,6 +29,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { SearchInput } from "@/components/ui/search-input";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDealContext, getHeaders, timeAgo } from "../layout";
 
@@ -233,11 +234,7 @@ export default function DealActivityPage() {
           ? "Today"
           : date === yesterday
             ? "Yesterday"
-            : new Date(activity.createdAt).toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "short",
-                day: "numeric",
-              });
+            : formatDate(activity.createdAt);
 
       const existing = grouped.find((g) => g.date === date);
       if (existing) existing.items.push(activity);
@@ -271,7 +268,7 @@ export default function DealActivityPage() {
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-emerald-700 dark:text-emerald-300">Deal won</p>
               <p className="text-[11px] text-emerald-600/70 dark:text-emerald-400/60">
-                Closed on {new Date(deal.wonAt!).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+                Closed on {formatDate(deal.wonAt!)}
                 {deal.valueCents > 0 && <> · {formatMoney(deal.valueCents, deal.currency)}</>}
               </p>
             </div>
@@ -285,7 +282,7 @@ export default function DealActivityPage() {
               <p className="text-[11px] text-red-600/70 dark:text-red-400/60">
                 {deal.lostReason
                   ? deal.lostReason
-                  : `Closed on ${new Date(deal.lostAt!).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+                  : `Closed on ${formatDate(deal.lostAt!)}`}
               </p>
             </div>
           </div>
@@ -597,7 +594,7 @@ export default function DealActivityPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">First logged</span>
                 <span className="text-xs tabular-nums">
-                  {new Date(activities[activities.length - 1].createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  {formatDate(activities[activities.length - 1].createdAt)}
                 </span>
               </div>
               <div className="flex items-center justify-between">

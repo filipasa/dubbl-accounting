@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -82,7 +83,7 @@ function buildColumns(): Column<AccrualSchedule>[] {
       header: "Starts",
       sortKey: "start",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.startDate}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.startDate)}</span>,
     },
     {
       key: "status",

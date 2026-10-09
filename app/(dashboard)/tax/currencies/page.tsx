@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import {
   Plus,
   Search,
@@ -615,13 +616,7 @@ export default function CurrenciesPage() {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
                     <CalendarDays className="size-3" />
-                    <span>
-                      {new Date(rate.date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
+                    <span>{formatDate(rate.date)}</span>
                   </div>
                   <Badge
                     variant={rate.source === "manual" ? "default" : "secondary"}

@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import Link from "next/link";
@@ -420,7 +421,7 @@ export default function VatReturnPage() {
                               <tbody>
                                 {rows.map((t) => (
                                   <tr key={t.journalLineId} className="border-t border-border/60">
-                                    <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums">{t.date}</td>
+                                    <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums">{formatDate(t.date)}</td>
                                     <td className="py-1.5 pr-3 whitespace-nowrap font-mono">
                                       #{t.entryNumber}
                                     </td>

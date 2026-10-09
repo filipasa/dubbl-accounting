@@ -9,6 +9,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { formatMoney } from "@/lib/money";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface RunItem {
@@ -168,7 +169,7 @@ export default function RunPayslipsPage() {
           <h1 className="text-lg font-semibold">Payslips</h1>
           {run && (
             <p className="text-sm text-muted-foreground">
-              {run.payPeriodStart} to {run.payPeriodEnd}
+              {formatDate(run.payPeriodStart)} to {formatDate(run.payPeriodEnd)}
             </p>
           )}
         </div>

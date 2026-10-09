@@ -10,6 +10,7 @@ import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
 import { ExportButton } from "@/components/dashboard/export-button";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { BackToReports, ReportHelp } from "../_components";
 
@@ -36,7 +37,7 @@ interface AccountLedger {
 }
 
 const entryColumns: Column<LedgerEntry>[] = [
-  { key: "date", header: "Date", className: "w-28", render: (r) => <span className="text-sm">{new Date(r.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span> },
+  { key: "date", header: "Date", className: "w-28", render: (r) => <span className="text-sm">{formatDate(r.date)}</span> },
   { key: "entry", header: "Entry #", className: "w-24", render: (r) => <span className="font-mono text-sm">{r.entryNumber}</span> },
   { key: "desc", header: "Description", render: (r) => <span className="text-sm">{r.description}</span> },
   { key: "ref", header: "Reference", className: "w-28", render: (r) => <span className="text-sm text-muted-foreground">{r.reference || "-"}</span> },

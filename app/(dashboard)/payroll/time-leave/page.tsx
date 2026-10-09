@@ -40,6 +40,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -1079,8 +1080,8 @@ export default function TimeLeavePage() {
                           {r.employee?.name || "-"}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {r.policy?.name || "-"} · {r.startDate} to{" "}
-                          {r.endDate} · {r.hours}h
+                          {r.policy?.name || "-"} · {formatDate(r.startDate)} to{" "}
+                          {formatDate(r.endDate)} · {r.hours}h
                         </p>
                         {r.reason && (
                           <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[200px]">

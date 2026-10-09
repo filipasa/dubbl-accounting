@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { ExportButton } from "@/components/dashboard/export-button";
 
 interface BillRow {
@@ -31,7 +32,7 @@ interface AgingBucket {
 const columns: Column<BillRow>[] = [
   { key: "number", header: "Bill", className: "w-32", render: (r) => <span className="font-mono text-sm">{r.billNumber}</span> },
   { key: "contact", header: "Supplier", render: (r) => <span className="text-sm font-medium">{r.contactName}</span> },
-  { key: "due", header: "Due Date", className: "w-28", render: (r) => <span className="text-sm">{r.dueDate}</span> },
+  { key: "due", header: "Due Date", className: "w-28", render: (r) => <span className="text-sm">{formatDate(r.dueDate)}</span> },
   { key: "days", header: "Days Overdue", className: "w-28", render: (r) => <span className="text-sm tabular-nums">{r.daysOverdue}</span> },
   { key: "amount", header: "Amount Due", className: "w-32 text-right", render: (r) => <span className="font-mono text-sm tabular-nums">{formatMoney(r.amountDue)}</span> },
 ];

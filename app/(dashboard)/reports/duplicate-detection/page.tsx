@@ -9,6 +9,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 
 interface DuplicateItem {
   id: string;
@@ -112,7 +113,7 @@ export default function DuplicateDetectionPage() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs text-muted-foreground">{item.number}</span>
-                        <span>{new Date(item.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        <span>{formatDate(item.date)}</span>
                       </div>
                       <Badge variant="outline" className="text-[10px]">{item.status}</Badge>
                     </button>

@@ -67,6 +67,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface DocFolder {
@@ -888,7 +889,7 @@ export default function DocumentsPage() {
                       {formatFileSize(doc.fileSize)}
                     </span>
                     <span className="text-[11px] text-muted-foreground w-24 text-right hidden sm:block">
-                      {new Date(doc.createdAt).toLocaleDateString()}
+                      {formatDate(doc.createdAt)}
                     </span>
                     <div className="w-16 shrink-0 flex justify-end" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
@@ -1073,7 +1074,7 @@ export default function DocumentsPage() {
                     </div>
                     <div className="flex items-center justify-between px-3 py-2.5">
                       <span className="text-xs text-muted-foreground">Uploaded</span>
-                      <span className="text-xs font-medium">{new Date(selectedDoc.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+                      <span className="text-xs font-medium">{formatDate(selectedDoc.createdAt)}</span>
                     </div>
                   </div>
 

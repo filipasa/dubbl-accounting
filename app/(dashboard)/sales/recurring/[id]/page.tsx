@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
@@ -218,10 +219,10 @@ export default function RecurringDetailPage() {
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
           {frequencyLabels[template.frequency] || template.frequency} · Starts{" "}
-          {template.startDate} · Ends{" "}
-          {template.endDate || "No end date"}
+          {formatDate(template.startDate)} · Ends{" "}
+          {template.endDate ? formatDate(template.endDate) : "No end date"}
           {template.nextRunDate &&
-            ` · Next run ${template.nextRunDate}`}
+            ` · Next run ${formatDate(template.nextRunDate)}`}
         </span>
       </div>
 
@@ -238,7 +239,7 @@ export default function RecurringDetailPage() {
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground">Next Run</p>
           <p className="text-xl font-bold font-mono">
-            {template.nextRunDate || "N/A"}
+            {template.nextRunDate ? formatDate(template.nextRunDate) : "N/A"}
           </p>
         </div>
         <div className="rounded-lg border p-4">

@@ -31,6 +31,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/date";
 
 interface TrashItem {
   id: string;
@@ -74,7 +75,7 @@ function getRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  return formatDate(dateStr);
 }
 
 function getEntityLabel(entityType: string): string {

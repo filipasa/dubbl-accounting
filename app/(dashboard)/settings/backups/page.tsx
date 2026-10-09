@@ -15,6 +15,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/date";
 
 interface Backup {
   id: string;
@@ -328,11 +329,7 @@ export default function BackupsPage() {
                 </div>
 
                 <span className="text-sm tabular-nums">
-                  {new Date(backup.createdAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  {formatDate(backup.createdAt)}
                 </span>
 
                 <span className="text-xs text-muted-foreground tabular-nums">
@@ -345,11 +342,7 @@ export default function BackupsPage() {
 
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {backup.expiresAt
-                    ? new Date(backup.expiresAt).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                    ? formatDate(backup.expiresAt)
                     : "-"}
                 </span>
 

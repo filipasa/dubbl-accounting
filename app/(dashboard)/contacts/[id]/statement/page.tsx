@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useContactContext, getOrgId } from "../layout";
 
@@ -296,11 +297,7 @@ export default function ContactStatementPage() {
                       statementData.transactions.map((tx, i) => (
                         <tr key={i} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
                           <td className="px-3 py-2 whitespace-nowrap">
-                            {new Date(tx.date + "T00:00:00").toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            {formatDate(tx.date)}
                           </td>
                           <td className="px-3 py-2">
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0">

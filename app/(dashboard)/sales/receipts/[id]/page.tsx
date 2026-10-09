@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import Link from "next/link";
@@ -88,7 +89,7 @@ export default function SalesReceiptDetailPage() {
           {statusLabels[sr.status] || sr.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          {sr.date}
+          {formatDate(sr.date)}
         </span>
         {sr.reference && (
           <span className="text-xs sm:text-sm text-muted-foreground">

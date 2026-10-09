@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { useRouter } from "next/navigation";
@@ -222,11 +223,11 @@ export default function RecurringJournalDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground">Next entry</p>
-          <p className="text-sm font-medium mt-1">{rj.nextRunDate || "-"}</p>
+          <p className="text-sm font-medium mt-1">{rj.nextRunDate ? formatDate(rj.nextRunDate) : "-"}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground">Last posted</p>
-          <p className="text-sm font-medium mt-1">{rj.lastRunDate || "Never"}</p>
+          <p className="text-sm font-medium mt-1">{rj.lastRunDate ? formatDate(rj.lastRunDate) : "Never"}</p>
         </div>
         <div className="rounded-lg border p-4">
           <p className="text-xs text-muted-foreground">Posted so far</p>

@@ -221,6 +221,10 @@ export default function SettingsPage() {
       if (form.dateFormat) {
         localStorage.setItem("activeOrgDateFormat", form.dateFormat);
         setGlobalDateFormat(form.dateFormat);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("storage"));
+          window.dispatchEvent(new CustomEvent("dateFormatChanged", { detail: form.dateFormat }));
+        }
       }
       toast.success("Settings saved");
     } catch (err) {

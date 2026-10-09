@@ -13,6 +13,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import {
   Table,
   TableBody,
@@ -411,7 +412,7 @@ export default function RemindersPage() {
                           {log.subject}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(log.sentAt).toLocaleDateString()}
+                          {formatDate(log.sentAt)}
                         </TableCell>
                       </TableRow>
                     ))}

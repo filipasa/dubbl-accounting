@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import Link from "next/link";
@@ -873,7 +874,7 @@ export default function FixedAssetDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Date sold or stopped being used
               </p>
-              <p>{asset.disposalDate || "N/A"}</p>
+              <p>{asset.disposalDate ? formatDate(asset.disposalDate) : "N/A"}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Amount you got for it</p>
@@ -908,7 +909,7 @@ export default function FixedAssetDetailPage() {
                 key={entry.id}
                 className="grid min-w-[360px] grid-cols-[1fr_120px_120px] gap-2 border-b px-4 py-2 last:border-b-0"
               >
-                <span className="text-sm">{entry.date}</span>
+                <span className="text-sm">{formatDate(entry.date)}</span>
                 <span className="text-right text-sm font-mono">
                   {formatMoney(entry.amount)}
                 </span>
@@ -956,7 +957,7 @@ export default function FixedAssetDetailPage() {
                   key={cost.id}
                   className="grid min-w-[480px] grid-cols-[120px_1fr_120px_120px] gap-2 border-b px-4 py-2 last:border-b-0"
                 >
-                  <span className="text-sm">{cost.date}</span>
+                  <span className="text-sm">{formatDate(cost.date)}</span>
                   <span className="text-sm text-muted-foreground">
                     {cost.description || "-"}
                   </span>
@@ -997,7 +998,7 @@ export default function FixedAssetDetailPage() {
                 key={rev.id}
                 className="grid min-w-[560px] grid-cols-[110px_1fr_130px_130px_110px] gap-2 border-b px-4 py-2 last:border-b-0"
               >
-                <span className="text-sm">{rev.date}</span>
+                <span className="text-sm">{formatDate(rev.date)}</span>
                 <span className="text-sm">
                   {rev.isImpairment ? (
                     <span className="inline-flex items-center text-amber-700">

@@ -32,6 +32,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { formatMoney, parseMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 
@@ -412,9 +413,7 @@ export default function ScheduledPaymentsPage() {
                         <span className="text-border">{"\u00B7"}</span>
                       )}
                       <span>
-                        {new Date(
-                          item.scheduledDate + "T00:00:00"
-                        ).toLocaleDateString()}
+                        {formatDate(item.scheduledDate)}
                       </span>
                       {item.notes && (
                         <>

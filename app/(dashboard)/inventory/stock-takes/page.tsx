@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 
@@ -402,7 +403,7 @@ export default function StockTakesPage() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(st.createdAt).toLocaleDateString()} ·{" "}
+                      {formatDate(st.createdAt)} ·{" "}
                       {st.itemCount} item{st.itemCount !== 1 ? "s" : ""}
                     </p>
                   </div>

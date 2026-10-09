@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useInventoryItem } from "../layout";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 const movementTypeColors: Record<string, string> = {
@@ -90,7 +91,7 @@ export default function InventoryItemHistoryPage() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground">
-                {m.createdAt ? new Date(m.createdAt).toLocaleDateString() : "-"}
+                {m.createdAt ? formatDate(m.createdAt) : "-"}
               </p>
             </div>
           </div>

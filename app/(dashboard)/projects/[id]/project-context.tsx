@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { formatDate as libFormatDate } from "@/lib/date";
 
 // ── Types ──────────────────────────────────────────────────
 export interface ProjectMemberData {
@@ -216,12 +217,12 @@ export function formatHours(minutes: number): string {
 
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-";
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return libFormatDate(dateStr);
 }
 
 export function formatDateShort(dateStr: string | null): string {
   if (!dateStr) return "-";
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return libFormatDate(dateStr);
 }
 
 export function daysUntil(dateStr: string | null): number | null {

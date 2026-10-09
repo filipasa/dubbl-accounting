@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Plus, Trash2 } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { toast } from "sonner";
 
 interface CostComponent {
@@ -289,7 +290,7 @@ export default function LandedCostsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {new Date(item.createdAt).toLocaleDateString()}
+                    {formatDate(item.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div

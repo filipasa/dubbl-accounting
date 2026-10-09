@@ -12,6 +12,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { formatMoney } from "@/lib/money";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 interface Employee {
   id: string;
@@ -310,7 +311,7 @@ export default function PayrollPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {run.payPeriodStart} to {run.payPeriodEnd}
+                        {formatDate(run.payPeriodStart)} to {formatDate(run.payPeriodEnd)}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <Badge variant="outline" className={statusColors[run.status] || ""}>

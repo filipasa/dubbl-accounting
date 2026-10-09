@@ -792,7 +792,7 @@ function TaskDetailDrawer({
             <SheetDescription className="mt-0.5">
               {creator ? `Created by ${creator.name || creator.email}` : "Task details"}
               {" · "}
-              {new Date(task.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {formatDate(task.createdAt)}
             </SheetDescription>
             {taskLabels.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -908,7 +908,7 @@ function TaskDetailDrawer({
             {task.completedAt && (
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-[13px] text-muted-foreground flex items-center gap-2"><CheckCircle2 className="size-3.5" /> Completed</span>
-                <span className="text-[13px] font-mono tabular-nums">{new Date(task.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                <span className="text-[13px] font-mono tabular-nums">{formatDate(task.completedAt)}</span>
               </div>
             )}
           </div>
@@ -992,7 +992,7 @@ function TaskDetailDrawer({
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[12px] font-medium">{c.author.name || c.author.email}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatDate(c.createdAt)}</span>
                       <button
                         onClick={() => onDeleteComment(task.id, c.id)}
                         disabled={deletingCommentId === c.id}

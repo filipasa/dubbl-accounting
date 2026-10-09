@@ -29,6 +29,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 
 interface TimesheetDetail {
   id: string;
@@ -295,7 +296,7 @@ export default function TimesheetDetailPage() {
             {(ts.entries || []).map((entry) => (
               <div key={entry.id} className="flex items-center justify-between px-4 py-2.5">
                 <div>
-                  <p className="text-sm font-medium">{entry.date}</p>
+                  <p className="text-sm font-medium">{formatDate(entry.date)}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className="text-[10px]">{entry.shiftType}</Badge>
                     {entry.description && <span className="text-xs text-muted-foreground">{entry.description}</span>}

@@ -21,6 +21,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface LeaveRequest {
@@ -172,7 +173,7 @@ export default function LeavePage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{r.employee?.name || "Unknown"}</p>
                 <p className="text-xs text-muted-foreground">
-                  {r.policy?.name || "-"} · {r.startDate} to {r.endDate} · {r.hours}h
+                  {r.policy?.name || "-"} · {formatDate(r.startDate)} to {formatDate(r.endDate)} · {r.hours}h
                 </p>
                 {r.reason && <p className="text-xs text-muted-foreground mt-0.5">{r.reason}</p>}
               </div>

@@ -32,6 +32,7 @@ import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate as libFormatDate } from "@/lib/date";
 
 interface ReportConfig {
   dataSource: string;
@@ -70,13 +71,7 @@ const DATA_SOURCE_LABELS: Record<string, string> = {
 
 function formatDate(value: string | null): string {
   if (!value) return "Never";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "Never";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return libFormatDate(value);
 }
 
 export default function SavedReportsPage() {

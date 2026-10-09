@@ -23,6 +23,7 @@ import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 
 interface RecurringTemplate {
   id: string;
@@ -98,14 +99,14 @@ function buildColumns(): Column<RecurringTemplate>[] {
       header: "Next Run",
       sortKey: "nextRun",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.nextRunDate || "-"}</span>,
+      render: (r) => <span className="text-sm">{r.nextRunDate ? formatDate(r.nextRunDate) : "-"}</span>,
     },
     {
       key: "startDate",
       header: "Start Date",
       sortKey: "startDate",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.startDate}</span>,
+      render: (r) => <span className="text-sm">{formatDate(r.startDate)}</span>,
     },
     {
       key: "occurrences",
@@ -453,7 +454,7 @@ export default function RecurringInvoicesPage() {
                   {u.dates.map((d) => (
                     <div key={d.date} className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="size-3" />
-                      <span>{d.date}</span>
+                      <span>{formatDate(d.date)}</span>
                     </div>
                   ))}
                 </div>

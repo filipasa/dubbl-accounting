@@ -43,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, decimalToCents } from "@/lib/money";
 import { useConfirm } from "@/lib/hooks/use-confirm";
+import { formatDate as libFormatDate } from "@/lib/date";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { cn } from "@/lib/utils";
@@ -110,13 +111,12 @@ const sourceTypeLabels: Record<string, string> = {
 };
 
 function formatDate(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return libFormatDate(dateStr);
 }
 
 function formatTimestamp(ts: string) {
   const d = new Date(ts);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  return libFormatDate(ts)
     + " at "
     + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }

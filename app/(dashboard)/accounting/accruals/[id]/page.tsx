@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import Link from "next/link";
@@ -158,7 +159,7 @@ export default function AccrualDetailPage() {
           {statusLabels[acc.status] || acc.status}
         </Badge>
         <span className="text-xs sm:text-sm text-muted-foreground">
-          {acc.startDate} to {acc.endDate}
+          {formatDate(acc.startDate)} to {formatDate(acc.endDate)}
         </span>
       </div>
 
@@ -185,7 +186,7 @@ export default function AccrualDetailPage() {
         </div>
         {entries.map((entry) => (
           <div key={entry.id} className="grid min-w-[420px] grid-cols-[1fr_140px_120px] gap-2 border-b px-4 py-2.5 last:border-b-0 items-center">
-            <span className="text-sm">{entry.periodDate}</span>
+            <span className="text-sm">{formatDate(entry.periodDate)}</span>
             <span className="text-right text-sm font-mono font-medium">{formatMoney(entry.amount)}</span>
             <span className="text-right">
               {entry.posted ? (

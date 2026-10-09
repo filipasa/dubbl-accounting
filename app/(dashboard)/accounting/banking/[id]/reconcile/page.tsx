@@ -27,6 +27,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { cn } from "@/lib/utils";
@@ -508,7 +509,7 @@ export default function ReconcilePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground">{tx.date}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(tx.date)}</span>
                       {tx.reference && (
                         <>
                           <span className="text-muted-foreground/30">·</span>

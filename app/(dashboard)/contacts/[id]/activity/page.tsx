@@ -15,6 +15,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useContactContext, getOrgId, activityTypeConfig } from "../layout";
 import type { ActivityItem } from "../layout";
@@ -198,11 +199,7 @@ export default function ContactActivityPage() {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(item.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {formatDate(item.date)}
                         </p>
                       </div>
                       <span className="text-sm font-medium tabular-nums">

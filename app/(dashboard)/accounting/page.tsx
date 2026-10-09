@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDate } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
 import { devDelay } from "@/lib/dev-delay";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
@@ -86,7 +87,7 @@ const columns: Column<Entry>[] = [
     key: "date",
     header: "Date",
     className: "w-28",
-    render: (r) => <span className="text-sm">{r.date}</span>,
+    render: (r) => <span className="text-sm">{formatDate(r.date)}</span>,
   },
   {
     key: "description",

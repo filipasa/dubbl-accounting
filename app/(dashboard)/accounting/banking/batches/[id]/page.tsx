@@ -27,6 +27,7 @@ import {
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 
@@ -322,12 +323,12 @@ export default function BatchDetailPage() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Created {new Date(batch.createdAt).toLocaleDateString()}
+              Created {formatDate(batch.createdAt)}
               {batch.completedAt && (
                 <>
                   {" "}
                   {"\u00B7"} Completed{" "}
-                  {new Date(batch.completedAt).toLocaleDateString()}
+                  {formatDate(batch.completedAt)}
                 </>
               )}
             </p>
@@ -523,9 +524,7 @@ export default function BatchDetailPage() {
                             {line.billNumber}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            {new Date(
-                              line.billDate + "T00:00:00"
-                            ).toLocaleDateString()}
+                            {formatDate(line.billDate)}
                             {line.billReference
                               ? ` · ${line.billReference}`
                               : ""}

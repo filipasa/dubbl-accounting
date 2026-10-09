@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { setDefaultCurrency } from "@/lib/money";
+import { setGlobalDateFormat } from "@/lib/date";
 
 interface Org {
   id: string;
@@ -17,6 +18,7 @@ interface Org {
   role: "owner" | "admin" | "member";
   memberCount: number;
   defaultCurrency: string;
+  dateFormat?: string | null;
   country: string | null;
   createdAt: string;
 }
@@ -48,6 +50,10 @@ export function OrgSwitcher() {
               localStorage.setItem("activeOrgCurrency", active.defaultCurrency);
               setDefaultCurrency(active.defaultCurrency);
             }
+            if (active.dateFormat) {
+              localStorage.setItem("activeOrgDateFormat", active.dateFormat);
+              setGlobalDateFormat(active.dateFormat);
+            }
           }
         }
       })
@@ -60,6 +66,10 @@ export function OrgSwitcher() {
     if (org.defaultCurrency) {
       localStorage.setItem("activeOrgCurrency", org.defaultCurrency);
       setDefaultCurrency(org.defaultCurrency);
+    }
+    if (org.dateFormat) {
+      localStorage.setItem("activeOrgDateFormat", org.dateFormat);
+      setGlobalDateFormat(org.dateFormat);
     }
     window.location.reload();
   }

@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TelegramLogo, TelegramPlaneIcon } from "@/components/icons/telegram-icon";
+import { formatDate } from "@/lib/date";
 
 interface StatusResponse {
   isConfigured: boolean;
@@ -464,7 +465,7 @@ export default function TelegramSettingsPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Linked on {new Date(status.userLink.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}. Invoices, estimates, and balances requested in this Telegram chat will execute strictly under your user account and permissions.
+                  Linked on {formatDate(status.userLink.createdAt)}. Invoices, estimates, and balances requested in this Telegram chat will execute strictly under your user account and permissions.
                 </p>
               </div>
 

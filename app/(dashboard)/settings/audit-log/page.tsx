@@ -43,6 +43,7 @@ import {
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date";
 
 interface AuditEntry {
   id: string;
@@ -168,7 +169,7 @@ function getRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  return formatDate(dateStr);
 }
 
 function getDayLabel(dateStr: string): string {
@@ -181,7 +182,7 @@ function getDayLabel(dateStr: string): string {
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return date.toLocaleDateString("en-US", { weekday: "long" });
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return formatDate(dateStr);
 }
 
 export default function AuditLogPage() {

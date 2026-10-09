@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 import { useContactContext, getOrgId } from "../layout";
 import type { ContactFile } from "../layout";
 
@@ -240,7 +241,7 @@ export default function ContactFilesPage() {
                             )}
                           </td>
                           <td className="px-3 py-2 text-xs text-muted-foreground">
-                            {new Date(file.createdAt).toLocaleDateString()}
+                            {formatDate(file.createdAt)}
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="flex items-center justify-end gap-1">

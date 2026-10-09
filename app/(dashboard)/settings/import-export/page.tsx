@@ -36,6 +36,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/date";
 
 const SOURCES: { key: SourceSystem; label: string }[] = [
   { key: "quickbooks", label: "QuickBooks" },
@@ -423,11 +424,7 @@ export default function ImportExportPage() {
                           {job.errorRows || "-"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {new Date(job.createdAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {formatDate(job.createdAt)}
                         </TableCell>
                       </TableRow>
                     ))}

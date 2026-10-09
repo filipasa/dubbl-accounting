@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, UserCheck, XCircle, Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -186,7 +187,7 @@ export default function AdvisorsPage() {
                     <TableCell>{ROLE_LABELS[a.role] || a.role}</TableCell>
                     <TableCell>{getStatusBadge(a)}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {new Date(a.invitedAt).toLocaleDateString()}
+                      {formatDate(a.invitedAt)}
                     </TableCell>
                     <TableCell>
                       {!a.revokedAt && (

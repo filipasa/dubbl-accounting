@@ -41,6 +41,7 @@ import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface WarehouseInfo {
@@ -542,11 +543,11 @@ export default function TransfersPage() {
                     </div>
                     <div className="text-right shrink-0 hidden sm:block">
                       <p className="text-xs text-muted-foreground">
-                        {new Date(transfer.createdAt).toLocaleDateString()}
+                        {formatDate(transfer.createdAt)}
                       </p>
                       {transfer.completedAt && (
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                          Completed {new Date(transfer.completedAt).toLocaleDateString()}
+                          Completed {formatDate(transfer.completedAt)}
                         </p>
                       )}
                     </div>
@@ -587,11 +588,11 @@ export default function TransfersPage() {
                   {STATUS_LABELS[activeTransfer.status]}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  Created {new Date(activeTransfer.createdAt).toLocaleDateString()}
+                  Created {formatDate(activeTransfer.createdAt)}
                 </span>
                 {activeTransfer.completedAt && (
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                    Completed {new Date(activeTransfer.completedAt).toLocaleDateString()}
+                    Completed {formatDate(activeTransfer.completedAt)}
                   </span>
                 )}
               </div>

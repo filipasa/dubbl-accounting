@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { motion, MotionConfig } from "motion/react";
@@ -71,7 +72,7 @@ function buildColumns(): Column<ExpenseClaim>[] {
       className: "w-28",
       render: (r) => (
         <span className="text-sm">
-          {new Date(r.createdAt).toLocaleDateString()}
+          {formatDate(r.createdAt)}
         </span>
       ),
     },

@@ -47,6 +47,7 @@ import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { formatMoney, minorUnitsToDecimal, decimalToCents } from "@/lib/money";
+import { formatDate } from "@/lib/date";
 import Link from "next/link";
 
 interface ExpenseDetail {
@@ -105,11 +106,6 @@ const statusConfig: Record<string, { class: string; dot: string }> = {
     dot: "bg-purple-500",
   },
 };
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 function ReceiptViewer({ fileKey, fileName }: { fileKey: string; fileName: string }) {
   const [open, setOpen] = useState(false);

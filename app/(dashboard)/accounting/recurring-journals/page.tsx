@@ -22,6 +22,7 @@ import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatDate } from "@/lib/date";
 
 interface RecurringJournal {
   id: string;
@@ -87,7 +88,7 @@ function buildColumns(): Column<RecurringJournal>[] {
       header: "Next entry",
       sortKey: "nextRun",
       className: "w-32",
-      render: (r) => <span className="text-sm">{r.nextRunDate || "-"}</span>,
+      render: (r) => <span className="text-sm">{r.nextRunDate ? formatDate(r.nextRunDate) : "-"}</span>,
     },
     {
       key: "status",
