@@ -20,6 +20,7 @@ import { decimalToMinorUnits } from "@/lib/money";
 import { wrapTool } from "@/lib/mcp/errors";
 import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
+import { ensureProductsStored } from "@/lib/inventory/product-storage";
 
 function cleanNotes(notes?: string | null): string | null {
   if (!notes) return null;
@@ -548,6 +549,9 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             ...l,
           }))
         );
+
+        // Auto-store new product line items in inventory catalog
+        await ensureProductsStored(ctx.organizationId, processedLines);
 
         return { quote: created };
       })

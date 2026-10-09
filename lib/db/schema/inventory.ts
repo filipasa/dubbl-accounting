@@ -75,6 +75,7 @@ export const inventoryItem = pgTable(
     code: text("code").notNull(),
     name: text("name").notNull(),
     description: text("description"),
+    shortDescription: text("short_description"),
     imageUrl: text("image_url"),
     category: text("category"),
     categoryId: uuid("category_id").references(() => inventoryCategory.id),

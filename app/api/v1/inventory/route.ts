@@ -21,6 +21,7 @@ const createSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  shortDescription: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
   categoryId: z.string().uuid().nullable().optional(),
   sku: z.string().nullable().optional(),
@@ -67,7 +68,9 @@ export async function GET(request: Request) {
         or(
           ilike(inventoryItem.name, `%${search}%`),
           ilike(inventoryItem.code, `%${search}%`),
-          ilike(inventoryItem.sku, `%${search}%`)
+          ilike(inventoryItem.sku, `%${search}%`),
+          ilike(inventoryItem.description, `%${search}%`),
+          ilike(inventoryItem.shortDescription, `%${search}%`)
         )!
       );
     }

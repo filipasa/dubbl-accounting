@@ -19,6 +19,7 @@ import { resolveTaxLabel } from "@/lib/tax/tax-label";
 import { cn } from "@/lib/utils";
 import { getCurrencySymbol } from "@/lib/currency/iso4217";
 import { getDefaultCurrency } from "@/lib/money";
+import { ProductAutocompleteInput, type InventoryItemOption } from "./product-autocomplete-input";
 
 export interface LineItem {
   description: string;
@@ -317,6 +318,21 @@ export function LineItemsEditor({
     onChange(updated);
   }
 
+  function applyProductToLine(index: number, product: InventoryItemOption) {
+    const updated = lines.map((l, i) => {
+      if (i !== index) return l;
+      return {
+        ...l,
+        description: product.name,
+        shortDescription: product.shortDescription || product.description || l.shortDescription || "",
+        unitPrice: product.salePrice > 0 ? (product.salePrice / 100).toFixed(2) : l.unitPrice,
+        imageUrl: product.imageUrl || l.imageUrl,
+        accountId: product.revenueAccountId || l.accountId,
+      };
+    });
+    onChange(updated);
+  }
+
   function addLine() {
     const standardRate = shouldDefaultStandard ? findStandardTaxRate(taxRates, taxContext) : undefined;
     onChange([
@@ -448,11 +464,12 @@ export function LineItemsEditor({
                     imageUrl={line.imageUrl}
                     onImageChange={(url) => updateLine(i, "imageUrl", url || "")}
                   />
-                  <Input
-                    className="h-8 text-sm flex-1"
+                  <ProductAutocompleteInput
                     value={line.description}
-                    onChange={(e) => updateLine(i, "description", e.target.value)}
+                    onChange={(val) => updateLine(i, "description", val)}
+                    onSelectProduct={(product) => applyProductToLine(i, product)}
                     placeholder="Item description *"
+                    currencySymbol={symbol}
                   />
                 </div>
                 <Textarea

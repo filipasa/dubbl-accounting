@@ -17,6 +17,7 @@ import { getPublicAppUrl } from "@/lib/public-url";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { checkInvoiceCompliance } from "@/lib/documents/compliance";
 import { checkApprovalRequired, createApprovalRequest, processApprovalAction } from "@/lib/approvals/engine";
+import { ensureProductsStored } from "@/lib/inventory/product-storage";
 
 function cleanNotes(notes?: string | null): string | null {
   if (!notes) return null;
@@ -332,6 +333,9 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             ...l,
           }))
         );
+
+        // Auto-store new product line items in inventory catalog
+        await ensureProductsStored(ctx.organizationId, processedLines);
 
         return { invoice: created };
       })

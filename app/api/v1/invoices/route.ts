@@ -23,6 +23,7 @@ import {
 } from "@/lib/approvals/engine";
 import { buildSenderSnapshot, buildRecipientSnapshot } from "@/lib/documents/snapshots";
 import { randomBytes } from "crypto";
+import { ensureProductsStored } from "@/lib/inventory/product-storage";
 
 const lineSchema = z.object({
   description: z.string().min(1),
@@ -364,6 +365,9 @@ export async function POST(request: Request) {
         ...l,
       }))
     );
+
+    // Auto-store new product line items in inventory catalog
+    await ensureProductsStored(ctx.organizationId, processedLines);
 
     logAudit({ ctx, action: "create", entityType: "invoice", entityId: created.id, request });
 
