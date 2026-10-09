@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
-import { nanoid } from "nanoid";
-import fs from "fs/promises";
-import path from "path";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -17,9 +13,6 @@ const ALLOWED_MIME_TYPES = new Set([
 
 export async function POST(request: Request) {
   try {
-    // Optional org / auth check if headers/cookie present
-    const orgId = request.headers.get("x-organization-id") || "default";
-
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -41,44 +34,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Determine extension
-    let ext = path.extname(file.name).toLowerCase();
-    if (!ext) {
-      if (file.type === "image/jpeg") ext = ".jpg";
-      else if (file.type === "image/png") ext = ".png";
-      else if (file.type === "image/webp") ext = ".webp";
-      else if (file.type === "image/gif") ext = ".gif";
-      else if (file.type === "image/svg+xml") ext = ".svg";
-      else ext = ".png";
-    }
-
-    const uniqueId = nanoid(12);
-    let finalFileName = `${uniqueId}${ext}`;
-    const targetDir = path.join(process.cwd(), "public", "uploads", "line-items");
-
-    await fs.mkdir(targetDir, { recursive: true });
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filePath = path.join(targetDir, finalFileName);
-    await fs.writeFile(filePath, buffer);
-
-    if (ext !== ".png" && ext !== ".jpg" && ext !== ".jpeg") {
-      const pngFileName = `${uniqueId}.png`;
-      const pngFilePath = path.join(targetDir, pngFileName);
-      try {
-        const { execSync } = await import("child_process");
-        execSync(`sips -s format png "${filePath}" --out "${pngFilePath}"`, { stdio: "ignore" });
-        finalFileName = pngFileName;
-      } catch {
-        // Fallback to original
-      }
-    }
-
-    const publicUrl = `/uploads/line-items/${finalFileName}`;
+    // Convert image buffer to base64 data URL
+    // Safe for serverless environments (read-only filesystem on Vercel / AWS Lambda)
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = file.type || "image/png";
+    const base64Data = buffer.toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
     return NextResponse.json(
       {
-        url: publicUrl,
+        url: dataUrl,
         fileName: file.name,
         size: file.size,
       },

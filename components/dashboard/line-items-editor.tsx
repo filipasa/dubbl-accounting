@@ -125,43 +125,79 @@ function reclaimHint(rate: TaxRateOption): string | null {
   return "reclaimable";
 }
 
-async function prepareImageFile(file: File): Promise<File> {
-  if (file.type === "image/png" || file.type === "image/jpeg") {
-    return file;
-  }
+async function prepareImageFile(file: File): Promise<{ file: File; dataUrl: string }> {
   return new Promise((resolve) => {
+    if (file.type === "image/svg+xml") {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ file, dataUrl: reader.result as string });
+      reader.onerror = () => resolve({ file, dataUrl: "" });
+      reader.readAsDataURL(file);
+      return;
+    }
+
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const blobUrl = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(blobUrl);
       try {
+        const MAX_DIM = 600;
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
         const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          resolve(file);
+          const reader = new FileReader();
+          reader.onload = () => resolve({ file, dataUrl: reader.result as string });
+          reader.readAsDataURL(file);
           return;
         }
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            resolve(file);
-            return;
-          }
-          const baseName = file.name.replace(/\.[^.]+$/, "");
-          const converted = new File([blob], `${baseName}.png`, { type: "image/png" });
-          resolve(converted);
-        }, "image/png");
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const quality = 0.85;
+        const dataUrl = canvas.toDataURL(mimeType, quality);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve({ file, dataUrl });
+              return;
+            }
+            const ext = mimeType === "image/png" ? "png" : "jpg";
+            const baseName = file.name.replace(/\.[^.]+$/, "");
+            const converted = new File([blob], `${baseName}.${ext}`, { type: mimeType });
+            resolve({ file: converted, dataUrl });
+          },
+          mimeType,
+          quality
+        );
       } catch {
-        resolve(file);
+        const reader = new FileReader();
+        reader.onload = () => resolve({ file, dataUrl: reader.result as string });
+        reader.readAsDataURL(file);
       }
     };
     img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
+      URL.revokeObjectURL(blobUrl);
+      const reader = new FileReader();
+      reader.onload = () => resolve({ file, dataUrl: reader.result as string });
+      reader.readAsDataURL(file);
     };
-    img.src = url;
+    img.src = blobUrl;
   });
 }
 
@@ -180,19 +216,23 @@ function LineItemImageButton({
     if (!file) return;
     setUploading(true);
     try {
-      const fileToUpload = await prepareImageFile(file);
+      const { file: fileToUpload, dataUrl } = await prepareImageFile(file);
       const formData = new FormData();
       formData.append("file", fileToUpload);
-      const res = await fetch("/api/v1/uploads/image", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Upload failed");
+      let finalUrl = dataUrl;
+      try {
+        const res = await fetch("/api/v1/uploads/image", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) finalUrl = data.url;
+        }
+      } catch {
+        // Fallback to client dataUrl
       }
-      const data = await res.json();
-      onImageChange(data.url);
+      onImageChange(finalUrl);
       toast.success("Image uploaded");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload image");
