@@ -18,6 +18,7 @@ import { ExportButton } from "@/components/dashboard/export-button";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { BackToReports, ReportHelp } from "../_components";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface Vendor1099 {
   contactId: string;
@@ -45,6 +46,20 @@ export default function Form1099Page() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(now.getFullYear() - 1);
   const [data, setData] = useState<Report1099 | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  useEffect(() => {
+    setPage(1);
+  }, [year]);
+
+  const vendors = data?.vendors || [];
+  const totalPages = Math.max(1, Math.ceil(vendors.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedVendors = vendors.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -157,7 +172,7 @@ export default function Form1099Page() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.vendors.map((v) => (
+                  {paginatedVendors.map((v) => (
                     <TableRow key={v.contactId}>
                       <TableCell className="font-medium">
                         {v.name}
@@ -187,6 +202,18 @@ export default function Form1099Page() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination
+              page={safePage}
+              totalPages={totalPages}
+              totalItems={vendors.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="contractors"
+            />
           </div>
         </ContentReveal>
       )}

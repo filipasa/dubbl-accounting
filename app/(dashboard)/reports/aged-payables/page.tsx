@@ -126,6 +126,8 @@ export default function AgedPayablesPage() {
               columns={columns}
               data={allBills}
               loading={loading}
+              pagination
+              pageSize={25}
               emptyMessage="No outstanding payables."
             />
           </div>

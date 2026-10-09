@@ -365,6 +365,8 @@ export default function AssetCategoriesPage() {
           columns={columns}
           data={categories}
           loading={false}
+          pagination
+          pageSize={25}
           emptyMessage="No categories yet."
           onRowClick={(r) => openEdit(r)}
         />

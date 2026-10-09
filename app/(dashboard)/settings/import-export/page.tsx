@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/date";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 const SOURCES: { key: SourceSystem; label: string }[] = [
   { key: "quickbooks", label: "QuickBooks" },
@@ -203,6 +204,15 @@ export default function ImportExportPage() {
   const [activeEntity, setActiveEntity] = useState<typeof ENTITIES[number] | null>(null);
   const [importJobs, setImportJobs] = useState<ImportJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [importJobPage, setImportJobPage] = useState(1);
+  const [importJobPageSize, setImportJobPageSize] = useState(10);
+
+  const totalImportJobPages = Math.max(1, Math.ceil(importJobs.length / importJobPageSize));
+  const safeImportJobPage = Math.min(Math.max(1, importJobPage), totalImportJobPages);
+  const paginatedImportJobs = importJobs.slice(
+    (safeImportJobPage - 1) * importJobPageSize,
+    safeImportJobPage * importJobPageSize
+  );
 
   // Export state
   const [selectedExports, setSelectedExports] = useState<Set<string>>(new Set());
@@ -382,54 +392,68 @@ export default function ImportExportPage() {
           ) : importJobs.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-muted-foreground">Recent Imports</h4>
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>File</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Rows</TableHead>
-                      <TableHead className="text-right">Errors</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {importJobs.map(job => (
-                      <TableRow key={job.id}>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-xs capitalize">
-                            {job.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                          {job.fileName}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            {job.status === "completed" ? (
-                              <CheckCircle2 className="size-3.5 text-emerald-500" />
-                            ) : job.status === "failed" ? (
-                              <XCircle className="size-3.5 text-destructive" />
-                            ) : (
-                              <Clock className="size-3.5 text-muted-foreground" />
-                            )}
-                            <span className="text-xs capitalize">{job.status}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-xs">
-                          {job.processedRows}/{job.totalRows}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
-                          {job.errorRows || "-"}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {formatDate(job.createdAt)}
-                        </TableCell>
+              <div className="space-y-3">
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>File</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Rows</TableHead>
+                        <TableHead className="text-right">Errors</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedImportJobs.map(job => (
+                        <TableRow key={job.id}>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {job.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
+                            {job.fileName}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              {job.status === "completed" ? (
+                                <CheckCircle2 className="size-3.5 text-emerald-500" />
+                              ) : job.status === "failed" ? (
+                                <XCircle className="size-3.5 text-destructive" />
+                              ) : (
+                                <Clock className="size-3.5 text-muted-foreground" />
+                              )}
+                              <span className="text-xs capitalize">{job.status}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">
+                            {job.processedRows}/{job.totalRows}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-xs text-muted-foreground">
+                            {job.errorRows || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {formatDate(job.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <TablePagination
+                  page={safeImportJobPage}
+                  totalPages={totalImportJobPages}
+                  totalItems={importJobs.length}
+                  pageSize={importJobPageSize}
+                  onPageChange={setImportJobPage}
+                  onPageSizeChange={(newSize) => {
+                    setImportJobPageSize(newSize);
+                    setImportJobPage(1);
+                  }}
+                  itemLabel="jobs"
+                />
               </div>
             </div>
           )}

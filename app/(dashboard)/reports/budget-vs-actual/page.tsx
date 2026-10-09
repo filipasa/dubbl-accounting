@@ -183,6 +183,8 @@ export default function BudgetVsActualPage() {
             columns={columns}
             data={comparisons}
             loading={loading || reportLoading}
+            pagination
+            pageSize={25}
             emptyMessage="No budget lines to compare."
           />
 

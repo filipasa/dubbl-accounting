@@ -17,6 +17,7 @@ import {
 import { ExportButton } from "@/components/dashboard/export-button";
 import { formatMoney } from "@/lib/money";
 import { BackToReports, ReportHelp } from "../_components";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface AgingBucket {
   count: number;
@@ -90,7 +91,16 @@ export default function BankReconciliationStatusPage() {
 
   if (initialLoad) return <BrandLoader />;
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   const accounts = data?.accounts ?? [];
+  const totalPages = Math.max(1, Math.ceil(accounts.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedAccounts = accounts.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const totals = accounts.reduce(
     (acc, a) => {
@@ -167,7 +177,7 @@ export default function BankReconciliationStatusPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((a) => {
+                {paginatedAccounts.map((a) => {
                   const isClear = a.unreconciled.count === 0;
                   const olderCount = a.unreconciled.aging.older.count;
                   return (
@@ -245,6 +255,18 @@ export default function BankReconciliationStatusPage() {
               </TableBody>
             </Table>
           </div>
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={accounts.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="bank accounts"
+          />
 
           <p className="text-xs text-muted-foreground">
             &quot;Still to review&quot; is the number of bank lines you haven&apos;t

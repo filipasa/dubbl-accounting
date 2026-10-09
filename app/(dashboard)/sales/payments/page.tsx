@@ -342,6 +342,8 @@ export default function PaymentsPage() {
             columns={columns}
             data={filtered}
             loading={false}
+            pagination
+            pageSize={25}
             emptyMessage="No payments match your filters."
             sortBy={sortBy}
             sortOrder={sortOrder}

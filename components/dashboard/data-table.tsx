@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FileText, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { TablePagination } from "./table-pagination";
 
 export interface Column<T> {
   key: string;
@@ -31,6 +33,10 @@ interface DataTableProps<T> {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   onSort?: (key: string) => void;
+  pagination?: boolean;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  itemLabel?: string;
 }
 
 export function DataTable<T>({
@@ -43,7 +49,25 @@ export function DataTable<T>({
   sortBy,
   sortOrder,
   onSort,
+  pagination = false,
+  pageSize = 25,
+  pageSizeOptions = [10, 25, 50, 100],
+  itemLabel = "entries",
 }: DataTableProps<T>) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPageSize, setCurrentPageSize] = useState(pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / currentPageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const displayData = pagination
+    ? data.slice((safePage - 1) * currentPageSize, safePage * currentPageSize)
+    : data;
+
   const skeletonWidths = ["w-24", "w-32", "w-20", "w-28", "w-16"];
 
   function renderHeader(col: Column<T>) {
@@ -99,7 +123,7 @@ export function DataTable<T>({
     );
   }
 
-  return (
+  const tableElement = (
     <div className="rounded-lg border overflow-hidden overflow-x-auto">
       <Table>
         <TableHeader>
@@ -137,7 +161,7 @@ export function DataTable<T>({
               </TableCell>
             </TableRow>
           ) : (
-            data.map((row, i) => (
+            displayData.map((row, i) => (
               <TableRow
                 key={i}
                 onClick={() => onRowClick?.(row)}
@@ -156,6 +180,29 @@ export function DataTable<T>({
           )}
         </TableBody>
       </Table>
+    </div>
+  );
+
+  if (!pagination) {
+    return tableElement;
+  }
+
+  return (
+    <div className="space-y-3">
+      {tableElement}
+      <TablePagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={data.length}
+        pageSize={currentPageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => {
+          setCurrentPageSize(newSize);
+          setCurrentPage(1);
+        }}
+        pageSizeOptions={pageSizeOptions}
+        itemLabel={itemLabel}
+      />
     </div>
   );
 }

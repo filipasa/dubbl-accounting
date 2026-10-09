@@ -11,6 +11,7 @@ import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { ExportButton } from "@/components/dashboard/export-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface PerformanceEntry {
   contactId: string;
@@ -140,9 +141,19 @@ function PerformanceTable({
   getCount: (e: PerformanceEntry) => number;
   getTotal: (e: PerformanceEntry) => number;
 }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedEntries = entries.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
+
   return (
-    <div>
-      <p className="text-sm font-medium mb-3">{title}</p>
+    <div className="space-y-3">
+      <p className="text-sm font-medium">{title}</p>
       <div className="rounded-lg border overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -157,7 +168,7 @@ function PerformanceTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map((e) => {
+            {paginatedEntries.map((e) => {
               const overTerms = e.avgDays > e.avgTermDays;
               return (
                 <tr key={e.contactId} className="border-b last:border-b-0">
@@ -178,6 +189,19 @@ function PerformanceTable({
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={entries.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setPage(1);
+        }}
+        itemLabel="contacts"
+      />
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { ContactPicker } from "@/components/dashboard/contact-picker";
 import { AccountPicker } from "@/components/dashboard/account-picker";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface RecurringTemplate {
   id: string;
@@ -76,6 +77,15 @@ export default function RecurringExpensesPage() {
   useDocumentTitle("Purchases · Recurring Expenses");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(templates.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedTemplates = templates.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   // Form state
   const [name, setName] = useState("");
@@ -214,7 +224,7 @@ export default function RecurringExpensesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              templates.map((t) => (
+              paginatedTemplates.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="text-sm font-medium">
                     {t.name}
@@ -242,6 +252,18 @@ export default function RecurringExpensesPage() {
           </TableBody>
         </Table>
       </div>
+      <TablePagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={templates.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setPage(1);
+        }}
+        itemLabel="recurring expenses"
+      />
 
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent className="sm:max-w-lg w-full p-0 flex flex-col overflow-y-auto">

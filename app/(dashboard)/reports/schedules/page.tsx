@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { BackToReports, ReportHelp } from "../_components";
 import { formatDate } from "@/lib/date";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface SavedReport {
   id: string;
@@ -100,6 +101,15 @@ export default function ReportSchedulesPage() {
   const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(schedules.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedSchedules = schedules.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -303,7 +313,7 @@ export default function ReportSchedulesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {schedules.map((s) => (
+                {paginatedSchedules.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">
                       {s.savedReport?.name || "Saved report"}
@@ -345,6 +355,18 @@ export default function ReportSchedulesPage() {
               </TableBody>
             </Table>
           </div>
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={schedules.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="schedules"
+          />
         </ContentReveal>
       )}
 

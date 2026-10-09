@@ -32,6 +32,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/date";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface TrashItem {
   id: string;
@@ -114,6 +115,20 @@ export default function TrashPage() {
   const filteredItems = useMemo(() => {
     return items;
   }, [items]);
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedItems = filteredItems.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const handleRestore = async (item: TrashItem) => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -266,56 +281,70 @@ export default function TrashPage() {
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Deleted</TableHead>
-                  <TableHead className="w-[120px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map((item) => (
-                  <TableRow key={`${item.entityType}-${item.id}`}>
-                    <TableCell className="font-medium text-sm">
-                      {item.name || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {getEntityLabel(item.entityType)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {getRelativeTime(item.deletedAt)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          title="Restore"
-                          onClick={() => handleRestore(item)}
-                        >
-                          <RotateCcw className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-red-600"
-                          title="Delete permanently"
-                          onClick={() => setDeleteItem(item)}
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+          <div className="space-y-3">
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Deleted</TableHead>
+                    <TableHead className="w-[120px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedItems.map((item) => (
+                    <TableRow key={`${item.entityType}-${item.id}`}>
+                      <TableCell className="font-medium text-sm">
+                        {item.name || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {getEntityLabel(item.entityType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {getRelativeTime(item.deletedAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            title="Restore"
+                            onClick={() => handleRestore(item)}
+                          >
+                            <RotateCcw className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-red-600"
+                            title="Delete permanently"
+                            onClick={() => setDeleteItem(item)}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <TablePagination
+              page={safePage}
+              totalPages={totalPages}
+              totalItems={filteredItems.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="items"
+            />
           </div>
         )}
       </div>

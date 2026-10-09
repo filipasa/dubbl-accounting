@@ -599,22 +599,14 @@ export default function FixedAssetsPage() {
               columns={columns}
               data={filteredAssets}
               loading={false}
+              pagination
+              pageSize={25}
               emptyMessage="No assets match your filters."
               onRowClick={(r) =>
                 router.push(`/accounting/fixed-assets/${r.id}`)
               }
             />
           </ContentReveal>
-        )}
-
-        {!refetching && !pendingSearch && filteredAssets.length > 0 && (
-          <div className="pt-1">
-            <p className="text-xs text-muted-foreground">
-              Showing {filteredAssets.length} asset
-              {filteredAssets.length !== 1 ? "s" : ""}
-              {debouncedSearch && ` matching "${debouncedSearch}"`}
-            </p>
-          </div>
         )}
       </div>
     </ContentReveal>

@@ -32,6 +32,7 @@ import { formatDate } from "@/lib/date";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, UserCheck, XCircle, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface Advisor {
   id: string;
@@ -59,6 +60,15 @@ export default function AdvisorsPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("accountant");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(advisors.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedAdvisors = advisors.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const fetchAdvisors = useCallback(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -167,44 +177,58 @@ export default function AdvisorsPage() {
             </Button>
           </EmptyState>
         ) : (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Invited</TableHead>
-                  <TableHead className="w-[80px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {advisors.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">
-                      {a.advisor?.email || a.inviteEmail || "-"}
-                    </TableCell>
-                    <TableCell>{ROLE_LABELS[a.role] || a.role}</TableCell>
-                    <TableCell>{getStatusBadge(a)}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {formatDate(a.invitedAt)}
-                    </TableCell>
-                    <TableCell>
-                      {!a.revokedAt && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-red-600"
-                          onClick={() => handleRevoke(a.id)}
-                        >
-                          <XCircle className="size-3.5" />
-                        </Button>
-                      )}
-                    </TableCell>
+          <div className="space-y-3">
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Invited</TableHead>
+                    <TableHead className="w-[80px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAdvisors.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">
+                        {a.advisor?.email || a.inviteEmail || "-"}
+                      </TableCell>
+                      <TableCell>{ROLE_LABELS[a.role] || a.role}</TableCell>
+                      <TableCell>{getStatusBadge(a)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {formatDate(a.invitedAt)}
+                      </TableCell>
+                      <TableCell>
+                        {!a.revokedAt && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-red-600"
+                            onClick={() => handleRevoke(a.id)}
+                          >
+                            <XCircle className="size-3.5" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <TablePagination
+              page={safePage}
+              totalPages={totalPages}
+              totalItems={advisors.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="advisors"
+            />
           </div>
         )}
       </div>

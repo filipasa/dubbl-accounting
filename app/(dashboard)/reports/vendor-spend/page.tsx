@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { ExportButton } from "@/components/dashboard/export-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface Vendor {
   contactId: string;
@@ -37,6 +38,19 @@ export default function VendorSpendPage() {
   const [endDate, setEndDate] = useState(now.toISOString().slice(0, 10));
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [totalSpend, setTotalSpend] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate]);
+
+  const totalPages = Math.max(1, Math.ceil(vendors.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedVendors = vendors.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -116,24 +130,39 @@ export default function VendorSpendPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {vendors.map((v, i) => (
-                      <tr key={v.contactId} className="border-b last:border-b-0">
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className={cn("size-2.5 rounded-full shrink-0", BAR_COLORS[i % BAR_COLORS.length])} />
-                            <span className="font-medium">{v.contactName}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono tabular-nums font-medium">{formatMoney(v.totalSpend)}</td>
-                        <td className="px-4 py-2.5 text-right text-muted-foreground">{v.billCount}</td>
-                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(v.avgBillAmount)}</td>
-                        <td className="px-4 py-2.5 text-right text-muted-foreground">{formatDate(v.lastBillDate)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">{v.percentage}%</td>
-                      </tr>
-                    ))}
+                    {paginatedVendors.map((v, i) => {
+                      const globalIndex = (safePage - 1) * pageSize + i;
+                      return (
+                        <tr key={v.contactId} className="border-b last:border-b-0">
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className={cn("size-2.5 rounded-full shrink-0", BAR_COLORS[globalIndex % BAR_COLORS.length])} />
+                              <span className="font-medium">{v.contactName}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums font-medium">{formatMoney(v.totalSpend)}</td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground">{v.billCount}</td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(v.avgBillAmount)}</td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground">{formatDate(v.lastBillDate)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">{v.percentage}%</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+              <TablePagination
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={vendors.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1);
+                }}
+                itemLabel="vendors"
+              />
             </>
           )}
         </ContentReveal>

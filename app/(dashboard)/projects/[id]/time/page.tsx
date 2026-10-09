@@ -880,6 +880,8 @@ export default function TimePage() {
         columns={columns}
         data={filteredEntries}
         onRowClick={openEdit}
+        pagination
+        pageSize={25}
         emptyMessage={hasActiveFilters ? "No entries match your filters." : "No time entries yet. Start the timer or log time manually."}
       />
     </div>

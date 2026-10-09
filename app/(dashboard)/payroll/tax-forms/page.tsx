@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   Table,
   TableBody,
@@ -78,7 +79,16 @@ export default function TaxFormsPage() {
   const [generating, setGenerating] = useState(false);
   const [taxYear, setTaxYear] = useState("2025");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   useDocumentTitle("Payroll · Tax Forms");
+
+  const totalPages = Math.max(1, Math.ceil(generations.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedGenerations = generations.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const orgId =
     typeof window !== "undefined"
@@ -221,10 +231,9 @@ export default function TaxFormsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              generations.map((gen) => (
-                <>
+              paginatedGenerations.map((gen) => (
+                <Fragment key={gen.id}>
                   <TableRow
-                    key={gen.id}
                     className="cursor-pointer"
                     onClick={() =>
                       setExpandedId(expandedId === gen.id ? null : gen.id)
@@ -319,12 +328,27 @@ export default function TaxFormsPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                </>
+                </Fragment>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      {generations.length > 0 && (
+        <TablePagination
+          page={safePage}
+          totalPages={totalPages}
+          totalItems={generations.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          itemLabel="tax form generations"
+        />
+      )}
     </div>
   );
 }

@@ -265,12 +265,14 @@ export default function ProjectsPage() {
           </div>
 
           <DataTable
-              columns={columns}
-              data={projects}
-              loading={loading}
-              emptyMessage="No projects found."
-              onRowClick={(r) => router.push(`/projects/${r.id}`)}
-            />
+            columns={columns}
+            data={projects}
+            loading={loading}
+            pagination
+            pageSize={25}
+            emptyMessage="No projects found."
+            onRowClick={(r) => router.push(`/projects/${r.id}`)}
+          />
         </div>
       </Section>
     </div>

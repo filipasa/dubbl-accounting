@@ -283,6 +283,8 @@ export default function QuotesPage() {
             columns={columns}
             data={quotes}
             loading={loading}
+            pagination
+            pageSize={25}
             emptyMessage="No quotes found."
             onRowClick={(r) => router.push(`/sales/quotes/${r.id}`)}
           />

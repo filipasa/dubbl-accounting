@@ -30,6 +30,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatDate } from "@/lib/date";
 import { toast } from "sonner";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface CostComponent {
   description: string;
@@ -59,6 +60,15 @@ export default function LandedCostsPage() {
   useDocumentTitle("Purchases · Landed Costs");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedItems = items.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   // Form state
   const [name, setName] = useState("");
@@ -255,7 +265,7 @@ export default function LandedCostsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((item) => (
+              paginatedItems.map((item) => (
                 <TableRow
                   key={item.id}
                   className="cursor-pointer"
@@ -324,6 +334,18 @@ export default function LandedCostsPage() {
           </TableBody>
         </Table>
       </div>
+      <TablePagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={items.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setPage(1);
+        }}
+        itemLabel="allocations"
+      />
 
       {/* New Allocation Sheet */}
       <Sheet

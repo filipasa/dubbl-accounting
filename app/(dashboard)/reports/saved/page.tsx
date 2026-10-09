@@ -330,6 +330,8 @@ export default function SavedReportsPage() {
             columns={columns}
             data={reports}
             loading={false}
+            pagination
+            pageSize={25}
             emptyMessage="No saved reports."
             onRowClick={(r) => openRun(r)}
           />

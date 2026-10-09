@@ -14,6 +14,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatDate } from "@/lib/date";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   Table,
   TableBody,
@@ -111,8 +112,20 @@ export default function RemindersPage() {
   const [saving, setSaving] = useState(false);
   const [logStatus, setLogStatus] = useState<string>("");
   const [logPage, setLogPage] = useState(1);
+  const [logPageSize, setLogPageSize] = useState(10);
   const [logTotal, setLogTotal] = useState(0);
+  const [rulePage, setRulePage] = useState(1);
+  const [rulePageSize, setRulePageSize] = useState(25);
   useDocumentTitle("Settings · Reminders");
+
+  const ruleTotalPages = Math.max(1, Math.ceil(rules.length / rulePageSize));
+  const safeRulePage = Math.min(Math.max(1, rulePage), ruleTotalPages);
+  const paginatedRules = rules.slice(
+    (safeRulePage - 1) * rulePageSize,
+    safeRulePage * rulePageSize
+  );
+
+  const logTotalPages = Math.max(1, Math.ceil(logTotal / logPageSize));
 
   function getHeaders() {
     const orgId = localStorage.getItem("activeOrgId") || "";
@@ -130,7 +143,7 @@ export default function RemindersPage() {
   }, []);
 
   const fetchLogs = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(logPage), limit: "10" });
+    const params = new URLSearchParams({ page: String(logPage), limit: String(logPageSize) });
     if (logStatus) params.set("status", logStatus);
     const res = await fetch(`/api/v1/reminders/logs?${params}`, {
       headers: getHeaders(),
@@ -138,7 +151,7 @@ export default function RemindersPage() {
     const data = await res.json();
     setLogs(data.data || []);
     setLogTotal(data.total || 0);
-  }, [logPage, logStatus]);
+  }, [logPage, logPageSize, logStatus]);
 
   useEffect(() => {
     fetchRules();
@@ -257,8 +270,6 @@ export default function RemindersPage() {
 
   if (loading) return <BrandLoader />;
 
-  const logTotalPages = Math.ceil(logTotal / 10);
-
   return (
     <ContentReveal>
       <div className="space-y-8">
@@ -288,57 +299,72 @@ export default function RemindersPage() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-lg border bg-card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs">Trigger</TableHead>
-                    <TableHead className="text-xs">Document</TableHead>
-                    <TableHead className="text-xs">Enabled</TableHead>
-                    <TableHead className="text-xs w-[60px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rules.map((rule) => (
-                    <TableRow
-                      key={rule.id}
-                      className="cursor-pointer"
-                      onClick={() => openEdit(rule)}
-                    >
-                      <TableCell className="text-sm font-medium">{rule.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {TRIGGER_LABELS[rule.triggerType]}
-                        {rule.triggerType !== "on_due" && (
-                          <span> · {rule.triggerDays} day{rule.triggerDays !== 1 ? "s" : ""}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {rule.documentType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Switch
-                          checked={rule.enabled}
-                          onCheckedChange={() => handleToggle(rule)}
-                        />
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-muted-foreground hover:text-red-600"
-                          onClick={() => handleDelete(rule.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="rounded-lg border bg-card overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Trigger</TableHead>
+                      <TableHead className="text-xs">Document</TableHead>
+                      <TableHead className="text-xs">Enabled</TableHead>
+                      <TableHead className="text-xs w-[60px]" />
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRules.map((rule) => (
+                      <TableRow
+                        key={rule.id}
+                        className="cursor-pointer"
+                        onClick={() => openEdit(rule)}
+                      >
+                        <TableCell className="text-sm font-medium">{rule.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {TRIGGER_LABELS[rule.triggerType]}
+                          {rule.triggerType !== "on_due" && (
+                            <span> · {rule.triggerDays} day{rule.triggerDays !== 1 ? "s" : ""}</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] capitalize">
+                            {rule.documentType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Switch
+                            checked={rule.enabled}
+                            onCheckedChange={() => handleToggle(rule)}
+                          />
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground hover:text-red-600"
+                            onClick={() => handleDelete(rule.id)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <TablePagination
+                page={safeRulePage}
+                totalPages={ruleTotalPages}
+                totalItems={rules.length}
+                pageSize={rulePageSize}
+                onPageChange={setRulePage}
+                onPageSizeChange={(newSize) => {
+                  setRulePageSize(newSize);
+                  setRulePage(1);
+                }}
+                itemLabel="rules"
+              />
+            </>
           )}
         </div>
 
@@ -420,33 +446,19 @@ export default function RemindersPage() {
                 </Table>
               </div>
 
-              {logTotalPages > 1 && (
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    Page {logPage} of {logTotalPages} · {logTotal} entries
-                  </p>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      disabled={logPage <= 1}
-                      onClick={() => setLogPage((p) => p - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      disabled={logPage >= logTotalPages}
-                      onClick={() => setLogPage((p) => p + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <TablePagination
+                page={logPage}
+                totalPages={logTotalPages}
+                totalItems={logTotal}
+                pageSize={logPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+                onPageChange={setLogPage}
+                onPageSizeChange={(newSize) => {
+                  setLogPageSize(newSize);
+                  setLogPage(1);
+                }}
+                itemLabel="logs"
+              />
             </>
           )}
         </div>

@@ -10,6 +10,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface ProfitabilityEntry {
   contactId: string;
@@ -33,6 +34,15 @@ export default function ProfitabilityPage() {
   const [totalCosts, setTotalCosts] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
   const [overallMargin, setOverallMargin] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedEntries = entries.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -78,7 +88,7 @@ export default function ProfitabilityPage() {
       <DateRangeFilter
         startDate={startDate}
         endDate={endDate}
-        onDateChange={(s, e) => { setStartDate(s); setEndDate(e); }}
+        onDateChange={(s, e) => { setStartDate(s); setEndDate(e); setPage(1); }}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -117,7 +127,7 @@ export default function ProfitabilityPage() {
           </div>
         </ContentReveal>
       ) : (
-        <ContentReveal>
+        <ContentReveal className="space-y-4">
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -132,7 +142,7 @@ export default function ProfitabilityPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((e) => (
+                {paginatedEntries.map((e) => (
                   <tr key={e.contactId} className="border-b last:border-b-0">
                     <td className="px-4 py-2.5 font-medium">{e.contactName}</td>
                     <td className="px-4 py-2.5 text-right font-mono tabular-nums text-emerald-600">{formatMoney(e.revenue)}</td>
@@ -176,6 +186,19 @@ export default function ProfitabilityPage() {
               </tfoot>
             </table>
           </div>
+
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={entries.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="contacts"
+          />
         </ContentReveal>
       )}
     </ContentReveal>

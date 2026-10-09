@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ExportButton } from "@/components/dashboard/export-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   Table,
   TableBody,
@@ -56,6 +57,8 @@ export default function BankCashFlowPage() {
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [data, setData] = useState<BankCashFlowData | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Load the org's bank accounts for the account picker.
   useEffect(() => {
@@ -106,6 +109,13 @@ export default function BankCashFlowPage() {
 
   const periods = data?.periods ?? [];
   const totals = data?.totals ?? { inflows: 0, outflows: 0, net: 0 };
+  const totalPages = Math.max(1, Math.ceil(periods.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedPeriods = periods.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
+
   // Currency of the chosen account, or the first account as a sensible default.
   const selected = accounts.find((a) => a.id === bankAccountId);
   const currency = selected?.currencyCode || accounts[0]?.currencyCode || "USD";
@@ -139,13 +149,17 @@ export default function BankCashFlowPage() {
           onDateChange={(s, e) => {
             setStartDate(s);
             setEndDate(e);
+            setPage(1);
           }}
         />
         <div className="flex flex-col gap-1">
           <span className="text-[13px] text-muted-foreground">Bank account</span>
           <select
             value={bankAccountId}
-            onChange={(e) => setBankAccountId(e.target.value)}
+            onChange={(e) => {
+              setBankAccountId(e.target.value);
+              setPage(1);
+            }}
             className="h-9 rounded-md border bg-background px-2 text-sm"
           >
             <option value="">All bank accounts</option>
@@ -160,7 +174,10 @@ export default function BankCashFlowPage() {
           <span className="text-[13px] text-muted-foreground">Group</span>
           <select
             value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value)}
+            onChange={(e) => {
+              setGroupBy(e.target.value);
+              setPage(1);
+            }}
             className="h-9 rounded-md border bg-background px-2 text-sm"
           >
             {GROUP_OPTIONS.map((o) => (
@@ -216,7 +233,7 @@ export default function BankCashFlowPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  periods.map((p) => (
+                  paginatedPeriods.map((p) => (
                     <TableRow key={p.startDate}>
                       <TableCell className="font-medium text-sm">{p.label}</TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums text-emerald-600">
@@ -254,6 +271,19 @@ export default function BankCashFlowPage() {
               )}
             </Table>
           </div>
+
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={periods.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="periods"
+          />
         </ContentReveal>
       )}
     </ContentReveal>

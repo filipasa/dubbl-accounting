@@ -41,7 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DataTable, type Column } from "@/components/dashboard/data-table";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 
@@ -92,6 +92,14 @@ export default function CustomReportsPage() {
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
   const [results, setResults] = useState<Record<string, unknown>[] | null>(null);
   const [running, setRunning] = useState(false);
+  const [resultsPage, setResultsPage] = useState(1);
+  const [resultsPageSize, setResultsPageSize] = useState(25);
+
+  const resultsTotalPages = results ? Math.max(1, Math.ceil(results.length / resultsPageSize)) : 1;
+  const safeResultsPage = Math.min(Math.max(1, resultsPage), resultsTotalPages);
+  const paginatedResults = results
+    ? results.slice((safeResultsPage - 1) * resultsPageSize, safeResultsPage * resultsPageSize)
+    : [];
 
   function getHeaders() {
     const orgId = localStorage.getItem("activeOrgId") || "";
@@ -117,6 +125,7 @@ export default function CustomReportsPage() {
     setDataSource("invoices");
     setSelectedColumns(DATA_SOURCES.invoices.columns.slice(0, 5));
     setResults(null);
+    setResultsPage(1);
     setBuilderOpen(true);
   }
 
@@ -135,6 +144,7 @@ export default function CustomReportsPage() {
       });
       const data = await res.json();
       setResults(data.data || []);
+      setResultsPage(1);
     } catch {
       toast.error("Failed to run report");
     } finally {
@@ -331,41 +341,51 @@ export default function CustomReportsPage() {
             </div>
 
             {results && (
-              <div className="border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      {selectedColumns.map((col) => (
-                        <th key={col} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.slice(0, 50).map((row, i) => (
-                      <tr key={i} className="border-b last:border-0">
+              <div className="space-y-3">
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
                         {selectedColumns.map((col) => (
-                          <td key={col} className="px-3 py-2 text-xs">
-                            {String(row[col] ?? "-")}
-                          </td>
+                          <th key={col} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                            {col}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                    {results.length === 0 && (
-                      <tr>
-                        <td colSpan={selectedColumns.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
-                          No data found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                {results.length > 50 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground border-t">
-                    Showing 50 of {results.length} rows
-                  </div>
-                )}
+                    </thead>
+                    <tbody>
+                      {paginatedResults.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          {selectedColumns.map((col) => (
+                            <td key={col} className="px-3 py-2 text-xs">
+                              {String(row[col] ?? "-")}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      {results.length === 0 && (
+                        <tr>
+                          <td colSpan={selectedColumns.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
+                            No data found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <TablePagination
+                  page={safeResultsPage}
+                  totalPages={resultsTotalPages}
+                  totalItems={results.length}
+                  pageSize={resultsPageSize}
+                  onPageChange={setResultsPage}
+                  onPageSizeChange={(newSize) => {
+                    setResultsPageSize(newSize);
+                    setResultsPage(1);
+                  }}
+                  itemLabel="rows"
+                />
               </div>
             )}
           </div>

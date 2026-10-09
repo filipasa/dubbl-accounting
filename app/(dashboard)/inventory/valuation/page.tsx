@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
@@ -81,6 +82,8 @@ export default function InventoryValuationPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   useDocumentTitle("Inventory · Stock value");
 
   const orgId =
@@ -118,6 +121,7 @@ export default function InventoryValuationPage() {
         setSortKey(key);
         setSortOrder("asc");
       }
+      setPage(1);
     },
     [sortKey]
   );
@@ -146,6 +150,13 @@ export default function InventoryValuationPage() {
     }
     return ((aVal as number) - (bVal as number)) * dir;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedItems = sortedItems.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   function exportCsv() {
     const headers = [
@@ -212,7 +223,10 @@ export default function InventoryValuationPage() {
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search items..."
               className="pl-9 h-9 text-sm"
             />
@@ -366,79 +380,94 @@ export default function InventoryValuationPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border bg-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                {COLUMNS.map((col) => (
-                  <th
-                    key={col.key}
-                    className={cn(
-                      "px-4 py-3 text-xs font-medium text-muted-foreground cursor-pointer select-none whitespace-nowrap hover:text-foreground transition-colors",
-                      col.align === "right" ? "text-right" : "text-left"
-                    )}
-                    onClick={() => handleSort(col.key)}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {col.label}
-                      {sortKey === col.key ? (
-                        sortOrder === "asc" ? (
-                          <ChevronUp className="size-3" />
-                        ) : (
-                          <ChevronDown className="size-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="size-3 opacity-30" />
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  {COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className={cn(
+                        "px-4 py-3 text-xs font-medium text-muted-foreground cursor-pointer select-none whitespace-nowrap hover:text-foreground transition-colors",
+                        col.align === "right" ? "text-right" : "text-left"
                       )}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedItems.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b last:border-b-0 hover:bg-muted/40 transition-colors"
-                >
-                  <td className="px-4 py-3 font-mono text-xs">
-                    {item.code}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{item.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {item.category || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {item.quantityOnHand}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {formatMoney(item.purchasePrice)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {formatMoney(item.totalCost)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {formatMoney(item.salePrice)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums font-medium">
-                    {formatMoney(item.totalValue)}
-                  </td>
-                  <td
-                    className={cn(
-                      "px-4 py-3 text-right font-mono tabular-nums",
-                      item.marginPercent > 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : item.marginPercent < 0
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-muted-foreground"
-                    )}
-                  >
-                    {item.marginPercent.toFixed(1)}%
-                  </td>
+                      onClick={() => handleSort(col.key)}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {sortKey === col.key ? (
+                          sortOrder === "asc" ? (
+                            <ChevronUp className="size-3" />
+                          ) : (
+                            <ChevronDown className="size-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="size-3 opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginatedItems.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b last:border-b-0 hover:bg-muted/40 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {item.code}
+                    </td>
+                    <td className="px-4 py-3 font-medium">{item.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.category || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">
+                      {item.quantityOnHand}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">
+                      {formatMoney(item.purchasePrice)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">
+                      {formatMoney(item.totalCost)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {formatMoney(item.salePrice)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums font-medium">
+                      {formatMoney(item.totalValue)}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-4 py-3 text-right font-mono tabular-nums",
+                        item.marginPercent > 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : item.marginPercent < 0
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-muted-foreground"
+                      )}
+                    >
+                      {item.marginPercent.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={sortedItems.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="items"
+          />
         </div>
       )}
     </ContentReveal>

@@ -417,6 +417,8 @@ export default function TaxLiabilitiesPage() {
           columns={paymentColumns}
           data={payments}
           loading={false}
+          pagination
+          pageSize={25}
           emptyMessage="No payroll tax payments recorded yet."
         />
       </div>

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -416,7 +417,16 @@ export default function TaxPeriodsPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [filing, setFiling] = useState<TaxPeriod | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   useDocumentTitle("Tax · Periods");
+
+  const totalPages = Math.max(1, Math.ceil(periods.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedPeriods = periods.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const orgId =
     typeof window !== "undefined"
@@ -581,7 +591,7 @@ export default function TaxPeriodsPage() {
                 </tr>
               </thead>
               <tbody>
-                {periods.map((p) => {
+                {paginatedPeriods.map((p) => {
                   const filing_status = getFilingStatus(p);
 
                   return (
@@ -667,6 +677,19 @@ export default function TaxPeriodsPage() {
               </tbody>
             </table>
           </div>
+
+          <TablePagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={periods.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            itemLabel="tax periods"
+          />
 
           <FileSheet
             period={filing}

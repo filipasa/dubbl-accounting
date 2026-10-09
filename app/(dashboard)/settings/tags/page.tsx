@@ -24,6 +24,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2, Tags } from "lucide-react";
 import { toast } from "sonner";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 
 interface Tag {
   id: string;
@@ -55,7 +56,16 @@ export default function TagsPage() {
   const [color, setColor] = useState("#6b7280");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   useDocumentTitle("Settings · Tags");
+
+  const totalPages = Math.max(1, Math.ceil(tags.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedTags = tags.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const fetchTags = useCallback(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -168,53 +178,67 @@ export default function TagsPage() {
             </Button>
           </EmptyState>
         ) : (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Color</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-[100px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tags.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell>
-                      <div
-                        className="size-4 rounded-full"
-                        style={{ backgroundColor: tag.color }}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{tag.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {tag.description || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          onClick={() => openEdit(tag)}
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-red-600"
-                          onClick={() => handleDelete(tag.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+          <div className="space-y-3">
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Color</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="w-[100px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTags.map((tag) => (
+                    <TableRow key={tag.id}>
+                      <TableCell>
+                        <div
+                          className="size-4 rounded-full"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{tag.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {tag.description || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            onClick={() => openEdit(tag)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-red-600"
+                            onClick={() => handleDelete(tag.id)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <TablePagination
+              page={safePage}
+              totalPages={totalPages}
+              totalItems={tags.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="tags"
+            />
           </div>
         )}
       </div>

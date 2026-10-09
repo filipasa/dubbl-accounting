@@ -126,6 +126,8 @@ export default function AgedReceivablesPage() {
               columns={columns}
               data={allInvoices}
               loading={loading}
+              pagination
+              pageSize={25}
               emptyMessage="No outstanding receivables."
             />
           </div>
