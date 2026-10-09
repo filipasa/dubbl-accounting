@@ -59,6 +59,7 @@ import { CurrencySelect } from "@/components/ui/currency-select";
 import { InventoryItemPicker } from "@/components/dashboard/inventory-item-picker";
 import { WarehousePicker } from "@/components/dashboard/warehouse-picker";
 import { CategoryPicker } from "@/components/dashboard/category-picker";
+import { InventoryImageUpload } from "@/components/dashboard/inventory-image-upload";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatMoney, decimalToCents, decimalToMinorUnits } from "@/lib/money";
 
@@ -1116,6 +1117,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [categoryId, setCategoryId] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [invPurchasePrice, setInvPurchasePrice] = useState("0.00");
   const [invSalePrice, setInvSalePrice] = useState("0.00");
 
@@ -1134,6 +1136,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
           code: form.get("code"),
           name: form.get("name"),
           description: form.get("description") || null,
+          imageUrl: imageUrl || null,
           categoryId: categoryId || null,
           sku: form.get("sku") || null,
           purchasePrice: Math.round(parseFloat(form.get("purchasePrice") as string || "0") * 100),
@@ -1148,6 +1151,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
       }
       const data = await res.json();
       toast.success("Inventory item created");
+      setImageUrl(null);
       onClose();
       router.push(`/inventory/${data.inventoryItem.id}`);
     } catch (err) {
@@ -1158,7 +1162,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+    <Sheet open={open} onOpenChange={(v) => { if (!v) { setImageUrl(null); onClose(); } }}>
       <SheetContent className="sm:max-w-lg w-full p-0 flex flex-col">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
@@ -1173,6 +1177,10 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
           <div className="flex-1 overflow-y-auto space-y-6 px-4 py-4 sm:px-6 sm:py-5">
             <div className="space-y-4">
               <SectionLabel>Item Info</SectionLabel>
+              <div className="space-y-2">
+                <Label>Item Image</Label>
+                <InventoryImageUpload value={imageUrl} onChange={setImageUrl} />
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="drawer-inv-code">Code *</Label>

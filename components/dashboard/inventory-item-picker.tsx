@@ -24,6 +24,7 @@ interface InventoryItemOption {
   name: string;
   code: string;
   sku: string | null;
+  imageUrl?: string | null;
   quantityOnHand: number;
 }
 
@@ -107,9 +108,16 @@ export function InventoryItemPicker({ value, onChange, placeholder = "Select ite
           className="w-full justify-between font-normal h-9"
         >
           {selectedItem ? (
-            <span className="truncate">
-              {selectedItem.name} <span className="text-muted-foreground">({selectedItem.code})</span>
-            </span>
+            <div className="flex items-center gap-2 truncate">
+              {selectedItem.imageUrl ? (
+                <img src={selectedItem.imageUrl} alt="" className="size-5 rounded object-cover shrink-0" />
+              ) : (
+                <Package className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">
+                {selectedItem.name} <span className="text-muted-foreground">({selectedItem.code})</span>
+              </span>
+            </div>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
@@ -150,6 +158,13 @@ export function InventoryItemPicker({ value, onChange, placeholder = "Select ite
                     }}
                   >
                     <Check className={cn("size-4 shrink-0", value === item.id ? "opacity-100" : "opacity-0")} />
+                    <div className="size-7 rounded border bg-background shrink-0 flex items-center justify-center overflow-hidden">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt="" className="size-full object-cover" />
+                      ) : (
+                        <Package className="size-3.5 text-muted-foreground/60" />
+                      )}
+                    </div>
                     <div className="flex flex-col min-w-0">
                       <span className="truncate text-sm">{item.name}</span>
                       <span className="text-xs text-muted-foreground truncate">

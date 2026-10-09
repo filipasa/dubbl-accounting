@@ -231,19 +231,29 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "flex size-10 items-center justify-center rounded-xl",
-              isLowStock
-                ? "bg-amber-50 dark:bg-amber-950/40"
-                : "bg-emerald-50 dark:bg-emerald-950/40"
-            )}>
-              <Package className={cn(
-                "size-5",
+            {item.imageUrl ? (
+              <div className="size-10 shrink-0 rounded-xl overflow-hidden border border-border bg-muted/30">
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="size-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className={cn(
+                "flex size-10 items-center justify-center rounded-xl",
                 isLowStock
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400"
-              )} />
-            </div>
+                  ? "bg-amber-50 dark:bg-amber-950/40"
+                  : "bg-emerald-50 dark:bg-emerald-950/40"
+              )}>
+                <Package className={cn(
+                  "size-5",
+                  isLowStock
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                )} />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-semibold">{item.name}</h1>

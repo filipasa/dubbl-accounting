@@ -68,6 +68,7 @@ interface InventoryItem {
   id: string;
   code: string;
   name: string;
+  imageUrl?: string | null;
   category: string | null;
   sku: string | null;
   purchasePrice: number;
@@ -683,17 +684,27 @@ export default function InventoryPage() {
                   />
                 </div>
 
-                {/* Icon + info */}
+                {/* Icon / Image + info */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
-                    isLow ? "bg-amber-50 dark:bg-amber-950/40" : item.isActive ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-muted"
-                  )}>
-                    <Package className={cn(
-                      "size-4",
-                      isLow ? "text-amber-600 dark:text-amber-400" : item.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-                    )} />
-                  </div>
+                  {item.imageUrl ? (
+                    <div className="size-9 shrink-0 rounded-lg overflow-hidden border border-border bg-muted/30">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="size-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
+                      isLow ? "bg-amber-50 dark:bg-amber-950/40" : item.isActive ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-muted"
+                    )}>
+                      <Package className={cn(
+                        "size-4",
+                        isLow ? "text-amber-600 dark:text-amber-400" : item.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      )} />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{item.name}</p>

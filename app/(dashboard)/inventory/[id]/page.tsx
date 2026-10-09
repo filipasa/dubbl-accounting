@@ -23,6 +23,7 @@ import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { setEntityTitle } from "@/lib/hooks/use-entity-title";
 import { CategoryPicker } from "@/components/dashboard/category-picker";
+import { InventoryImageUpload } from "@/components/dashboard/inventory-image-upload";
 import { useInventoryItem } from "./layout";
 import JsBarcode from "jsbarcode";
 
@@ -40,10 +41,18 @@ export default function InventoryItemDetailsPage() {
   const router = useRouter();
   const { item, setItem } = useInventoryItem();
   const [saving, setSaving] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(item.imageUrl || null);
   const [categoryId, setCategoryId] = useState(item.categoryId || "");
   const [invPurchasePrice, setInvPurchasePrice] = useState(centsToDecimal(item.purchasePrice));
   const [invSalePrice, setInvSalePrice] = useState(centsToDecimal(item.salePrice));
   const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStockEntry[]>([]);
+
+  useEffect(() => {
+    setImageUrl(item.imageUrl || null);
+    setCategoryId(item.categoryId || "");
+    setInvPurchasePrice(centsToDecimal(item.purchasePrice));
+    setInvSalePrice(centsToDecimal(item.salePrice));
+  }, [item]);
   // "Revalue stock" sheet: set the book value directly (mark-to-market) without
   // changing the count.
   const [revalueOpen, setRevalueOpen] = useState(false);
@@ -82,6 +91,7 @@ export default function InventoryItemDetailsPage() {
           code: form.get("code"),
           name: form.get("name"),
           description: form.get("description") || null,
+          imageUrl: imageUrl || null,
           categoryId: categoryId || null,
           sku: form.get("sku") || null,
           purchasePrice: Math.round(parseFloat(invPurchasePrice || "0") * 100),
@@ -229,8 +239,12 @@ export default function InventoryItemDetailsPage() {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-10">
-        <Section title="General" description="Item code, name, and identifiers.">
+        <Section title="General" description="Item image, code, name, and identifiers.">
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Item Image</Label>
+              <InventoryImageUpload value={imageUrl} onChange={setImageUrl} />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="code">Code</Label>
