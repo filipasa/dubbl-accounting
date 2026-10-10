@@ -36,6 +36,7 @@ import { suggestAccounts } from "@/lib/banking/account-suggestions";
 import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
+import { resolveOrCreateProductItem, isRealProductLine } from "@/lib/inventory/product-storage";
 
 function sanitizeNotes(notes?: string | null): string | undefined {
   if (!notes) return undefined;
@@ -497,35 +498,74 @@ export async function createQuoteAction(
 
   let rawLines = params.lines;
   if (!rawLines || rawLines.length === 0) {
-    if (params.description && params.unitPrice != null) {
+    if (params.description) {
       rawLines = [
         {
           description: params.description,
           shortDescription: params.shortDescription || null,
           quantity: params.quantity || 1,
-          unitPrice: params.unitPrice,
+          unitPrice: params.unitPrice != null ? params.unitPrice : 0,
           imageUrl: params.imageUrl || null,
         },
       ];
     } else {
-      throw new Error("Quote must have at least one line item with description and unit price.");
+      throw new Error("Quote must have at least one line item with description.");
     }
   }
 
-  const formattedLines: any[] = rawLines.map((l) => {
-    const rawPrice = Number(l.unitPrice || 0);
-    // Integer cents/pence for create_quote MCP tool
-    const centsPrice = Math.round(rawPrice * 100);
-    return {
+  const resolvedProducts: Array<{
+    name: string;
+    code: string;
+    isNew: boolean;
+    unitPrice: number;
+    inventoryItemId: string;
+  }> = [];
+
+  const formattedLines: any[] = [];
+  for (const l of rawLines) {
+    let unitPricePounds = Number(l.unitPrice || 0);
+    let resolvedItemId: string | undefined;
+
+    if (isRealProductLine(l.description)) {
+      try {
+        const centsPrice = Math.round(unitPricePounds * 100);
+        const resolved = await resolveOrCreateProductItem(ctx.organizationId, {
+          description: l.description,
+          shortDescription: l.shortDescription,
+          unitPrice: centsPrice,
+          imageUrl: l.imageUrl,
+        });
+
+        if (resolved) {
+          resolvedItemId = resolved.item.id;
+          if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
+            unitPricePounds = resolved.item.salePrice / 100;
+          }
+          resolvedProducts.push({
+            name: resolved.item.name,
+            code: resolved.item.code,
+            isNew: resolved.isNew,
+            unitPrice: unitPricePounds,
+            inventoryItemId: resolved.item.id,
+          });
+        }
+      } catch (err) {
+        console.warn("[createQuoteAction] Failed resolving product item:", l.description, err);
+      }
+    }
+
+    const centsPrice = Math.round(unitPricePounds * 100);
+    formattedLines.push({
       description: l.description,
       ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
       ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: centsPrice,
+      ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
-    };
-  });
+    });
+  }
 
   if (params.shipping != null && Number(params.shipping) > 0) {
     const hasShippingLine = formattedLines.some((l) =>
@@ -576,6 +616,7 @@ export async function createQuoteAction(
     viewUrl,
     pdfUrl,
     downloadUrl: pdfUrl,
+    products: resolvedProducts,
   };
 }
 
@@ -648,34 +689,73 @@ export async function createInvoiceAction(
 
   let rawLines = params.lines;
   if (!rawLines || rawLines.length === 0) {
-    if (params.description && params.unitPrice != null) {
+    if (params.description) {
       rawLines = [
         {
           description: params.description,
           shortDescription: params.shortDescription || null,
           quantity: params.quantity || 1,
-          unitPrice: params.unitPrice,
+          unitPrice: params.unitPrice != null ? params.unitPrice : 0,
           imageUrl: params.imageUrl || null,
         },
       ];
     } else {
-      throw new Error("Invoice must have at least one line item with description and unit price.");
+      throw new Error("Invoice must have at least one line item with description.");
     }
   }
 
-  // create_invoice MCP tool expects unitPrice in decimal (pounds), not integer pence
-  const formattedLines: any[] = rawLines.map((l) => {
-    const rawPrice = Number(l.unitPrice || 0);
-    return {
+  const resolvedProducts: Array<{
+    name: string;
+    code: string;
+    isNew: boolean;
+    unitPrice: number;
+    inventoryItemId: string;
+  }> = [];
+
+  const formattedLines: any[] = [];
+  for (const l of rawLines) {
+    let unitPricePounds = Number(l.unitPrice || 0);
+    let resolvedItemId: string | undefined;
+
+    if (isRealProductLine(l.description)) {
+      try {
+        const centsPrice = Math.round(unitPricePounds * 100);
+        const resolved = await resolveOrCreateProductItem(ctx.organizationId, {
+          description: l.description,
+          shortDescription: l.shortDescription,
+          unitPrice: centsPrice,
+          imageUrl: l.imageUrl,
+        });
+
+        if (resolved) {
+          resolvedItemId = resolved.item.id;
+          if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
+            unitPricePounds = resolved.item.salePrice / 100;
+          }
+          resolvedProducts.push({
+            name: resolved.item.name,
+            code: resolved.item.code,
+            isNew: resolved.isNew,
+            unitPrice: unitPricePounds,
+            inventoryItemId: resolved.item.id,
+          });
+        }
+      } catch (err) {
+        console.warn("[createInvoiceAction] Failed resolving product item:", l.description, err);
+      }
+    }
+
+    formattedLines.push({
       description: l.description,
       ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
       ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
       quantity: Number(l.quantity || 1),
-      unitPrice: rawPrice,
+      unitPrice: unitPricePounds,
+      ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
-    };
-  });
+    });
+  }
 
   if (params.shipping != null && Number(params.shipping) > 0) {
     const hasShippingLine = formattedLines.some((l) =>
@@ -718,6 +798,7 @@ export async function createInvoiceAction(
   return {
     invoice: res.invoice,
     contact,
+    products: resolvedProducts,
   };
 }
 
@@ -1116,15 +1197,43 @@ export async function updateInvoiceAction(
     const accounts = accountsRes?.accounts || [];
     const account = accounts.find((a: any) => a.code === "4000") || accounts[0];
 
-    formattedLines = rawLines.map((l) => ({
-      description: l.description,
-      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
-      quantity: Number(l.quantity || 1),
-      unitPrice: Number(l.unitPrice || 0), // decimal pounds
-      ...(account?.id ? { accountId: account.id } : {}),
-      ...(taxRateId ? { taxRateId } : {}),
-    }));
+    formattedLines = [];
+    for (const l of rawLines) {
+      let unitPricePounds = Number(l.unitPrice || 0);
+      let resolvedItemId: string | undefined;
+
+      if (isRealProductLine(l.description)) {
+        try {
+          const centsPrice = Math.round(unitPricePounds * 100);
+          const resolved = await resolveOrCreateProductItem(ctx.organizationId, {
+            description: l.description,
+            shortDescription: l.shortDescription,
+            unitPrice: centsPrice,
+            imageUrl: l.imageUrl,
+          });
+
+          if (resolved) {
+            resolvedItemId = resolved.item.id;
+            if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
+              unitPricePounds = resolved.item.salePrice / 100;
+            }
+          }
+        } catch (err) {
+          console.warn("[updateInvoiceAction] Failed resolving product item:", l.description, err);
+        }
+      }
+
+      formattedLines.push({
+        description: l.description,
+        ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+        ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+        quantity: Number(l.quantity || 1),
+        unitPrice: unitPricePounds,
+        ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
+        ...(account?.id ? { accountId: account.id } : {}),
+        ...(taxRateId ? { taxRateId } : {}),
+      });
+    }
 
     if (params.shipping != null && Number(params.shipping) > 0) {
       const hasShippingLine = formattedLines.some((l) =>
@@ -1247,15 +1356,43 @@ export async function updateQuoteAction(
     const accounts = accountsRes?.accounts || [];
     const account = accounts.find((a: any) => a.code === "4000") || accounts[0];
 
-    formattedLines = rawLines.map((l) => ({
-      description: l.description,
-      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
-      quantity: Number(l.quantity || 1),
-      unitPrice: Number(l.unitPrice || 0), // decimal pounds
-      ...(account?.id ? { accountId: account.id } : {}),
-      ...(taxRateId ? { taxRateId } : {}),
-    }));
+    formattedLines = [];
+    for (const l of rawLines) {
+      let unitPricePounds = Number(l.unitPrice || 0);
+      let resolvedItemId: string | undefined;
+
+      if (isRealProductLine(l.description)) {
+        try {
+          const centsPrice = Math.round(unitPricePounds * 100);
+          const resolved = await resolveOrCreateProductItem(ctx.organizationId, {
+            description: l.description,
+            shortDescription: l.shortDescription,
+            unitPrice: centsPrice,
+            imageUrl: l.imageUrl,
+          });
+
+          if (resolved) {
+            resolvedItemId = resolved.item.id;
+            if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
+              unitPricePounds = resolved.item.salePrice / 100;
+            }
+          }
+        } catch (err) {
+          console.warn("[updateQuoteAction] Failed resolving product item:", l.description, err);
+        }
+      }
+
+      formattedLines.push({
+        description: l.description,
+        ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
+        ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+        quantity: Number(l.quantity || 1),
+        unitPrice: unitPricePounds,
+        ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
+        ...(account?.id ? { accountId: account.id } : {}),
+        ...(taxRateId ? { taxRateId } : {}),
+      });
+    }
 
     if (params.shipping != null && Number(params.shipping) > 0) {
       const hasShippingLine = formattedLines.some((l) =>

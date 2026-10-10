@@ -86,10 +86,11 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50)",
+                description:
+                  "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50). Optional if product already exists in inventory items with a saved price.",
               },
             },
-            required: ["description", "unitPrice"],
+            required: ["description"],
           },
         },
         shipping: {
@@ -174,10 +175,11 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50)",
+                description:
+                  "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). Optional if product already exists in inventory items with a saved price.",
               },
             },
-            required: ["description", "unitPrice"],
+            required: ["description"],
           },
         },
         shipping: {
@@ -965,15 +967,29 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       }
 
       const customerName = segments[0];
-      const amount = parseFloat(segments[1].replace(/[^0-9.]/g, ""));
-      const description = segments[2] || "Products / Services";
-      const expiryDate = segments[3] ? normalizeDateInput(segments[3]) : undefined;
+      let amount: number;
+      let description: string;
+      let expiryDate: string | undefined;
 
-      if (isNaN(amount) || amount <= 0) {
-        return "⚠️ Invalid amount. Please enter a valid number (e.g. 450 or 99.50).";
+      const parsedAmount = parseFloat(segments[1].replace(/[^0-9.]/g, ""));
+      const isSecondSegmentNumeric = !isNaN(parsedAmount) && segments[1].match(/[0-9]/) !== null;
+
+      if (segments.length >= 3) {
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          return "⚠️ Invalid amount. Please enter a valid number (e.g. 450 or 99.50).";
+        }
+        amount = parsedAmount;
+        description = segments[2];
+        expiryDate = segments[3] ? normalizeDateInput(segments[3]) : undefined;
+      } else if (isSecondSegmentNumeric) {
+        amount = parsedAmount;
+        description = "Products / Services";
+      } else {
+        amount = 0;
+        description = segments[1];
       }
 
-      const { quote: createdQuote, contact, portalUrl, viewUrl, pdfUrl } = await createQuoteAction(ctx, {
+      const { quote: createdQuote, contact, portalUrl, viewUrl, pdfUrl, products } = await createQuoteAction(ctx, {
         customerName,
         unitPrice: amount,
         description,
@@ -981,18 +997,31 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       });
 
       const totalFormatted = (createdQuote.total / 100).toFixed(2);
-      return (
+      let reply =
         `✅ <b>Quote Created Successfully!</b>\n\n` +
         `• <b>Quote #:</b> ${createdQuote.quoteNumber}\n` +
         `• <b>Customer:</b> ${contact.name}\n` +
         `• <b>Amount:</b> ${createdQuote.currencyCode} ${totalFormatted}\n` +
-        `• <b>Item:</b> ${description}\n` +
+        `• <b>Item:</b> ${description}\n`;
+
+      if (products && products.length > 0) {
+        for (const p of products) {
+          if (p.isNew) {
+            reply += `• 📦 <b>Catalog Item:</b> Created new inventory item <code>${p.code}</code> (${p.name})\n`;
+          } else {
+            reply += `• 📦 <b>Catalog Item:</b> Matched existing product <code>${p.code}</code> (${p.name})\n`;
+          }
+        }
+      }
+
+      reply +=
         `• <b>Status:</b> ${createdQuote.status.toUpperCase()}\n` +
         `• <b>Expiry Date:</b> ${createdQuote.expiryDate}\n\n` +
         (portalUrl ? `🔗 <a href="${portalUrl}">Customer Quote Link</a> (View & Accept)\n` : "") +
         `🔗 <a href="${viewUrl}">View in Fixbooks</a>\n` +
-        `📄 <a href="${pdfUrl}">Download PDF</a>`
-      );
+        `📄 <a href="${pdfUrl}">Download PDF</a>`;
+
+      return reply;
     }
 
     case "/invoices": {
@@ -1079,14 +1108,27 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       }
 
       const customerName = segments[0];
-      const amount = parseFloat(segments[1].replace(/[^0-9.]/g, ""));
-      const description = segments[2] || "Products / Services";
+      let amount: number;
+      let description: string;
 
-      if (isNaN(amount) || amount <= 0) {
-        return "⚠️ Invalid amount. Please enter a valid number (e.g. 250 or 99.50).";
+      const parsedAmount = parseFloat(segments[1].replace(/[^0-9.]/g, ""));
+      const isSecondSegmentNumeric = !isNaN(parsedAmount) && segments[1].match(/[0-9]/) !== null;
+
+      if (segments.length >= 3) {
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          return "⚠️ Invalid amount. Please enter a valid number (e.g. 250 or 99.50).";
+        }
+        amount = parsedAmount;
+        description = segments[2];
+      } else if (isSecondSegmentNumeric) {
+        amount = parsedAmount;
+        description = "Products / Services";
+      } else {
+        amount = 0;
+        description = segments[1];
       }
 
-      const { invoice, contact } = await createInvoiceAction(ctx, {
+      const { invoice, contact, products } = await createInvoiceAction(ctx, {
         customerName,
         unitPrice: amount,
         description,
@@ -1094,16 +1136,29 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
 
       const totalFormatted = (invoice.total / 100).toFixed(2);
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
-      return (
+      let reply =
         `✅ <b>Invoice Created Successfully!</b>\n\n` +
         `• <b>Invoice #:</b> ${invoice.invoiceNumber}\n` +
         `• <b>Customer:</b> ${contact.name}\n` +
         `• <b>Amount:</b> ${invoice.currencyCode} ${totalFormatted}\n` +
-        `• <b>Item:</b> ${description}\n` +
+        `• <b>Item:</b> ${description}\n`;
+
+      if (products && products.length > 0) {
+        for (const p of products) {
+          if (p.isNew) {
+            reply += `• 📦 <b>Catalog Item:</b> Created new inventory item <code>${p.code}</code> (${p.name})\n`;
+          } else {
+            reply += `• 📦 <b>Catalog Item:</b> Matched existing product <code>${p.code}</code> (${p.name})\n`;
+          }
+        }
+      }
+
+      reply +=
         `• <b>Status:</b> ${invoice.status.toUpperCase()}\n` +
         `• <b>Due Date:</b> ${invoice.dueDate}\n\n` +
-        `🔗 <a href="${appUrl}/sales/${invoice.id}">View in Fixbooks</a>`
-      );
+        `🔗 <a href="${appUrl}/sales/${invoice.id}">View in Fixbooks</a>`;
+
+      return reply;
     }
 
     case "/bill": {
@@ -1369,6 +1424,15 @@ CRITICAL INSTRUCTIONS:
    - If you asked the user for clarification or confirmation (e.g. "Would you like me to list your recent quotes so you can pick the right one?"), and the user replies "yes", "sure", "ok", or similar:
      * Immediately proceed to execute that action (e.g. call \`list_quotes\`).
    - NEVER treat follow-up details as an isolated new inquiry or forget what was discussed previously!
+
+13. INVENTORY PRODUCT MATCHING & CATALOG CREATION:
+   - When the user asks to create a quote or an invoice and specifies a product:
+     * The system automatically searches the inventory items catalog to see if a match already exists (by name, item code, or SKU).
+     * If a matching product exists, it uses the existing catalog product (and if the user did not specify a price, it defaults to the item's saved catalog sale price).
+     * If no matching product exists, it automatically creates it as a new inventory item in the catalog (assigned code PRD-XXXX).
+   - In your confirmation response to the user:
+     * ALWAYS check the \`products\` list in the tool execution result.
+     * Inform the user whether each product was matched from an existing inventory catalog item or created as a new inventory item, mentioning its item code (e.g. "📦 <i>Matched existing catalog product: Pocket Door Kit (PRD-0001)</i>" or "📦 <i>Added to inventory items: Oak Door (PRD-0005)</i>").
 
 TELEGRAM FORMATTING RULES:
 - ONLY use Telegram-supported HTML tags: <b>bold</b>, <i>italic</i>, and <code>code</code>.

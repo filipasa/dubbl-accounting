@@ -1041,6 +1041,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
               .nullable()
               .optional()
               .describe("Short secondary description, specifications, dimensions, attributes, or size"),
+            inventoryItemId: z.string().uuid().nullable().optional().describe("Inventory item UUID"),
           })
         )
         .optional()
@@ -1101,6 +1102,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
               discountPercent: l.discountPercent,
               taxAmount,
               amount,
+              inventoryItemId: l.inventoryItemId || null,
               imageUrl: l.imageUrl || null,
               shortDescription: l.shortDescription || null,
               sortOrder: i,
@@ -1116,6 +1118,8 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
           await db.delete(invoiceLine).where(eq(invoiceLine.invoiceId, invoiceId));
           await db.insert(invoiceLine).values(processedLines);
+
+          await ensureProductsStored(ctx.organizationId, processedLines);
         }
 
         const [updated] = await db
