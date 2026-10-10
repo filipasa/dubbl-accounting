@@ -106,6 +106,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
           taxAmount: number;
           amount: number;
           costCenterId: string | null;
+          imageUrl: string | null;
+          shortDescription: string | null;
           sortOrder: number;
         };
 
@@ -138,6 +140,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               taxAmount,
               amount,
               costCenterId: ql.costCenterId,
+              imageUrl: ql.imageUrl || null,
+              shortDescription: ql.shortDescription || null,
               sortOrder: i,
             };
           });
@@ -153,6 +157,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             taxAmount: Math.round(ql.taxAmount * factor),
             amount: Math.round(ql.amount * factor),
             costCenterId: ql.costCenterId,
+            imageUrl: ql.imageUrl || null,
+            shortDescription: ql.shortDescription || null,
             sortOrder: i,
           }));
         } else if (alreadyBilled === 0) {
@@ -166,6 +172,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             taxAmount: ql.taxAmount,
             amount: ql.amount,
             costCenterId: ql.costCenterId,
+            imageUrl: ql.imageUrl || null,
+            shortDescription: ql.shortDescription || null,
             sortOrder: i,
           }));
         } else {
@@ -180,6 +188,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             taxAmount: Math.round(ql.taxAmount * factor),
             amount: Math.round(ql.amount * factor),
             costCenterId: ql.costCenterId,
+            imageUrl: ql.imageUrl || null,
+            shortDescription: ql.shortDescription || null,
             sortOrder: i,
           }));
         }
@@ -263,6 +273,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
                 taxAmount: l.taxAmount,
                 amount: l.amount,
                 costCenterId: l.costCenterId,
+                imageUrl: l.imageUrl || null,
+                shortDescription: l.shortDescription || null,
                 sortOrder: l.sortOrder,
               }))
             );
@@ -445,25 +457,27 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
         const taxRateIds = params.lines.map((l) => l.taxRateId).filter(Boolean) as string[];
         const ratesMap = await preloadTaxRates(taxRateIds);
 
-        // Preload default sale prices for inventory-item lines that don't carry
-        // an explicit unitPrice (mirrors the REST route).
+        // Preload default sale prices, imageUrl, and shortDescription for inventory-item lines
         const itemIds = [
           ...new Set(
             params.lines
-              .filter((l) => l.inventoryItemId && l.unitPrice === undefined)
+              .filter((l) => l.inventoryItemId)
               .map((l) => l.inventoryItemId as string)
           ),
         ];
-        const itemPriceMap = new Map<string, number>();
+        const itemMap = new Map<
+          string,
+          { salePrice: number; imageUrl: string | null; shortDescription: string | null }
+        >();
         if (itemIds.length > 0) {
           const items = await db.query.inventoryItem.findMany({
             where: and(
               eq(inventoryItem.organizationId, ctx.organizationId),
               inArray(inventoryItem.id, itemIds)
             ),
-            columns: { id: true, salePrice: true },
+            columns: { id: true, salePrice: true, imageUrl: true, shortDescription: true },
           });
-          for (const it of items) itemPriceMap.set(it.id, it.salePrice);
+          for (const it of items) itemMap.set(it.id, it);
         }
 
         // unitPriceCents per line, in the same order as params.lines. Unlike the
@@ -484,7 +498,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
                 );
                 if (resolved) return resolved.unitPrice;
               }
-              return itemPriceMap.get(l.inventoryItemId) ?? 0;
+              return itemMap.get(l.inventoryItemId)?.salePrice ?? 0;
             }
             return 0;
           })
@@ -501,6 +515,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
           subtotal += amount;
           const taxRateId = l.taxRateId || null;
           const taxAmount = taxRateId ? calcTax(amount, ratesMap.get(taxRateId) ?? 0) : 0;
+          const it = l.inventoryItemId ? itemMap.get(l.inventoryItemId) : null;
           return {
             description: l.description,
             quantity: Math.round(l.quantity * 100),
@@ -510,8 +525,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             discountPercent: l.discountPercent,
             taxAmount,
             amount,
-            imageUrl: l.imageUrl || null,
-            shortDescription: l.shortDescription || null,
+            imageUrl: l.imageUrl || it?.imageUrl || null,
+            shortDescription: l.shortDescription || it?.shortDescription || null,
             sortOrder: i,
           };
         });
@@ -583,6 +598,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               .nullable()
               .optional()
               .describe("Short secondary description, specifications, dimensions, attributes, or size"),
+            inventoryItemId: z.string().nullable().optional().describe("Inventory item UUID"),
           })
         )
         .optional()
@@ -621,6 +637,21 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             .filter(Boolean) as string[];
           const ratesMap = await preloadTaxRates(taxRateIds);
 
+          const inventoryItemIds = replacementLines
+            .map((l) => l.inventoryItemId)
+            .filter(Boolean) as string[];
+          const inventoryItemMap = new Map<string, { imageUrl: string | null; shortDescription: string | null }>();
+          if (inventoryItemIds.length > 0) {
+            const items = await db.query.inventoryItem.findMany({
+              where: and(
+                eq(inventoryItem.organizationId, ctx.organizationId),
+                inArray(inventoryItem.id, inventoryItemIds)
+              ),
+              columns: { id: true, imageUrl: true, shortDescription: true },
+            });
+            for (const it of items) inventoryItemMap.set(it.id, it);
+          }
+
           let subtotal = 0;
           const processedLines = replacementLines.map((l, i) => {
             const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, targetCurrency);
@@ -633,6 +664,7 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
             const taxAmount = taxRateId
               ? calcTax(amount, ratesMap.get(taxRateId) ?? 0)
               : 0;
+            const invItem = l.inventoryItemId ? inventoryItemMap.get(l.inventoryItemId) : null;
             return {
               quoteId,
               description: l.description,
@@ -643,8 +675,8 @@ export function registerQuoteTools(server: McpServer, ctx: AuthContext) {
               discountPercent: l.discountPercent,
               taxAmount,
               amount,
-              imageUrl: l.imageUrl || null,
-              shortDescription: l.shortDescription || null,
+              imageUrl: l.imageUrl || invItem?.imageUrl || null,
+              shortDescription: l.shortDescription || invItem?.shortDescription || null,
               sortOrder: i,
             };
           });

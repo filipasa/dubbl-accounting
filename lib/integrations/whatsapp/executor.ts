@@ -525,6 +525,8 @@ export async function createQuoteAction(
   for (const l of rawLines) {
     let unitPricePounds = Number(l.unitPrice || 0);
     let resolvedItemId: string | undefined;
+    let resolvedImageUrl: string | null | undefined = l.imageUrl;
+    let resolvedShortDesc: string | null | undefined = l.shortDescription;
 
     if (isRealProductLine(l.description)) {
       try {
@@ -540,6 +542,12 @@ export async function createQuoteAction(
           resolvedItemId = resolved.item.id;
           if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
             unitPricePounds = resolved.item.salePrice / 100;
+          }
+          if (!resolvedImageUrl && resolved.item.imageUrl) {
+            resolvedImageUrl = resolved.item.imageUrl;
+          }
+          if (!resolvedShortDesc && resolved.item.shortDescription) {
+            resolvedShortDesc = resolved.item.shortDescription;
           }
           resolvedProducts.push({
             name: resolved.item.name,
@@ -557,8 +565,8 @@ export async function createQuoteAction(
     const centsPrice = Math.round(unitPricePounds * 100);
     formattedLines.push({
       description: l.description,
-      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+      ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
+      ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: centsPrice,
       ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
@@ -716,6 +724,8 @@ export async function createInvoiceAction(
   for (const l of rawLines) {
     let unitPricePounds = Number(l.unitPrice || 0);
     let resolvedItemId: string | undefined;
+    let resolvedImageUrl: string | null | undefined = l.imageUrl;
+    let resolvedShortDesc: string | null | undefined = l.shortDescription;
 
     if (isRealProductLine(l.description)) {
       try {
@@ -732,6 +742,12 @@ export async function createInvoiceAction(
           if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
             unitPricePounds = resolved.item.salePrice / 100;
           }
+          if (!resolvedImageUrl && resolved.item.imageUrl) {
+            resolvedImageUrl = resolved.item.imageUrl;
+          }
+          if (!resolvedShortDesc && resolved.item.shortDescription) {
+            resolvedShortDesc = resolved.item.shortDescription;
+          }
           resolvedProducts.push({
             name: resolved.item.name,
             code: resolved.item.code,
@@ -747,8 +763,8 @@ export async function createInvoiceAction(
 
     formattedLines.push({
       description: l.description,
-      ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-      ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+      ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
+      ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: unitPricePounds,
       ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
@@ -1202,6 +1218,9 @@ export async function updateInvoiceAction(
       let unitPricePounds = Number(l.unitPrice || 0);
       let resolvedItemId: string | undefined;
 
+      let resolvedImageUrl: string | null | undefined = l.imageUrl;
+      let resolvedShortDesc: string | null | undefined = l.shortDescription;
+
       if (isRealProductLine(l.description)) {
         try {
           const centsPrice = Math.round(unitPricePounds * 100);
@@ -1217,6 +1236,12 @@ export async function updateInvoiceAction(
             if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
               unitPricePounds = resolved.item.salePrice / 100;
             }
+            if (!resolvedImageUrl && resolved.item.imageUrl) {
+              resolvedImageUrl = resolved.item.imageUrl;
+            }
+            if (!resolvedShortDesc && resolved.item.shortDescription) {
+              resolvedShortDesc = resolved.item.shortDescription;
+            }
           }
         } catch (err) {
           console.warn("[updateInvoiceAction] Failed resolving product item:", l.description, err);
@@ -1225,8 +1250,8 @@ export async function updateInvoiceAction(
 
       formattedLines.push({
         description: l.description,
-        ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-        ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+        ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
+        ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
         quantity: Number(l.quantity || 1),
         unitPrice: unitPricePounds,
         ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
@@ -1361,6 +1386,9 @@ export async function updateQuoteAction(
       let unitPricePounds = Number(l.unitPrice || 0);
       let resolvedItemId: string | undefined;
 
+      let resolvedImageUrl: string | null | undefined = l.imageUrl;
+      let resolvedShortDesc: string | null | undefined = l.shortDescription;
+
       if (isRealProductLine(l.description)) {
         try {
           const centsPrice = Math.round(unitPricePounds * 100);
@@ -1376,6 +1404,12 @@ export async function updateQuoteAction(
             if (unitPricePounds === 0 && resolved.item.salePrice > 0) {
               unitPricePounds = resolved.item.salePrice / 100;
             }
+            if (!resolvedImageUrl && resolved.item.imageUrl) {
+              resolvedImageUrl = resolved.item.imageUrl;
+            }
+            if (!resolvedShortDesc && resolved.item.shortDescription) {
+              resolvedShortDesc = resolved.item.shortDescription;
+            }
           }
         } catch (err) {
           console.warn("[updateQuoteAction] Failed resolving product item:", l.description, err);
@@ -1384,8 +1418,8 @@ export async function updateQuoteAction(
 
       formattedLines.push({
         description: l.description,
-        ...(l.shortDescription ? { shortDescription: l.shortDescription } : {}),
-        ...(l.imageUrl ? { imageUrl: l.imageUrl } : {}),
+        ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
+        ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
         quantity: Number(l.quantity || 1),
         unitPrice: unitPricePounds,
         ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),

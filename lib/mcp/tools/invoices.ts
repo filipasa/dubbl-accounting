@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { invoice, invoiceLine, invoiceSignature, emailConfig, organization, contact, approvalRequest, member } from "@/lib/db/schema";
-import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import { invoice, invoiceLine, invoiceSignature, emailConfig, organization, contact, approvalRequest, member, inventoryItem } from "@/lib/db/schema";
+import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { requireRole } from "@/lib/api/require-role";
 import { getNextNumber } from "@/lib/api/numbering";
@@ -274,6 +274,21 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
         const taxRateIds = params.lines.map((l) => l.taxRateId).filter(Boolean) as string[];
         const ratesMap = await preloadTaxRates(taxRateIds);
 
+        const inventoryItemIds = params.lines
+          .map((l) => l.inventoryItemId)
+          .filter(Boolean) as string[];
+        const inventoryItemMap = new Map<string, { imageUrl: string | null; shortDescription: string | null }>();
+        if (inventoryItemIds.length > 0) {
+          const items = await db.query.inventoryItem.findMany({
+            where: and(
+              eq(inventoryItem.organizationId, ctx.organizationId),
+              inArray(inventoryItem.id, inventoryItemIds)
+            ),
+            columns: { id: true, imageUrl: true, shortDescription: true },
+          });
+          for (const it of items) inventoryItemMap.set(it.id, it);
+        }
+
         let subtotal = 0;
         const processedLines = params.lines.map((l, i) => {
           const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, params.currencyCode);
@@ -282,6 +297,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
           subtotal += amount;
           const taxRateId = l.taxRateId ?? null;
           const taxAmount = taxRateId ? calcTax(amount, ratesMap.get(taxRateId) ?? 0) : 0;
+          const invItem = l.inventoryItemId ? inventoryItemMap.get(l.inventoryItemId) : null;
           return {
             description: l.description,
             quantity: Math.round(l.quantity * 100),
@@ -294,8 +310,8 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             inventoryItemId: l.inventoryItemId ?? null,
             warehouseId: l.warehouseId ?? null,
             projectId: l.projectId ?? null,
-            imageUrl: l.imageUrl || null,
-            shortDescription: l.shortDescription || null,
+            imageUrl: l.imageUrl || invItem?.imageUrl || null,
+            shortDescription: l.shortDescription || invItem?.shortDescription || null,
             sortOrder: i,
           };
         });
@@ -1080,6 +1096,21 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             .filter(Boolean) as string[];
           const ratesMap = await preloadTaxRates(taxRateIds);
 
+          const inventoryItemIds = replacementLines
+            .map((l) => l.inventoryItemId)
+            .filter(Boolean) as string[];
+          const inventoryItemMap = new Map<string, { imageUrl: string | null; shortDescription: string | null }>();
+          if (inventoryItemIds.length > 0) {
+            const items = await db.query.inventoryItem.findMany({
+              where: and(
+                eq(inventoryItem.organizationId, ctx.organizationId),
+                inArray(inventoryItem.id, inventoryItemIds)
+              ),
+              columns: { id: true, imageUrl: true, shortDescription: true },
+            });
+            for (const it of items) inventoryItemMap.set(it.id, it);
+          }
+
           let subtotal = 0;
           const processedLines = replacementLines.map((l, i) => {
             const grossAmount = decimalToMinorUnits(l.quantity * l.unitPrice, targetCurrency);
@@ -1092,6 +1123,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
             const taxAmount = taxRateId
               ? calcTax(amount, ratesMap.get(taxRateId) ?? 0)
               : 0;
+            const invItem = l.inventoryItemId ? inventoryItemMap.get(l.inventoryItemId) : null;
             return {
               invoiceId,
               description: l.description,
@@ -1103,8 +1135,8 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
               taxAmount,
               amount,
               inventoryItemId: l.inventoryItemId || null,
-              imageUrl: l.imageUrl || null,
-              shortDescription: l.shortDescription || null,
+              imageUrl: l.imageUrl || invItem?.imageUrl || null,
+              shortDescription: l.shortDescription || invItem?.shortDescription || null,
               sortOrder: i,
             };
           });
