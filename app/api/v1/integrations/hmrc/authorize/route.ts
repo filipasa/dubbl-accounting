@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
-import { getAuthorizationUrl } from "@/lib/integrations/hmrc/client";
+import { getAuthorizationUrl, getHmrcConfig } from "@/lib/integrations/hmrc/client";
 import crypto from "crypto";
 
 export async function GET(request: Request) {
@@ -39,10 +39,26 @@ export async function GET(request: Request) {
     const signature = crypto.createHmac("sha256", secret).update(statePayload).digest("hex");
     const state = Buffer.from(JSON.stringify({ payload: statePayload, sig: signature })).toString("base64url");
 
+    const config = getHmrcConfig();
+    if (!config.clientId || !config.clientSecret) {
+      return NextResponse.json(
+        {
+          error:
+            "HMRC MTD credentials (HMRC_CLIENT_ID / HMRC_CLIENT_SECRET) are not configured on this server.",
+        },
+        { status: 500 }
+      );
+    }
+
     const authUrl = getAuthorizationUrl(state);
 
     return NextResponse.json({ url: authUrl });
-  } catch (err) {
-    return handleError(err);
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "status" in err && "message" in err) {
+      return handleError(err);
+    }
+    const message = err instanceof Error ? err.message : "Failed to initiate HMRC authorization";
+    console.error("[HMRC Authorize Error]", err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

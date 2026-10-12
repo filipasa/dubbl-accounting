@@ -179,6 +179,11 @@ export function HmrcMtdDialog({
       return;
     }
 
+    if (status && !status.isConfigured) {
+      toast.error("HMRC API credentials are not yet active on the server. Please wait for deployment to complete.");
+      return;
+    }
+
     try {
       setConnecting(true);
       const res = await fetch(`/api/v1/integrations/hmrc/authorize?vrn=${cleanVrn}`, {
@@ -339,11 +344,18 @@ export function HmrcMtdDialog({
                   <p className="text-blue-700 dark:text-blue-400 leading-relaxed">
                     Fixbooks connects securely to HMRC via OAuth 2.0 to check your VAT obligations and submit quarterly returns. Your credentials are never stored.
                   </p>
-                  {status?.environment === "sandbox" && (
-                    <Badge variant="outline" className="mt-2 text-[10px] bg-background">
-                      Environment: HMRC Sandbox (Test Mode)
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    {status?.environment === "sandbox" && (
+                      <Badge variant="outline" className="text-[10px] bg-background">
+                        Environment: HMRC Sandbox (Test Mode)
+                      </Badge>
+                    )}
+                    {status && !status.isConfigured && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Credentials not loaded on server
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
