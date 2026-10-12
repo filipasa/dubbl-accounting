@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ArrowUpRight, ArrowDownLeft, Printer, ChevronDown, ChevronRight, Building2 } from "lucide-react";
 import { toast } from "sonner";
-import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import { DateRangeFilter, getPresetDates } from "@/components/dashboard/date-range-filter";
 import { ExportButton } from "@/components/dashboard/export-button";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
@@ -50,9 +50,9 @@ const DRILLABLE_BOXES = ["1", "4"];
 type Basis = "accrual" | "cash";
 
 export default function VatReturnPage() {
-  const now = new Date();
-  const [startDate, setStartDate] = useState(`${now.getFullYear()}-01-01`);
-  const [endDate, setEndDate] = useState(now.toISOString().slice(0, 10));
+  const initialRange = getPresetDates("this-month")!;
+  const [startDate, setStartDate] = useState(initialRange.start);
+  const [endDate, setEndDate] = useState(initialRange.end);
   const [basis, setBasis] = useState<Basis>("accrual");
   // Flat-rate scheme percentage as the user types it (e.g. "14.5"). Empty = off.
   const [flatRatePercent, setFlatRatePercent] = useState("");
@@ -69,6 +69,12 @@ export default function VatReturnPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const urlParams = new URLSearchParams(window.location.search);
+    const urlStart = urlParams.get("startDate");
+    const urlEnd = urlParams.get("endDate");
+    if (urlStart && urlEnd) {
+      setStartDate(urlStart);
+      setEndDate(urlEnd);
+    }
     if (urlParams.get("hmrc_connected") === "true") {
       toast.success("Successfully connected to HMRC Making Tax Digital!");
       window.history.replaceState({}, "", window.location.pathname);

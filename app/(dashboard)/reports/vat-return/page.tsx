@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import { DateRangeFilter, getPresetDates } from "@/components/dashboard/date-range-filter";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { BackToReports, ReportHelp, BasisToggle } from "../_components";
@@ -41,11 +41,11 @@ const BOX_PLAIN: Record<string, { title: string; help: string; drill?: "tax-summ
 };
 
 export default function VatReturnPage() {
-  const now = new Date();
+  const initialRange = getPresetDates("this-month")!;
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(`${now.getFullYear()}-01-01`);
-  const [endDate, setEndDate] = useState(now.toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(initialRange.start);
+  const [endDate, setEndDate] = useState(initialRange.end);
   const [basis, setBasis] = useState<"accrual" | "cash">("accrual");
   const [data, setData] = useState<VatResponse | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());

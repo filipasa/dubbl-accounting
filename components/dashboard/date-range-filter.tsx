@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 
-type Preset = "this-month" | "last-month" | "this-quarter" | "this-year" | "last-year" | "custom";
+export type Preset = "this-month" | "last-month" | "this-quarter" | "this-year" | "last-year" | "custom";
 
 interface DateRangeFilterProps {
   startDate: string;
@@ -12,7 +12,14 @@ interface DateRangeFilterProps {
   onDateChange: (start: string, end: string) => void;
 }
 
-function getPresetDates(preset: Preset): { start: string; end: string } | null {
+export function formatYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function getPresetDates(preset: Preset): { start: string; end: string } | null {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
@@ -20,19 +27,19 @@ function getPresetDates(preset: Preset): { start: string; end: string } | null {
   switch (preset) {
     case "this-month":
       return {
-        start: new Date(y, m, 1).toISOString().slice(0, 10),
-        end: new Date(y, m + 1, 0).toISOString().slice(0, 10),
+        start: formatYmd(new Date(y, m, 1)),
+        end: formatYmd(new Date(y, m + 1, 0)),
       };
     case "last-month":
       return {
-        start: new Date(y, m - 1, 1).toISOString().slice(0, 10),
-        end: new Date(y, m, 0).toISOString().slice(0, 10),
+        start: formatYmd(new Date(y, m - 1, 1)),
+        end: formatYmd(new Date(y, m, 0)),
       };
     case "this-quarter": {
       const q = Math.floor(m / 3) * 3;
       return {
-        start: new Date(y, q, 1).toISOString().slice(0, 10),
-        end: new Date(y, q + 3, 0).toISOString().slice(0, 10),
+        start: formatYmd(new Date(y, q, 1)),
+        end: formatYmd(new Date(y, q + 3, 0)),
       };
     }
     case "this-year":
@@ -50,6 +57,17 @@ function getPresetDates(preset: Preset): { start: string; end: string } | null {
   }
 }
 
+export function detectPreset(startDate: string, endDate: string): Preset {
+  const standardPresets: Preset[] = ["this-month", "last-month", "this-quarter", "this-year", "last-year"];
+  for (const preset of standardPresets) {
+    const range = getPresetDates(preset);
+    if (range && range.start === startDate && range.end === endDate) {
+      return preset;
+    }
+  }
+  return "custom";
+}
+
 const presets: { label: string; value: Preset }[] = [
   { label: "This Month", value: "this-month" },
   { label: "Last Month", value: "last-month" },
@@ -60,10 +78,19 @@ const presets: { label: string; value: Preset }[] = [
 ];
 
 export function DateRangeFilter({ startDate, endDate, onDateChange }: DateRangeFilterProps) {
-  const [active, setActive] = useState<Preset>("this-month");
+  const detected = detectPreset(startDate, endDate);
+  const [isCustomExplicit, setIsCustomExplicit] = useState(false);
+
+  const active: Preset = isCustomExplicit
+    ? "custom"
+    : (detected !== "custom" ? detected : "custom");
 
   function handlePreset(preset: Preset) {
-    setActive(preset);
+    if (preset === "custom") {
+      setIsCustomExplicit(true);
+      return;
+    }
+    setIsCustomExplicit(false);
     const dates = getPresetDates(preset);
     if (dates) {
       onDateChange(dates.start, dates.end);
