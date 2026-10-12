@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization, users } from "./auth";
-import { chartAccount } from "./bookkeeping";
+import { chartAccount, taxPeriod } from "./bookkeeping";
 import { bankAccount } from "./banking";
 
 // Stripe Integration (multiple per org)
@@ -385,4 +385,96 @@ export const botLinkCodeRelations = relations(
     }),
   })
 );
+
+// HMRC Making Tax Digital (MTD) Integration (per organization)
+export const hmrcConnection = pgTable(
+  "hmrc_connection",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    vrn: text("vrn").notNull(), // 9-digit UK VAT Registration Number
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    tokenExpiresAt: timestamp("token_expires_at", { mode: "date" }).notNull(),
+    scope: text("scope").notNull().default("read:vat write:vat"),
+    environment: text("environment").notNull().default("sandbox"), // "sandbox" | "production"
+    status: text("status").notNull().default("connected"), // "connected" | "disconnected" | "expired"
+    connectedBy: uuid("connected_by").references(() => users.id),
+    connectedAt: timestamp("connected_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    lastSyncedAt: timestamp("last_sync_at", { mode: "date" }),
+    lastError: text("last_error"),
+  },
+  (table) => [
+    uniqueIndex("hmrc_connection_org_idx").on(table.organizationId),
+  ]
+);
+
+export const hmrcConnectionRelations = relations(
+  hmrcConnection,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [hmrcConnection.organizationId],
+      references: [organization.id],
+    }),
+    user: one(users, {
+      fields: [hmrcConnection.connectedBy],
+      references: [users.id],
+    }),
+  })
+);
+
+// HMRC VAT Return Submissions
+export const hmrcVatSubmission = pgTable(
+  "hmrc_vat_submission",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    taxPeriodId: uuid("tax_period_id").references(() => taxPeriod.id),
+    vrn: text("vrn").notNull(),
+    periodKey: text("period_key").notNull(), // 4-char HMRC period key e.g. "18A1"
+    box1: integer("box_1").notNull(), // minor units (pence)
+    box2: integer("box_2").notNull(),
+    box3: integer("box_3").notNull(),
+    box4: integer("box_4").notNull(),
+    box5: integer("box_5").notNull(),
+    box6: integer("box_6").notNull(),
+    box7: integer("box_7").notNull(),
+    box8: integer("box_8").notNull(),
+    box9: integer("box_9").notNull(),
+    formBundleNumber: text("form_bundle_number"), // HMRC receipt identifier e.g. "256660290587"
+    paymentIndicator: text("payment_indicator"), // "DD" (Direct Debit), "BANK" (Bank transfer)
+    chargeRefNumber: text("charge_ref_number"),
+    processingDate: timestamp("processing_date", { mode: "date" }),
+    status: text("status").notNull().default("submitted"), // "submitted" | "rejected" | "error"
+    submittedBy: uuid("submitted_by").references(() => users.id),
+    submittedAt: timestamp("submitted_at", { mode: "date" }).defaultNow().notNull(),
+    requestPayload: jsonb("request_payload").$type<Record<string, unknown>>(),
+    responsePayload: jsonb("response_payload").$type<Record<string, unknown>>(),
+    errorMessage: text("error_message"),
+  }
+);
+
+export const hmrcVatSubmissionRelations = relations(
+  hmrcVatSubmission,
+  ({ one }) => ({
+    organization: one(organization, {
+      fields: [hmrcVatSubmission.organizationId],
+      references: [organization.id],
+    }),
+    taxPeriod: one(taxPeriod, {
+      fields: [hmrcVatSubmission.taxPeriodId],
+      references: [taxPeriod.id],
+    }),
+    submittedByUser: one(users, {
+      fields: [hmrcVatSubmission.submittedBy],
+      references: [users.id],
+    }),
+  })
+);
+
 

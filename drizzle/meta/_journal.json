@@ -36,6 +36,34 @@
       "when": 1782035443582,
       "tag": "0004_faithful_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782100000000,
+      "tag": "0005_add_invoice_payment_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782100000001,
+      "tag": "0006_bot_user_separation",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0007_add_document_template_layout",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782300000000,
+      "tag": "0008_hmrc_mtd_vat",
+      "breakpoints": true
     }
   ]
 }

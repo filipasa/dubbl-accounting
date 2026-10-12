@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowUpRight, ArrowDownLeft, Printer, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Printer, ChevronDown, ChevronRight, Building2 } from "lucide-react";
+import { toast } from "sonner";
 import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
 import { ExportButton } from "@/components/dashboard/export-button";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
+import { HmrcMtdDialog } from "@/components/dashboard/hmrc-mtd-dialog";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +63,21 @@ export default function VatReturnPage() {
   const [openBox, setOpenBox] = useState<string | null>(null);
   const [drillData, setDrillData] = useState<Record<string, BoxTransaction[]>>({});
   const [drillLoading, setDrillLoading] = useState<string | null>(null);
+  const [hmrcDialogOpen, setHmrcDialogOpen] = useState(false);
   useDocumentTitle("Tax · VAT Return");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("hmrc_connected") === "true") {
+      toast.success("Successfully connected to HMRC Making Tax Digital!");
+      window.history.replaceState({}, "", window.location.pathname);
+      setHmrcDialogOpen(true);
+    } else if (urlParams.get("hmrc_error")) {
+      toast.error(`HMRC Connection error: ${urlParams.get("hmrc_error")}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -151,6 +167,14 @@ export default function VatReturnPage() {
             Tax Periods
           </Link>
         </Button>
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={() => setHmrcDialogOpen(true)}
+        >
+          <Building2 className="size-3.5" />
+          Submit to HMRC (MTD)
+        </Button>
       </PageHeader>
 
       <DateRangeFilter
@@ -158,6 +182,31 @@ export default function VatReturnPage() {
         endDate={endDate}
         onDateChange={(s, e) => { setStartDate(s); setEndDate(e); }}
       />
+
+      {/* HMRC MTD Quick Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0">
+            <Building2 className="size-5" />
+          </div>
+          <div>
+            <h4 className="text-xs font-semibold text-emerald-950 dark:text-emerald-200">
+              HMRC Making Tax Digital (MTD) Direct Filing
+            </h4>
+            <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90">
+              Submit these 9 box figures directly to HM Revenue &amp; Customs, retrieve digital receipts, and record clearing entries.
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+          onClick={() => setHmrcDialogOpen(true)}
+        >
+          <Building2 className="size-3.5" />
+          Submit to HMRC
+        </Button>
+      </div>
 
       {/* How VAT is counted, plus optional flat-rate scheme */}
       <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -455,6 +504,23 @@ export default function VatReturnPage() {
           </div>
         </ContentReveal>
       )}
+
+      {/* HMRC MTD Submission Dialog */}
+      <HmrcMtdDialog
+        open={hmrcDialogOpen}
+        onOpenChange={setHmrcDialogOpen}
+        boxes={boxes}
+        startDate={startDate}
+        endDate={endDate}
+        basis={basis}
+        onDatesSelected={(s, e) => {
+          setStartDate(s);
+          setEndDate(e);
+        }}
+        onSubmittedSuccess={() => {
+          toast.success("HMRC Submission finished!");
+        }}
+      />
     </div>
   );
 }
