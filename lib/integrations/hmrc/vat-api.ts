@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { hmrcConnection, hmrcVatSubmission } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { hmrcApiRequest } from "./client";
+import { hmrcApiRequest, getHmrcConfig } from "./client";
 import type {
   HmrcObligation,
   HmrcObligationsResponse,
@@ -84,6 +84,77 @@ export async function getVatObligations(params: {
   }
 
   return list;
+}
+
+/**
+ * Automatically resolves the HMRC periodKey for an organization based on the return dates.
+ * Matches open obligations from HMRC by start and end date.
+ * In sandbox mode, falls back to the standard HMRC sandbox period key (18A1) if no obligations exist.
+ */
+export async function resolveHmrcPeriodKey(params: {
+  organizationId: string;
+  startDate?: string;
+  endDate?: string;
+  fraudHeaders?: Record<string, string>;
+}): Promise<string> {
+  const { organizationId, startDate, endDate, fraudHeaders } = params;
+
+  try {
+    const obligations = await getVatObligations({
+      organizationId,
+      status: "O",
+      from: startDate,
+      to: endDate,
+      fraudHeaders,
+    });
+
+    if (obligations && obligations.length > 0) {
+      const exactMatch = startDate && endDate
+        ? obligations.find((o) => o.start === startDate && o.end === endDate)
+        : null;
+      if (exactMatch) return exactMatch.periodKey;
+
+      const overlapMatch = startDate
+        ? obligations.find((o) => o.start <= startDate && o.end >= startDate)
+        : null;
+      if (overlapMatch) return overlapMatch.periodKey;
+
+      return obligations[0].periodKey;
+    }
+
+    // Try without date filters
+    const allOpen = await getVatObligations({
+      organizationId,
+      status: "O",
+      fraudHeaders,
+    });
+
+    if (allOpen && allOpen.length > 0) {
+      const exactMatch = startDate && endDate
+        ? allOpen.find((o) => o.start === startDate && o.end === endDate)
+        : null;
+      if (exactMatch) return exactMatch.periodKey;
+
+      const overlapMatch = startDate
+        ? allOpen.find((o) => o.start <= startDate && o.end >= startDate)
+        : null;
+      if (overlapMatch) return overlapMatch.periodKey;
+
+      return allOpen[0].periodKey;
+    }
+  } catch (err) {
+    console.warn("[resolveHmrcPeriodKey] Failed to retrieve obligations from HMRC:", err);
+  }
+
+  // Fallback for HMRC sandbox environment
+  const config = getHmrcConfig();
+  if (config.environment === "sandbox") {
+    return "18A1";
+  }
+
+  throw new Error(
+    "Could not resolve an open HMRC VAT obligation for this quarter. Please verify that this period is open for submission in your HMRC Business Tax Account."
+  );
 }
 
 /**

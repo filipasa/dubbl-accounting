@@ -9,7 +9,6 @@ import {
   HelpCircle,
   Loader2,
   Lock,
-  RefreshCw,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -28,17 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/date";
 import { getBrowserTelemetry } from "@/lib/integrations/hmrc/browser-telemetry";
-import type { HmrcObligation, HmrcVatSubmissionResponse } from "@/lib/integrations/hmrc/types";
+import type { HmrcVatSubmissionResponse } from "@/lib/integrations/hmrc/types";
 
 interface VatBox {
   box: string;
@@ -93,11 +85,6 @@ export function HmrcMtdDialog({
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
-  // Obligations state
-  const [obligations, setObligations] = useState<HmrcObligation[]>([]);
-  const [loadingObligations, setLoadingObligations] = useState(false);
-  const [selectedPeriodKey, setSelectedPeriodKey] = useState<string>("");
-
   // Submission state
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -125,36 +112,6 @@ export function HmrcMtdDialog({
     }
   }, []);
 
-  const fetchObligations = useCallback(async () => {
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
-
-    try {
-      setLoadingObligations(true);
-      const res = await fetch("/api/v1/integrations/hmrc/obligations?status=O", {
-        headers: { "x-organization-id": orgId },
-      });
-      if (!res.ok) throw new Error("Failed to load HMRC obligations");
-      const data = await res.json();
-      const list: HmrcObligation[] = data.obligations || [];
-      setObligations(list);
-
-      // If an obligation matches the current dates or if there's only one, select it
-      if (list.length > 0) {
-        const matching = list.find((o) => o.start === startDate && o.end === endDate);
-        if (matching) {
-          setSelectedPeriodKey(matching.periodKey);
-        } else if (!selectedPeriodKey) {
-          setSelectedPeriodKey(list[0].periodKey);
-        }
-      }
-    } catch (err: unknown) {
-      console.warn(err);
-    } finally {
-      setLoadingObligations(false);
-    }
-  }, [startDate, endDate, selectedPeriodKey]);
-
   useEffect(() => {
     if (open) {
       setReceipt(null);
@@ -162,12 +119,6 @@ export function HmrcMtdDialog({
       fetchStatus();
     }
   }, [open, fetchStatus]);
-
-  useEffect(() => {
-    if (status?.connected) {
-      fetchObligations();
-    }
-  }, [status?.connected, fetchObligations]);
 
   const handleConnect = async () => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -225,23 +176,9 @@ export function HmrcMtdDialog({
     }
   };
 
-  const handleSelectObligation = (key: string) => {
-    setSelectedPeriodKey(key);
-    const ob = obligations.find((o) => o.periodKey === key);
-    if (ob && onDatesSelected) {
-      onDatesSelected(ob.start, ob.end);
-      toast.info(`VAT return period set to ${ob.start} – ${ob.end}`);
-    }
-  };
-
   const handleSubmitReturn = async () => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
-
-    if (!selectedPeriodKey) {
-      toast.error("Please select or enter an HMRC period key (e.g. 18A1)");
-      return;
-    }
 
     if (!declarationAccepted) {
       toast.error("You must confirm the legal declaration before submitting to HMRC.");
@@ -265,7 +202,6 @@ export function HmrcMtdDialog({
           "x-organization-id": orgId,
         },
         body: JSON.stringify({
-          periodKey: selectedPeriodKey,
           startDate,
           endDate,
           basis,
@@ -405,8 +341,10 @@ export function HmrcMtdDialog({
                 VAT Return Submitted to HMRC
               </h3>
               <p className="text-xs text-emerald-800 dark:text-emerald-300 max-w-md mx-auto">
-                HMRC has received and processed your VAT return for period key{" "}
-                <span className="font-mono font-bold">{selectedPeriodKey}</span>.
+                HMRC has received and processed your VAT return for{" "}
+                <span className="font-semibold">
+                  {startDate && endDate ? `${formatDate(startDate)} – ${formatDate(endDate)}` : "this quarter"}
+                </span>.
               </p>
             </div>
 
@@ -470,16 +408,6 @@ export function HmrcMtdDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs gap-1 text-muted-foreground"
-                  onClick={fetchObligations}
-                  disabled={loadingObligations}
-                >
-                  <RefreshCw className={loadingObligations ? "size-3 animate-spin" : "size-3"} />
-                  Sync Obligations
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
                   className="h-7 text-xs text-red-600 hover:text-red-700"
                   onClick={handleDisconnect}
                   disabled={disconnecting}
@@ -490,45 +418,17 @@ export function HmrcMtdDialog({
               </div>
             </div>
 
-            {/* Obligations Selector */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <Label className="text-xs font-semibold">
-                  HMRC VAT Obligation / Period Key
-                </Label>
-                {obligations.length === 0 && !loadingObligations && (
-                  <span className="text-[11px] text-muted-foreground">
-                    No open obligations returned by HMRC
-                  </span>
-                )}
+            {/* Return Period Info */}
+            <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-3.5 py-2.5 text-xs">
+              <div>
+                <span className="text-muted-foreground block text-[11px] font-medium">VAT Return Period</span>
+                <span className="font-semibold text-foreground">
+                  {startDate && endDate ? `${formatDate(startDate)} – ${formatDate(endDate)}` : "Current Period"}
+                </span>
               </div>
-              {obligations.length > 0 ? (
-                <Select value={selectedPeriodKey} onValueChange={handleSelectObligation}>
-                  <SelectTrigger className="w-full text-xs">
-                    <SelectValue placeholder="Select an HMRC open quarter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {obligations.map((ob) => (
-                      <SelectItem key={ob.periodKey} value={ob.periodKey} className="text-xs">
-                        <span className="font-mono font-bold mr-2">[{ob.periodKey}]</span>
-                        {formatDate(ob.start)} – {formatDate(ob.end)} (Due: {formatDate(ob.due)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="e.g. 18A1 or 24AA"
-                    value={selectedPeriodKey}
-                    onChange={(e) => setSelectedPeriodKey(e.target.value.toUpperCase())}
-                    className="font-mono text-xs w-full max-w-xs"
-                  />
-                </div>
-              )}
-              <p className="text-[11px] text-muted-foreground">
-                HMRC requires the specific 4-character period identifier issued for this quarter.
-              </p>
+              <Badge variant="outline" className="text-[10px] capitalize">
+                {basis} accounting
+              </Badge>
             </div>
 
             {/* 9-Box Review Table */}
@@ -635,7 +535,7 @@ export function HmrcMtdDialog({
               </Button>
               <Button
                 onClick={handleSubmitReturn}
-                disabled={submitting || !declarationAccepted || !selectedPeriodKey}
+                disabled={submitting || !declarationAccepted}
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
               >
                 {submitting ? (

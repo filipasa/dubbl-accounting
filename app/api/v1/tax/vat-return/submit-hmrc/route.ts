@@ -6,12 +6,12 @@ import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
 import { buildFraudHeaders } from "@/lib/integrations/hmrc/fraud-prevention";
-import { submitVatReturnToHmrc } from "@/lib/integrations/hmrc/vat-api";
+import { submitVatReturnToHmrc, resolveHmrcPeriodKey } from "@/lib/integrations/hmrc/vat-api";
 import { createVatReturnClearingJournalEntry } from "@/lib/api/journal-automation";
 import { z } from "zod";
 
 const submitSchema = z.object({
-  periodKey: z.string().min(1).max(10),
+  periodKey: z.string().min(1).max(10).optional(),
   taxPeriodId: z.string().uuid().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -58,12 +58,22 @@ export async function POST(request: Request) {
       clientTelemetry: parsed.clientTelemetry,
     });
 
+    // Automatically resolve HMRC obligation periodKey if not supplied by caller
+    const periodKey =
+      parsed.periodKey ||
+      (await resolveHmrcPeriodKey({
+        organizationId: ctx.organizationId,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+        fraudHeaders,
+      }));
+
     // 1. Submit directly to HMRC via MTD API
     const submissionResult = await submitVatReturnToHmrc({
       organizationId: ctx.organizationId,
       userId: ctx.userId,
       taxPeriodId: parsed.taxPeriodId,
-      periodKey: parsed.periodKey,
+      periodKey,
       boxes: parsed.boxes,
       fraudHeaders,
     });

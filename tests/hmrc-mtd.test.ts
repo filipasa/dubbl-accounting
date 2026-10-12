@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildFraudHeaders } from "../lib/integrations/hmrc/fraud-prevention";
 import { getAuthorizationUrl, getHmrcConfig } from "../lib/integrations/hmrc/client";
+import { resolveHmrcPeriodKey } from "../lib/integrations/hmrc/vat-api";
 import type { HmrcVatReturnPayload } from "../lib/integrations/hmrc/types";
 
 test("buildFraudHeaders constructs valid HMRC WEB_APP_VIA_SERVER headers", () => {
@@ -105,4 +106,14 @@ test("getAuthorizationUrl generates expected OAuth 2.0 URL with read:vat write:v
   assert.equal(parsed.searchParams.get("response_type"), "code");
   assert.equal(parsed.searchParams.get("scope"), "read:vat write:vat");
   assert.equal(parsed.searchParams.get("state"), "test_state_xyz");
+});
+
+test("resolveHmrcPeriodKey falls back to standard sandbox period key (18A1) when no obligations exist", async () => {
+  process.env.HMRC_ENVIRONMENT = "sandbox";
+  const key = await resolveHmrcPeriodKey({
+    organizationId: "00000000-0000-0000-0000-000000000099",
+    startDate: "2024-01-01",
+    endDate: "2024-03-31",
+  });
+  assert.equal(key, "18A1");
 });
