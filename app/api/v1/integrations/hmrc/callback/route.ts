@@ -12,7 +12,12 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error");
   const errorDescription = url.searchParams.get("error_description");
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || url.host;
+  const proto = request.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "")) || "https";
+  const requestOrigin = `${proto}://${host}`;
+  const baseUrl = (requestOrigin.includes("fixbooks.io") || !process.env.NEXT_PUBLIC_APP_URL)
+    ? requestOrigin
+    : process.env.NEXT_PUBLIC_APP_URL;
 
   if (error || !code || !stateParam) {
     const reason = encodeURIComponent(errorDescription || error || "Authorization cancelled");
