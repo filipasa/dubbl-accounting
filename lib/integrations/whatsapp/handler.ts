@@ -1164,7 +1164,7 @@ export async function processIncomingWhatsAppMessage({
           `⚠️ *Linking Failed*\n\n` +
           `${linkResult.error || "Invalid or expired link code."}\n\n` +
           `To generate a fresh link code:\n` +
-          `1. Log in to Fixbooks: ${appUrl}/settings/whatsapp\n` +
+          `1. Log in to Fixbooks: ${appUrl}/settings\n` +
           `2. Click *Connect WhatsApp*\n` +
           `3. Reply here with: \`!link <your-code>\``;
       }
@@ -1232,8 +1232,8 @@ export async function processIncomingWhatsAppMessage({
       `This WhatsApp number (+${cleanedFrom}) is not connected to a Fixbooks user account yet.\n\n` +
       `Each conversation is separated and associated with a specific user so your business books stay private and secure.\n\n` +
       `*To connect your account:*\n` +
-      `1. Log in to Fixbooks: ${appUrl}/settings/whatsapp\n` +
-      `2. Go to *Settings > WhatsApp Assistant*\n` +
+      `1. Log in to Fixbooks: ${appUrl}/settings\n` +
+      `2. Go to *Settings*\n` +
       `3. Click *Connect WhatsApp* to get your link code\n` +
       `4. Reply here with: \`!link <your-code>\`\n\n` +
       `_Example:_ \`!link FB-123456\``;
