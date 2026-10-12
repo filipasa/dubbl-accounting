@@ -315,13 +315,13 @@ export function HmrcMtdDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-full sm:max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+        <DialogHeader className="space-y-1">
           <div className="flex items-center gap-2">
-            <Building2 className="size-5 text-emerald-600" />
+            <Building2 className="size-5 text-emerald-600 shrink-0" />
             <DialogTitle className="text-lg">HMRC Making Tax Digital (MTD)</DialogTitle>
           </div>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             Submit your VAT Return figures directly to HM Revenue &amp; Customs under Making Tax Digital.
           </DialogDescription>
         </DialogHeader>
@@ -451,12 +451,12 @@ export function HmrcMtdDialog({
           </div>
         ) : (
           /* Step 2: Review & Submit */
-          <div className="space-y-5 py-2">
+          <div className="space-y-4 py-1">
             {/* Status bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border bg-muted/40 p-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-medium">HMRC Connected</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="font-semibold whitespace-nowrap">HMRC Connected</span>
                 <Badge variant="outline" className="font-mono text-[10px]">
                   VRN: {status.vrn}
                 </Badge>
@@ -466,7 +466,7 @@ export function HmrcMtdDialog({
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -492,7 +492,7 @@ export function HmrcMtdDialog({
 
             {/* Obligations Selector */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-1">
                 <Label className="text-xs font-semibold">
                   HMRC VAT Obligation / Period Key
                 </Label>
@@ -522,7 +522,7 @@ export function HmrcMtdDialog({
                     placeholder="e.g. 18A1 or 24AA"
                     value={selectedPeriodKey}
                     onChange={(e) => setSelectedPeriodKey(e.target.value.toUpperCase())}
-                    className="font-mono text-xs max-w-xs"
+                    className="font-mono text-xs w-full max-w-xs"
                   />
                 </div>
               )}
@@ -536,73 +536,73 @@ export function HmrcMtdDialog({
               <Label className="text-xs font-semibold">
                 Summary of Figures to Submit (HMRC 9 Boxes)
               </Label>
-              <div className="rounded-lg border overflow-hidden text-xs">
-                <div className="grid grid-cols-12 bg-muted/50 p-2 font-medium border-b text-muted-foreground">
-                  <div className="col-span-2">Box</div>
-                  <div className="col-span-7">Description</div>
-                  <div className="col-span-3 text-right">Amount</div>
+              <div className="rounded-lg border overflow-hidden text-xs bg-card">
+                <div className="grid grid-cols-12 bg-muted/60 px-3 py-2 font-medium border-b text-muted-foreground gap-2">
+                  <div className="col-span-2 font-semibold">Box</div>
+                  <div className="col-span-6 sm:col-span-7">Description</div>
+                  <div className="col-span-4 sm:col-span-3 text-right font-semibold">Amount</div>
                 </div>
-                <div className="divide-y">
-                  <div className="grid grid-cols-12 p-2 items-center">
+                <div className="divide-y divide-border">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 1</div>
-                    <div className="col-span-7 text-muted-foreground">VAT due on sales</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">VAT due on sales</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       {formatMoney(box1)}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 2</div>
-                    <div className="col-span-7 text-muted-foreground">VAT due on acquisitions from EU</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">VAT due on acquisitions from EU</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       {formatMoney(box2)}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center bg-muted/20 font-semibold">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2 bg-muted/20 font-semibold">
                     <div className="col-span-2 font-mono">Box 3</div>
-                    <div className="col-span-7">Total VAT due (Box 1 + Box 2)</div>
-                    <div className="col-span-3 font-mono text-right">{formatMoney(box3)}</div>
+                    <div className="col-span-6 sm:col-span-7">Total VAT due (Box 1 + Box 2)</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right">{formatMoney(box3)}</div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 4</div>
-                    <div className="col-span-7 text-muted-foreground">VAT reclaimed on purchases</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">VAT reclaimed on purchases</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       {formatMoney(box4)}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2.5 items-center bg-primary/5 font-bold border-y-2 border-primary/20">
+                  <div className="grid grid-cols-12 px-3 py-2.5 items-center gap-2 bg-primary/5 font-bold border-y-2 border-primary/20">
                     <div className="col-span-2 font-mono text-primary">Box 5</div>
-                    <div className="col-span-7 text-primary">
+                    <div className="col-span-6 sm:col-span-7 text-primary">
                       {netVat >= 0 ? "Net VAT to pay to HMRC" : "Net VAT to reclaim from HMRC"}
                     </div>
-                    <div className="col-span-3 font-mono text-right text-sm text-primary">
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right text-sm text-primary">
                       {formatMoney(Math.abs(netVat))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 6</div>
-                    <div className="col-span-7 text-muted-foreground">Total sales ex-VAT (whole pounds)</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">Total sales ex-VAT (whole pounds)</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       £{Math.round(box6 / 100).toLocaleString("en-GB")}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 7</div>
-                    <div className="col-span-7 text-muted-foreground">Total purchases ex-VAT (whole pounds)</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">Total purchases ex-VAT (whole pounds)</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       £{Math.round(box7 / 100).toLocaleString("en-GB")}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 8</div>
-                    <div className="col-span-7 text-muted-foreground">Total supplies to EU ex-VAT</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">Total supplies to EU ex-VAT</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       £{Math.round(box8 / 100).toLocaleString("en-GB")}
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 p-2 items-center">
+                  <div className="grid grid-cols-12 px-3 py-2 items-center gap-2">
                     <div className="col-span-2 font-mono font-bold">Box 9</div>
-                    <div className="col-span-7 text-muted-foreground">Total acquisitions from EU ex-VAT</div>
-                    <div className="col-span-3 font-mono text-right font-medium">
+                    <div className="col-span-6 sm:col-span-7 text-muted-foreground">Total acquisitions from EU ex-VAT</div>
+                    <div className="col-span-4 sm:col-span-3 font-mono text-right font-medium">
                       £{Math.round(box9 / 100).toLocaleString("en-GB")}
                     </div>
                   </div>
@@ -629,14 +629,14 @@ export function HmrcMtdDialog({
               </div>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-3">
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmitReturn}
                 disabled={submitting || !declarationAccepted || !selectedPeriodKey}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
               >
                 {submitting ? (
                   <>
