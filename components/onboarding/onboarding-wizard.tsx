@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { GrainGradient } from "@paper-design/shaders-react";
@@ -20,6 +20,8 @@ import {
   ClipboardCheck,
   ArrowUpRight,
   Info,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import {
   COUNTRIES,
@@ -30,6 +32,7 @@ import {
 import { INDUSTRIES, type Industry } from "@/lib/data/industries";
 import { REFERRAL_SOURCES, type ReferralSource } from "@/lib/data/referral-sources";
 import { setDefaultCurrency } from "@/lib/money";
+import { uploadImage } from "@/lib/image-client";
 
 const STEPS = [
   { label: "Organization", icon: Building2 },
@@ -43,6 +46,7 @@ const STEPS = [
 interface OrgData {
   id: string;
   name: string;
+  logo?: string | null;
   country: string | null;
   countryCode: string | null;
   businessType: string | null;
@@ -59,6 +63,8 @@ export function OnboardingWizard() {
   // Form state
   const [orgId, setOrgId] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [orgLogo, setOrgLogo] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [countryCode, setCountryCode] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [industry, setIndustry] = useState("");
@@ -99,6 +105,7 @@ export function OnboardingWizard() {
             if (org) {
               setOrgId(org.id);
               setOrgName(org.name);
+              if (org.logo) setOrgLogo(org.logo);
               if (org.countryCode) setCountryCode(org.countryCode);
               if (org.businessType) setBusinessType(org.businessType);
               if (org.industrySector) setIndustry(org.industrySector);
@@ -140,7 +147,7 @@ export function OnboardingWizard() {
   function canProceed(): boolean {
     switch (step) {
       case 0:
-        return orgName.trim().length > 0;
+        return orgName.trim().length > 0 && !uploadingLogo;
       case 1:
         return countryCode.length > 0;
       case 2:
@@ -167,7 +174,11 @@ export function OnboardingWizard() {
         const createRes = await fetch("/api/v1/organization", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: orgName, slug: generateSlug(orgName) }),
+          body: JSON.stringify({
+            name: orgName,
+            slug: generateSlug(orgName),
+            logo: orgLogo || null,
+          }),
         });
 
         if (!createRes.ok) {
@@ -198,6 +209,7 @@ export function OnboardingWizard() {
         headers: patchHeaders,
         body: JSON.stringify({
           name: orgName,
+          logo: orgLogo || null,
           country: selectedCountry?.name ?? null,
           countryCode: countryCode || null,
           defaultCurrency: selectedCountry?.defaultCurrency ?? "USD",
@@ -302,6 +314,11 @@ export function OnboardingWizard() {
                 <StepOrgName
                   name={orgName}
                   onNameChange={handleNameChange}
+                  logo={orgLogo}
+                  onLogoChange={setOrgLogo}
+                  uploadingLogo={uploadingLogo}
+                  setUploadingLogo={setUploadingLogo}
+                  orgId={orgId}
                 />
               )}
               {step === 1 && (
@@ -334,6 +351,7 @@ export function OnboardingWizard() {
               {step === 5 && (
                 <StepReview
                   orgName={orgName}
+                  orgLogo={orgLogo}
                   countryCode={countryCode}
                   businessType={businessType}
                   industry={industry}
@@ -394,10 +412,49 @@ export function OnboardingWizard() {
 function StepOrgName({
   name,
   onNameChange,
+  logo,
+  onLogoChange,
+  uploadingLogo,
+  setUploadingLogo,
+  orgId,
 }: {
   name: string;
   onNameChange: (v: string) => void;
+  logo: string;
+  onLogoChange: (v: string) => void;
+  uploadingLogo: boolean;
+  setUploadingLogo: (v: boolean) => void;
+  orgId?: string;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 5MB");
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const url = await uploadImage(file, orgId || undefined);
+      onLogoChange(url);
+      toast.success("Organization logo uploaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <div>
       <h2 className="text-xl font-bold tracking-tight text-foreground">
@@ -406,7 +463,7 @@ function StepOrgName({
       <p className="mt-1.5 text-sm text-muted-foreground">
         This is how your organization will appear across fixbooks.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
         <div className="space-y-2">
           <Label htmlFor="org-name" className="text-xs font-medium">
             Organization Name
@@ -419,6 +476,75 @@ function StepOrgName({
             autoFocus
             className="h-11 rounded-lg"
           />
+        </div>
+
+        {/* Optional Logo Upload */}
+        <div className="space-y-2 pt-3 border-t border-border/60">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">
+              Organization Logo
+            </Label>
+            <span className="text-[11px] text-muted-foreground">Optional</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative flex size-14 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/40 overflow-hidden shadow-xs">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt={name || "Organization logo"}
+                  className="size-full object-contain p-1"
+                />
+              ) : (
+                <Building2 className="size-6 text-muted-foreground/40" />
+              )}
+            </div>
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingLogo}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-3.5" />
+                      {logo ? "Change logo" : "Upload logo"}
+                    </>
+                  )}
+                </Button>
+                {logo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploadingLogo}
+                    onClick={() => onLogoChange("")}
+                    className="h-8 text-xs text-muted-foreground hover:text-red-600"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                PNG, JPG, SVG or WebP up to 5MB. Can also be set later in Settings.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -635,6 +761,7 @@ function StepReferral({
 
 function StepReview({
   orgName,
+  orgLogo,
   countryCode,
   businessType,
   industry,
@@ -642,6 +769,7 @@ function StepReview({
   referralOther,
 }: {
   orgName: string;
+  orgLogo?: string;
   countryCode: string;
   businessType: string;
   industry: string;
@@ -654,8 +782,27 @@ function StepReview({
   const ind = INDUSTRIES.find((i) => i.code === industry);
   const ref = REFERRAL_SOURCES.find((r) => r.code === referralSource);
 
-  const items: { label: string; value: string }[] = [
-    { label: "Organization", value: orgName },
+  const items: { label: string; value: string; customNode?: React.ReactNode }[] = [
+    {
+      label: "Organization",
+      value: orgName,
+      customNode: (
+        <div className="flex items-center gap-2">
+          {orgLogo ? (
+            <img
+              src={orgLogo}
+              alt={orgName}
+              className="size-5 rounded object-contain bg-white dark:bg-muted p-0.5 ring-1 ring-border shrink-0"
+            />
+          ) : (
+            <div className="flex size-5 items-center justify-center rounded bg-emerald-600 text-[10px] font-semibold text-white shrink-0">
+              {(orgName?.[0] || "?").toUpperCase()}
+            </div>
+          )}
+          <span className="text-sm font-medium text-foreground">{orgName}</span>
+        </div>
+      ),
+    },
     {
       label: "Country",
       value: country ? `${country.flag} ${country.name}` : "-",
@@ -687,9 +834,13 @@ function StepReview({
             className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-3"
           >
             <span className="text-sm text-muted-foreground">{item.label}</span>
-            <span className="text-sm font-medium text-foreground">
-              {item.value}
-            </span>
+            {item.customNode ? (
+              item.customNode
+            ) : (
+              <span className="text-sm font-medium text-foreground">
+                {item.value}
+              </span>
+            )}
           </div>
         ))}
       </div>

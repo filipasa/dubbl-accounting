@@ -10,6 +10,12 @@ describe("User Profile & Organisation Image API Schema Validation", () => {
   });
 
   // Schema mirroring app/api/v1/organization/route.ts
+  const orgCreateSchema = z.object({
+    name: z.string().min(1),
+    slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
+    logo: z.string().nullable().optional(),
+  });
+
   const orgUpdateSchema = z.object({
     name: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
@@ -63,6 +69,23 @@ describe("User Profile & Organisation Image API Schema Validation", () => {
       logo: null,
     });
     assert.strictEqual(nullResult.logo, null);
+  });
+
+  it("orgCreateSchema accepts valid name, slug, and optional logo", () => {
+    const withoutLogo = orgCreateSchema.parse({
+      name: "Acme Corp",
+      slug: "acme-corp",
+    });
+    assert.strictEqual(withoutLogo.name, "Acme Corp");
+    assert.strictEqual(withoutLogo.slug, "acme-corp");
+    assert.strictEqual(withoutLogo.logo, undefined);
+
+    const withLogo = orgCreateSchema.parse({
+      name: "Acme Corp",
+      slug: "acme-corp",
+      logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY44YAAAAASUVORK5CYII=",
+    });
+    assert.ok(withLogo.logo?.startsWith("data:image/png;base64,"));
   });
 
   it("validates mime types supported by uploads/image route", () => {

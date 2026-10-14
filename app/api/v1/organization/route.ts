@@ -63,6 +63,7 @@ const updateSchema = z
 const createSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
+  logo: z.string().nullable().optional(),
 });
 
 export async function GET(request: Request) {
@@ -173,6 +174,7 @@ export async function POST(request: Request) {
         id: orgId,
         name: parsed.name,
         slug: parsed.slug,
+        logo: parsed.logo || null,
       });
       await tx.insert(member).values({
         organizationId: orgId,
