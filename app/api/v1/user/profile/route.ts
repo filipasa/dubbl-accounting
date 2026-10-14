@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
-  image: z.string().url().nullable().optional(),
+  image: z.string().nullable().optional(),
 });
 
 export async function GET() {

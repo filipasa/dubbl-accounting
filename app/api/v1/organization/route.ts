@@ -24,6 +24,7 @@ const updateSchema = z
   .object({
     name: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
+    logo: z.string().nullable().optional(),
     country: z.string().min(1).optional().nullable(),
     businessType: z.string().min(1).optional().nullable(),
     defaultCurrency: z.string().min(1).optional(),

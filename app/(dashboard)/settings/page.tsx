@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown, Lock } from "lucide-react";
+import { Check, ChevronsUpDown, Lock, Building2, Upload, Loader2 } from "lucide-react";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { setDefaultCurrency } from "@/lib/money";
 import { DATE_FORMAT_OPTIONS, setGlobalDateFormat } from "@/lib/date";
+import { uploadImage } from "@/lib/image-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,7 @@ import { Section } from "@/components/dashboard/section";
 interface OrgSettings {
   id: string;
   name: string;
+  logo: string | null;
   country: string | null;
   businessType: string | null;
   defaultCurrency: string;
@@ -73,6 +75,7 @@ export default function SettingsPage() {
   const [, setOrg] = useState<OrgSettings | null>(null);
   const [form, setForm] = useState({
     name: "",
+    logo: "",
     country: "" as string,
     businessType: "" as string,
     defaultCurrency: "USD",
@@ -94,6 +97,8 @@ export default function SettingsPage() {
     industrySector: "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [countryOpen, setCountryOpen] = useState(false);
   const [lockDate, setLockDate] = useState("");
   const [lockSaving, setLockSaving] = useState(false);
@@ -141,6 +146,7 @@ export default function SettingsPage() {
           }
           setForm({
             name: o.name,
+            logo: o.logo || "",
             country: o.country ?? "",
             businessType: o.businessType ?? "",
             defaultCurrency: o.defaultCurrency,
@@ -177,6 +183,34 @@ export default function SettingsPage() {
     setCountryOpen(false);
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 5MB");
+      return;
+    }
+
+    const orgId = localStorage.getItem("activeOrgId");
+    setUploadingLogo(true);
+    try {
+      const url = await uploadImage(file, orgId);
+      setForm((prev) => ({ ...prev, logo: url }));
+      toast.success("Organization logo uploaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
+
   async function save() {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
@@ -190,6 +224,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           name: form.name,
+          logo: form.logo || null,
           country: form.country || null,
           businessType: form.businessType || null,
           defaultCurrency: form.defaultCurrency,
@@ -241,14 +276,78 @@ export default function SettingsPage() {
   return (
     <div className="space-y-10">
       {/* Organization */}
-      <Section title="Organization" description="Basic details about your organization.">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Name</Label>
-          <Input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Acme Inc."
-          />
+      <Section title="Organization" description="Basic details and branding for your organization.">
+        <div className="space-y-6">
+          {/* Logo upload */}
+          <div className="flex items-start gap-4">
+            <div className="relative flex size-16 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/40 overflow-hidden shadow-xs">
+              {form.logo ? (
+                <img
+                  src={form.logo}
+                  alt={form.name || "Organization logo"}
+                  className="size-full object-contain p-1"
+                />
+              ) : (
+                <Building2 className="size-8 text-muted-foreground/40" />
+              )}
+            </div>
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <Label className="text-xs">Organization Logo</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={logoInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-3.5" />
+                      {form.logo ? "Change logo" : "Upload logo"}
+                    </>
+                  )}
+                </Button>
+                {form.logo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploadingLogo}
+                    onClick={() => setForm((prev) => ({ ...prev, logo: "" }))}
+                    className="h-8 text-xs text-muted-foreground hover:text-red-600"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                PNG, JPG, SVG or WebP. Displayed on invoices, quotations, receipts, and the navigation sidebar.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Name</Label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Acme Inc."
+            />
+          </div>
         </div>
       </Section>
 

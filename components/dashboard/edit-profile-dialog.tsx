@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -12,6 +12,8 @@ import {
   User,
   Link2,
   Fingerprint,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/date";
+import { uploadImage } from "@/lib/image-client";
 
 interface LinkedAccount {
   id: string;
@@ -82,6 +85,7 @@ export function AccountDialog({
   user,
 }: AccountDialogProps) {
   const [name, setName] = useState(user?.name || "");
+  const [image, setImage] = useState(user?.image || "");
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [hasPassword, setHasPassword] = useState(false);
@@ -94,11 +98,12 @@ export function AccountDialog({
   useEffect(() => {
     if (open) {
       setName(user?.name || "");
+      setImage(user?.image || "");
       fetchAccounts();
     } else {
       setTab("profile");
     }
-  }, [open, user?.name]);
+  }, [open, user?.name, user?.image]);
 
   const fetchLogins = useCallback(async () => {
     setLoginsLoading(true);
@@ -135,13 +140,16 @@ export function AccountDialog({
     }
   }
 
-  async function saveName() {
+  async function saveProfile() {
     setSaving(true);
     try {
       const res = await fetch("/api/v1/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({
+          name,
+          image: image || null,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -219,13 +227,13 @@ export function AccountDialog({
             <div className="px-4 pt-5 pb-4 sm:pb-5">
               <div className="flex items-center gap-2.5 sm:flex-col sm:items-start sm:gap-3">
                 <Avatar className="size-9 sm:size-11 ring-1 ring-border">
-                  <AvatarImage src={user?.image || undefined} />
+                  <AvatarImage src={image || user?.image || undefined} />
                   <AvatarFallback className="text-xs sm:text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold">{user?.name || "User"}</p>
+                  <p className="truncate text-[13px] font-semibold">{name || user?.name || "User"}</p>
                   <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
@@ -278,9 +286,12 @@ export function AccountDialog({
                   <ProfileTab
                     name={name}
                     setName={setName}
+                    image={image}
+                    setImage={setImage}
+                    initials={initials}
                     email={user?.email || ""}
                     saving={saving}
-                    onSave={saveName}
+                    onSave={saveProfile}
                   />
                 )}
                 {tab === "accounts" && (
@@ -317,24 +328,117 @@ export function AccountDialog({
 function ProfileTab({
   name,
   setName,
+  image,
+  setImage,
+  initials,
   email,
   saving,
   onSave,
 }: {
   name: string;
   setName: (v: string) => void;
+  image: string;
+  setImage: (v: string) => void;
+  initials: string;
   email: string;
   saving: boolean;
   onSave: () => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setImage(url);
+      toast.success("Profile photo selected");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-sm font-semibold">Profile</h3>
         <p className="text-[12px] text-muted-foreground mt-0.5">
-          Your personal details visible to team members.
+          Your personal details and profile photo visible to team members.
         </p>
       </div>
+
+      {/* Profile Photo */}
+      <div className="flex items-center gap-4">
+        <Avatar className="size-16 ring-2 ring-border shadow-xs">
+          <AvatarImage src={image || undefined} />
+          <AvatarFallback className="text-base font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="h-8 text-xs gap-1.5"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="size-3.5" />
+                  {image ? "Change photo" : "Upload photo"}
+                </>
+              )}
+            </Button>
+            {image && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={uploading}
+                onClick={() => setImage("")}
+                className="h-8 text-xs text-muted-foreground hover:text-red-600"
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            JPG, PNG, GIF or WebP. 5MB max.
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label className="text-xs">Display name</Label>
@@ -358,7 +462,7 @@ function ProfileTab({
       </div>
       <Button
         onClick={onSave}
-        disabled={saving || !name}
+        disabled={saving || uploading || !name}
         size="sm"
         className="bg-emerald-600 hover:bg-emerald-700"
       >

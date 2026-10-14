@@ -15,6 +15,7 @@ interface Org {
   id: string;
   name: string;
   slug: string;
+  logo?: string | null;
   role: "owner" | "admin" | "member";
   memberCount: number;
   defaultCurrency: string;
@@ -83,9 +84,17 @@ export function OrgSwitcher() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-colors hover:border-sidebar-border hover:bg-muted data-[state=open]:border-sidebar-border data-[state=open]:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-            <div className="flex size-6 items-center justify-center rounded-md bg-emerald-600 text-[10px] font-semibold text-white">
-              {orgInitial}
-            </div>
+            {activeOrg?.logo ? (
+              <img
+                src={activeOrg.logo}
+                alt={orgDisplayName}
+                className="size-6 rounded-md object-contain bg-white dark:bg-muted p-0.5 ring-1 ring-border shrink-0"
+              />
+            ) : (
+              <div className="flex size-6 items-center justify-center rounded-md bg-emerald-600 text-[10px] font-semibold text-white shrink-0">
+                {orgInitial}
+              </div>
+            )}
             <span className="flex-1 truncate text-[13px] font-medium text-sidebar-accent-foreground">
               {orgDisplayName}
             </span>
@@ -94,7 +103,7 @@ export function OrgSwitcher() {
                 {ROLE_LABELS[activeOrg.role] || activeOrg.role}
               </span>
             )}
-            <ChevronDown className="size-3 text-sidebar-foreground/40" />
+            <ChevronDown className="size-3 text-sidebar-foreground/40 shrink-0" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -106,13 +115,28 @@ export function OrgSwitcher() {
             <>
               {/* Org header */}
               <div className="px-3 py-3">
-                <div className="flex items-center justify-between">
-                  <p className="truncate text-[13px] font-semibold">{activeOrg.name || activeOrg.slug}</p>
-                  <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
-                    {ROLE_LABELS[activeOrg.role] || activeOrg.role}
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  {activeOrg.logo ? (
+                    <img
+                      src={activeOrg.logo}
+                      alt={activeOrg.name || activeOrg.slug}
+                      className="size-8 rounded-lg object-contain bg-white dark:bg-muted p-1 ring-1 ring-border shrink-0"
+                    />
+                  ) : (
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-600 text-xs font-semibold text-white shrink-0">
+                      {orgInitial}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="truncate text-[13px] font-semibold">{activeOrg.name || activeOrg.slug}</p>
+                      <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+                        {ROLE_LABELS[activeOrg.role] || activeOrg.role}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{activeOrg.slug}</p>
+                  </div>
                 </div>
-                <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{activeOrg.slug}</p>
               </div>
 
               {/* Info grid */}
@@ -146,9 +170,17 @@ export function OrgSwitcher() {
                     onClick={() => switchOrg(org)}
                     className="gap-2"
                   >
-                    <div className="flex size-5 items-center justify-center rounded bg-border text-[9px] font-semibold text-muted-foreground">
-                      {(org.name?.[0] || org.slug?.[0] || "?").toUpperCase()}
-                    </div>
+                    {org.logo ? (
+                      <img
+                        src={org.logo}
+                        alt={org.name || org.slug}
+                        className="size-5 rounded object-contain bg-white dark:bg-muted p-0.5 ring-1 ring-border shrink-0"
+                      />
+                    ) : (
+                      <div className="flex size-5 items-center justify-center rounded bg-border text-[9px] font-semibold text-muted-foreground shrink-0">
+                        {(org.name?.[0] || org.slug?.[0] || "?").toUpperCase()}
+                      </div>
+                    )}
                     <span className="flex-1 truncate text-[13px]">{org.name || org.slug}</span>
                     <Check className="size-3 shrink-0 opacity-0 text-emerald-600" />
                   </DropdownMenuItem>
