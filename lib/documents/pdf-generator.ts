@@ -145,9 +145,17 @@ const DOC_CONFIGS: Record<DocumentKind, DocTypeConfig> = {
     supplierFacing: true,
     showAmountDue: false,
   },
+  bill: {
+    title: "Bill",
+    numberLabel: "Bill number",
+    secondDateLabel: "Date due",
+    partyLabel: "Supplier",
+    supplierFacing: true,
+    showAmountDue: true,
+  },
 };
 
-export type DocumentKind = "invoice" | "quote" | "credit_note" | "purchase_order" | "debit_note";
+export type DocumentKind = "invoice" | "quote" | "credit_note" | "purchase_order" | "debit_note" | "bill";
 
 // Generic document shape covering every doc type. The invoice-specific
 // generateInvoiceHtml keeps its own field names and delegates here.
@@ -702,6 +710,10 @@ export function generatePurchaseOrderHtml(doc: DocumentData, org: OrgInfo, templ
 
 export function generateDebitNoteHtml(doc: DocumentData, org: OrgInfo, template: TemplateSettings): string {
   return generateDocumentHtml("debit_note", doc, org, template);
+}
+
+export function generateBillHtml(doc: DocumentData, org: OrgInfo, template: TemplateSettings): string {
+  return generateDocumentHtml("bill", doc, org, template);
 }
 
 function escapeHtml(str: string): string {

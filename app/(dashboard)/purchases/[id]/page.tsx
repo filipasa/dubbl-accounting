@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Check, DollarSign, Ban, Undo2, ThumbsUp, X, GitCompareArrows, FileBarChart, PackageCheck } from "lucide-react";
+import { ArrowLeft, Check, DollarSign, Ban, Undo2, ThumbsUp, X, GitCompareArrows, FileBarChart, PackageCheck, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,33 @@ export default function BillDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+
+  async function handleDownloadPdf() {
+    if (!orgId) return;
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(`/api/v1/bills/${id}/pdf?format=pdf`, {
+        headers: { "x-organization-id": orgId },
+      });
+      if (!res.ok) {
+        toast.error("Failed to download PDF");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bill-${b?.billNumber || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to download PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   useDocumentTitle("Purchases · Bill Details");
   useEntityTitle(b?.billNumber);
@@ -262,6 +288,16 @@ export default function BillDetailPage() {
               <Link href={`/contacts/${b.contactId}/statement`}>
                 <FileBarChart className="mr-2 size-3.5" />Supplier statement
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              title="Download bill PDF"
+            >
+              <Download className="mr-2 size-3.5" />
+              {downloadingPdf ? "Downloading..." : "Download PDF"}
             </Button>
             {b.status === "pending_approval" && (
               <>
