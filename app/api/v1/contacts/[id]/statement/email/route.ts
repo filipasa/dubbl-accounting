@@ -9,13 +9,12 @@ import {
   payment,
   paymentAllocation,
   organization,
-  emailConfig,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, lt, inArray, notInArray, isNull } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError, notFound, error } from "@/lib/api/response";
 import { formatMoney } from "@/lib/money";
-import { sendEmail } from "@/lib/email/smtp-client";
+import { sendDocumentEmail } from "@/lib/email/document-sender";
 
 interface StatementTransaction {
   date: string;
@@ -87,23 +86,15 @@ export async function POST(
       ? notInArray(payment.id, carrierPaymentIds)
       : undefined;
 
-    // Fetch email config
-    const emailCfg = await db.query.emailConfig.findFirst({
-      where: eq(emailConfig.organizationId, ctx.organizationId),
-    });
-
-    if (!emailCfg) {
-      return error("Email not configured. Please set up SMTP settings first.", 400);
-    }
-
-    // Fetch org name
+    // Fetch org name and email
     const orgRow = await db
-      .select({ name: organization.name })
+      .select({ name: organization.name, contactEmail: organization.contactEmail })
       .from(organization)
       .where(eq(organization.id, ctx.organizationId))
       .limit(1);
 
     const orgName = orgRow[0]?.name || "Organization";
+    const orgEmail = orgRow[0]?.contactEmail || undefined;
 
     const now = new Date();
     const defaultStart = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -490,10 +481,16 @@ export async function POST(
 </body>
 </html>`;
 
-    await sendEmail(emailCfg, {
-      to: c.email,
+    await sendDocumentEmail({
+      orgId: ctx.organizationId,
+      userId: ctx.userId,
+      documentType: "statement",
+      documentId: id,
+      recipientEmail: c.email,
       subject: `Statement from ${orgName} - ${formatDate(startDate)} to ${formatDate(endDate)}`,
-      html: emailHtml,
+      body: emailHtml,
+      attachPdf: false,
+      replyTo: orgEmail,
     });
 
     return NextResponse.json({ success: true });
