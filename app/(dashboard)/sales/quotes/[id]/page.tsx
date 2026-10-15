@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Check, X, FileText, Pencil } from "lucide-react";
+import { ArrowLeft, Send, Check, X, FileText, Pencil, Download } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,33 @@ export default function QuoteDetailPage() {
     }
   }
 
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!orgId) return;
+    setDownloadingPdf(true);
+    try {
+      const res = await fetch(`/api/v1/quotes/${id}/pdf?format=pdf`, {
+        headers: { "x-organization-id": orgId },
+      });
+      if (!res.ok) {
+        toast.error("Failed to download PDF");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `quote-${q?.quoteNumber || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to download PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   if (loading) return <div className="space-y-6"><PageHeader title="Loading..." /></div>;
   if (!q) return <div className="space-y-6"><PageHeader title="Quote not found" /></div>;
 
@@ -164,6 +191,16 @@ export default function QuoteDetailPage() {
       >
         <Button variant="outline" size="sm" asChild>
           <Link href="/sales/quotes"><ArrowLeft className="mr-2 size-4" />Back</Link>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadPdf}
+          disabled={downloadingPdf}
+          title="Download Quote PDF"
+        >
+          <Download className="mr-2 size-4" />
+          {downloadingPdf ? "Downloading..." : "Download PDF"}
         </Button>
         {q.status === "draft" && (
           <>
@@ -186,6 +223,14 @@ export default function QuoteDetailPage() {
         )}
         {q.status === "sent" && (
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSendDialogOpen(true)}
+              title="Send this quote again via email"
+            >
+              <Send className="mr-2 size-4" />Send again
+            </Button>
             <Button size="sm" onClick={() => action("accept")} className="bg-emerald-600 hover:bg-emerald-700">
               <Check className="mr-2 size-4" />Accept
             </Button>
@@ -195,14 +240,24 @@ export default function QuoteDetailPage() {
           </>
         )}
         {q.status === "accepted" && (
-          <Button
-            size="sm"
-            onClick={handleConvert}
-            className="bg-emerald-600 hover:bg-emerald-700"
-            title="Turn this accepted quote into an invoice you can send and get paid on"
-          >
-            <FileText className="mr-2 size-4" />Create an invoice from this quote
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSendDialogOpen(true)}
+              title="Send this quote again via email"
+            >
+              <Send className="mr-2 size-4" />Send again
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConvert}
+              className="bg-emerald-600 hover:bg-emerald-700"
+              title="Turn this accepted quote into an invoice you can send and get paid on"
+            >
+              <FileText className="mr-2 size-4" />Create an invoice from this quote
+            </Button>
+          </>
         )}
       </PageHeader>
 
@@ -257,8 +312,8 @@ export default function QuoteDetailPage() {
                   <span className="text-right">Amount</span>
                 </div>
                 {itemLines.map((line) => (
-                  <div key={line.id} className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b px-4 py-3 last:border-b-0 items-center">
-                    <div className="flex items-center gap-3">
+                  <div key={line.id} className="grid min-w-[550px] grid-cols-[1fr_80px_100px_100px_120px] gap-2 border-b px-4 py-3 last:border-b-0 items-start">
+                    <div className="flex items-start gap-3">
                       {line.imageUrl ? (
                         <img
                           src={line.imageUrl}
@@ -269,7 +324,7 @@ export default function QuoteDetailPage() {
                         <div className="size-9 shrink-0" />
                       ) : null}
                       <div>
-                        <p className="text-sm font-medium">{line.description}</p>
+                        <p className="text-sm font-medium whitespace-pre-line">{line.description}</p>
                         {line.shortDescription && (
                           <p className="text-xs text-muted-foreground whitespace-pre-line mt-0.5">
                             {line.shortDescription}

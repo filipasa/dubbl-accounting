@@ -12,12 +12,13 @@ import {
 } from "@react-pdf/renderer";
 import { formatDate } from "@/lib/date";
 import { partitionDocumentLines } from "./line-adjustments";
-import type {
-  OrgInfo,
-  ContactInfo,
-  PdfInvoiceData,
-  PdfTemplateSettings,
-  PdfDocumentLabels,
+import {
+  type OrgInfo,
+  type ContactInfo,
+  type PdfInvoiceData,
+  type PdfTemplateSettings,
+  type PdfDocumentLabels,
+  resolvePdfImage,
 } from "./pdf-renderer";
 
 interface QuotationDocProps {
@@ -407,6 +408,9 @@ export function QuotationDocument({
     }
   }
 
+  const logoToUse = template.logoUrl || (org as any).logoUrl || (org as any).logo || null;
+  const resolvedLogo = resolvePdfImage(logoToUse);
+
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -436,9 +440,9 @@ export function QuotationDocument({
             </View>
           </View>
 
-          {template.logoUrl && (
+          {resolvedLogo && (
             <View style={s.logoContainer}>
-              <Image src={template.logoUrl} style={s.logoImage} />
+              <Image src={resolvedLogo} style={s.logoImage} />
             </View>
           )}
         </View>
@@ -495,15 +499,17 @@ export function QuotationDocument({
           {/* Item Rows */}
           {itemLines.map((line, idx) => {
             // Split multi-line descriptions into title + attributes
-            const descParts = line.description
+            const descParts = (line.description || "")
               .split("\n")
               .map((p) => p.trim())
               .filter(Boolean);
             const mainTitle = descParts[0] || line.description;
             const extraLines = descParts.slice(1);
-            const attrLines = line.shortDescription
+            const shortDescParts = line.shortDescription
               ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
-              : extraLines;
+              : [];
+            const attrLines = [...extraLines, ...shortDescParts];
+            const resolvedLineThumb = resolvePdfImage(line.imageUrl);
 
             // VAT Rate string (e.g. "20%")
             const vatRateStr = line.taxRate?.rate
@@ -564,7 +570,7 @@ export function QuotationDocument({
                 </View>
 
                 {/* Bottom Row: Attributes on left, Product thumbnail aligned right under Total */}
-                {(attrLines.length > 0 || line.imageUrl) && (
+                {(attrLines.length > 0 || resolvedLineThumb) && (
                   <View style={s.tableRowBottom}>
                     <View style={{ flex: 1, paddingLeft: 12, paddingRight: 8 }}>
                       {attrLines.map((attr, aIdx) => (
@@ -573,9 +579,9 @@ export function QuotationDocument({
                         </Text>
                       ))}
                     </View>
-                    {line.imageUrl ? (
+                    {resolvedLineThumb ? (
                       <View style={{ width: 50, alignItems: "flex-end" }}>
-                        <Image src={line.imageUrl} style={s.itemThumb} />
+                        <Image src={resolvedLineThumb} style={s.itemThumb} />
                       </View>
                     ) : null}
                   </View>

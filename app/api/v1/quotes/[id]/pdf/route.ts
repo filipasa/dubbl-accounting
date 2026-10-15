@@ -6,7 +6,7 @@ import { getAuthContext } from "@/lib/api/auth-context";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { notFound, handleError } from "@/lib/api/response";
 import { generateQuoteHtml, type DocumentData } from "@/lib/documents/pdf-generator";
-import { formatContactAddress } from "@/lib/documents/snapshots";
+import { formatContactAddress, buildSenderSnapshot } from "@/lib/documents/snapshots";
 import { resolveTaxLabel } from "@/lib/tax/tax-label";
 
 export async function GET(
@@ -47,19 +47,7 @@ export async function GET(
     const org = await db.query.organization.findFirst({
       where: eq(organization.id, ctx.organizationId),
     });
-    const orgAddress = [org?.addressStreet, org?.addressCity, org?.addressState, org?.addressPostalCode, org?.addressCountry]
-      .filter(Boolean)
-      .join(", ");
-    const orgInfo = {
-      name: org?.name || "Company",
-      address: orgAddress || null,
-      taxId: org?.taxId || null,
-      registrationNumber: org?.businessRegistrationNumber || null,
-      phone: org?.contactPhone || null,
-      email: org?.contactEmail || null,
-      countryCode: org?.countryCode || null,
-      dateFormat: org?.dateFormat || null,
-    };
+    const orgInfo = await buildSenderSnapshot(ctx.organizationId);
 
     const contactAddress = formatContactAddress(
       found.contact?.addresses as Record<string, { line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }> | null
@@ -84,6 +72,7 @@ export async function GET(
         amount: l.amount,
         imageUrl: l.imageUrl || null,
         shortDescription: l.shortDescription || null,
+        discountPercent: l.discountPercent,
         taxRate: l.taxRate ? { name: l.taxRate.name, rate: l.taxRate.rate } : null,
       })),
       subtotal: found.subtotal,
@@ -97,7 +86,7 @@ export async function GET(
 
     const templateSettings = template || {};
 
-    if (format === "pdf") {
+    if (format !== "html") {
       const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
       const pdfBuffer = await renderInvoicePdf(
         {

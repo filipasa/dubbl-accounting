@@ -133,6 +133,9 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
                   lines: inv.lines.map((l) => ({
                     description: l.description,
+                    shortDescription: (l as any).shortDescription,
+                    imageUrl: (l as any).imageUrl,
+                    discountPercent: (l as any).discountPercent,
                     quantity: l.quantity,
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
@@ -148,7 +151,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   notes: inv.notes,
                   paymentUrl,
                 },
-                { name: org?.name || "", dateFormat: org?.dateFormat || null },
+                { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
                 inv.contact ? { name: inv.contact.name } : { name: "Unknown" },
                 invTemplate || {}
               );
@@ -193,6 +196,9 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
                   lines: q.lines.map((l) => ({
                     description: l.description,
+                    shortDescription: (l as any).shortDescription,
+                    imageUrl: (l as any).imageUrl,
+                    discountPercent: (l as any).discountPercent,
                     quantity: l.quantity,
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
@@ -205,7 +211,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   total: q.total,
                   notes: q.notes,
                 },
-                { name: org?.name || "", dateFormat: org?.dateFormat || null },
+                { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
                 q.contact ? { name: q.contact.name } : { name: "Unknown" },
                 quoteTemplate || {},
                 {
@@ -343,6 +349,9 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
                   lines: inv.lines.map((l) => ({
                     description: l.description,
+                    shortDescription: (l as any).shortDescription,
+                    imageUrl: (l as any).imageUrl,
+                    discountPercent: (l as any).discountPercent,
                     quantity: l.quantity,
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
@@ -355,7 +364,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   total: inv.total,
                   notes: inv.notes,
                 },
-                { name: org?.name || "", dateFormat: org?.dateFormat || null },
+                { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
                 inv.contact ? { name: inv.contact.name } : { name: "Unknown" },
                 invTemplate || {}
               );
@@ -397,6 +406,9 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
                   lines: q.lines.map((l) => ({
                     description: l.description,
+                    shortDescription: (l as any).shortDescription,
+                    imageUrl: (l as any).imageUrl,
+                    discountPercent: (l as any).discountPercent,
                     quantity: l.quantity,
                     unitPrice: l.unitPrice,
                     taxAmount: l.taxAmount,
@@ -409,7 +421,7 @@ export function registerEmailTools(server: McpServer, ctx: AuthContext) {
                   total: q.total,
                   notes: q.notes,
                 },
-                { name: org?.name || "", dateFormat: org?.dateFormat || null },
+                { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
                 q.contact ? { name: q.contact.name } : { name: "Unknown" },
                 quoteTemplate || {},
                 {

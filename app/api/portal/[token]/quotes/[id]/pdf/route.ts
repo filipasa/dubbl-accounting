@@ -98,7 +98,7 @@ export async function GET(
 
     const templateSettings = template || {};
 
-    if (format === "pdf") {
+    if (format !== "html") {
       const { renderInvoicePdf } = await import("@/lib/documents/pdf-renderer");
       const pdfBuffer = await renderInvoicePdf(
         {

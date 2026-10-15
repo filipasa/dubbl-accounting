@@ -94,9 +94,10 @@ export default function PortalQuotesPage() {
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       <a
-                        href={`/api/portal/${token}/quotes/${q.id}/pdf`}
+                        href={`/api/portal/${token}/quotes/${q.id}/pdf?format=pdf`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        download={`quote-${q.quoteNumber}.pdf`}
                       >
                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                           <Download className="size-3" />

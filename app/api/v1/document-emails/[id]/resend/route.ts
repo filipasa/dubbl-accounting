@@ -85,6 +85,9 @@ export async function POST(
               currencyCode: inv.currencyCode || org?.defaultCurrency || "GBP",
               lines: inv.lines.map((l) => ({
                 description: l.description,
+                shortDescription: (l as any).shortDescription,
+                imageUrl: (l as any).imageUrl,
+                discountPercent: (l as any).discountPercent,
                 quantity: l.quantity,
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
@@ -101,7 +104,7 @@ export async function POST(
               notes: inv.notes,
               paymentUrl,
             },
-            { name: org?.name || "", dateFormat: org?.dateFormat || null },
+            { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
             inv.contact ? { name: inv.contact.name } : { name: "Unknown" },
             invTemplate || {}
           );
@@ -145,6 +148,9 @@ export async function POST(
               currencyCode: q.currencyCode || org?.defaultCurrency || "GBP",
               lines: q.lines.map((l) => ({
                 description: l.description,
+                shortDescription: (l as any).shortDescription,
+                imageUrl: (l as any).imageUrl,
+                discountPercent: (l as any).discountPercent,
                 quantity: l.quantity,
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,
@@ -158,7 +164,7 @@ export async function POST(
               reference: q.reference,
               notes: q.notes,
             },
-            { name: org?.name || "", dateFormat: org?.dateFormat || null },
+            { name: org?.name || "", dateFormat: org?.dateFormat || null, logoUrl: org?.logo || null },
             q.contact ? { name: q.contact.name } : { name: "Unknown" },
             quoteTemplate || {},
             {

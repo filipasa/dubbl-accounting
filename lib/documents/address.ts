@@ -6,6 +6,8 @@ export interface SenderSnapshot {
   phone: string | null;
   email: string | null;
   countryCode: string | null;
+  dateFormat?: string | null;
+  logoUrl?: string | null;
 }
 
 export interface RecipientSnapshot {

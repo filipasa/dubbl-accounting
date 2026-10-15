@@ -60,9 +60,9 @@ export async function POST(
     });
 
     if (!found) return notFound("Quote");
-    if (found.status !== "draft") {
+    if (found.status !== "draft" && found.status !== "sent") {
       return NextResponse.json(
-        { error: "Only draft quotes can be sent" },
+        { error: "Only draft or sent quotes can be sent" },
         { status: 400 }
       );
     }
@@ -130,6 +130,9 @@ export async function POST(
               dateFormat: org?.dateFormat || null,
               lines: found.lines.map((l) => ({
                 description: l.description,
+                shortDescription: l.shortDescription,
+                imageUrl: l.imageUrl,
+                discountPercent: l.discountPercent,
                 quantity: l.quantity,
                 unitPrice: l.unitPrice,
                 taxAmount: l.taxAmount,

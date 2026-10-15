@@ -28,5 +28,7 @@ export async function buildSenderSnapshot(organizationId: string): Promise<Sende
     phone: org?.contactPhone || null,
     email: org?.contactEmail || null,
     countryCode: org?.countryCode || null,
+    dateFormat: org?.dateFormat || null,
+    logoUrl: org?.logo || null,
   };
 }

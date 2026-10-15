@@ -29,6 +29,7 @@ export interface OrgInfo {
   website?: string | null;
   countryCode?: string | null;
   dateFormat?: string | null;
+  logoUrl?: string | null;
 }
 
 export interface ContactInfo {
@@ -115,7 +116,7 @@ function replacePlaceholders(text: string, vars: Record<string, string>): string
   return text.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
 }
 
-function resolvePdfImage(url?: string | null): string | null {
+export function resolvePdfImage(url?: string | null): string | null {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
     return url;
@@ -206,7 +207,7 @@ const s = StyleSheet.create({
   table: { marginBottom: 0 },
   tableHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: dark, paddingBottom: 6 },
   th: { fontSize: 8, color: gray },
-  tableRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: lightGray },
+  tableRow: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: lightGray },
   cellDesc: { flex: 3 },
   lineImageWrapper: {
     width: 22,
@@ -324,7 +325,7 @@ function stripBotMentions(text: string | null | undefined): string | null {
     ? replacePlaceholders(template.footerHtml, vars).replace(/<[^>]*>/g, "")
     : null;
 
-  const resolvedLogo = resolvePdfImage(template.logoUrl);
+  const resolvedLogo = resolvePdfImage(template.logoUrl || (org as any).logoUrl || (org as any).logo);
 
   return (
     <Document>
@@ -402,9 +403,20 @@ function stripBotMentions(text: string | null | undefined): string | null {
           </View>
           {itemLines.map((line, i) => {
             const resolvedImg = resolvePdfImage(line.imageUrl);
+            const descLines = (line.description || "")
+              .split("\n")
+              .map((p) => p.trim())
+              .filter(Boolean);
+            const mainTitle = descLines[0] || line.description;
+            const extraDescLines = descLines.slice(1);
+            const shortDescLines = line.shortDescription
+              ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
+              : [];
+            const allExtraLines = [...extraDescLines, ...shortDescLines];
+
             return (
               <View key={i} style={s.tableRow}>
-                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "center" }]}>
+                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "flex-start" }]}>
                   {resolvedImg ? (
                     <View style={s.lineImageWrapper}>
                       <Image src={resolvedImg} style={s.lineImage} />
@@ -413,22 +425,22 @@ function stripBotMentions(text: string | null | undefined): string | null {
                     <View style={s.lineImageSpacer} />
                   ) : null}
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9.5, color: dark, fontFamily: "Helvetica-Bold" }}>{line.description}</Text>
-                    {line.shortDescription && (
-                      <Text style={{ fontSize: 8, color: gray, marginTop: 1.5, lineHeight: 1.3 }}>
-                        {line.shortDescription}
+                    <Text style={{ fontSize: 9.5, color: dark, fontFamily: "Helvetica-Bold" }}>{mainTitle}</Text>
+                    {allExtraLines.map((descLine, dIdx) => (
+                      <Text key={dIdx} style={{ fontSize: 8, color: gray, marginTop: 1.5, lineHeight: 1.3 }}>
+                        {descLine}
                       </Text>
-                    )}
+                    ))}
                   </View>
                 </View>
-                <Text style={[s.cellQty, { color: dark }]}>{(line.quantity / 100).toFixed(2)}</Text>
-                <Text style={[s.cellPrice, { color: dark }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
+                <Text style={[s.cellQty, { color: dark, paddingTop: 1 }]}>{(line.quantity / 100).toFixed(2)}</Text>
+                <Text style={[s.cellPrice, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
                 {hasDiscount && (
-                  <Text style={[s.cellDiscount, { color: dark }]}>
+                  <Text style={[s.cellDiscount, { color: dark, paddingTop: 1 }]}>
                     {line.discountPercent ? `${(line.discountPercent / 100).toFixed(2)}%` : "-"}
                   </Text>
                 )}
-                <Text style={[s.cellAmount, { color: dark }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
+                <Text style={[s.cellAmount, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
               </View>
             );
           })}
@@ -465,10 +477,12 @@ function stripBotMentions(text: string | null | undefined): string | null {
                 <Text style={s.totalValue}>{fmtMoney(inv.taxTotal, inv.currencyCode)}</Text>
               </View>
             )}
-            <View style={s.totalRow}>
-              <Text style={s.totalLabel}>Total</Text>
-              <Text style={s.totalValue}>{fmtMoney(inv.total, inv.currencyCode)}</Text>
-            </View>
+            {!(labels?.amountLabel === "Total" && amountPaid === 0) && (
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>Total</Text>
+                <Text style={s.totalValue}>{fmtMoney(inv.total, inv.currencyCode)}</Text>
+              </View>
+            )}
             {amountPaid > 0 && (
               <View style={s.totalRow}>
                 <Text style={s.totalLabel}>Amount paid</Text>
@@ -553,10 +567,11 @@ export async function renderInvoicePdf(
   template: PdfTemplateSettings,
   labels?: PdfDocumentLabels
 ): Promise<ArrayBuffer> {
-  let resolvedLogoUrl = template.logoUrl;
-  if (template.logoUrl) {
+  let rawLogo = template.logoUrl || (org as any).logoUrl || (org as any).logo || null;
+  let resolvedLogoUrl = rawLogo;
+  if (rawLogo) {
     try {
-      resolvedLogoUrl = await fetchImageAsDataUri(template.logoUrl);
+      resolvedLogoUrl = await fetchImageAsDataUri(rawLogo);
     } catch {
       resolvedLogoUrl = null;
     }

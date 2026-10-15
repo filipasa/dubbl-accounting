@@ -26,6 +26,7 @@ interface OrgInfo {
   email?: string | null;
   countryCode?: string | null;
   dateFormat?: string | null;
+  logoUrl?: string | null;
 }
 
 interface LineItem {

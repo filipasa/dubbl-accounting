@@ -109,3 +109,52 @@ test("renderInvoicePdf renders PDF with quotation layout", async () => {
   assert.ok(pdfBuffer instanceof ArrayBuffer, "Should return an ArrayBuffer");
   assert.ok(pdfBuffer.byteLength > 1000, "PDF buffer should contain valid bytes");
 });
+
+test("renderInvoicePdf renders Quote with multi-line description, shortDescription, and logo fallback", async () => {
+  const quoteWithMultiLine = {
+    invoiceNumber: "Q-00042",
+    issueDate: "2026-10-15",
+    dueDate: "2026-11-15",
+    lines: [
+      {
+        description: "Bespoke Walnut Internal Door\nFSC Certified Timber\nPre-hung with magnetic latch",
+        shortDescription: "Dimensions: 2040 x 826 x 40mm\nFinish: Satin Walnut Varnish",
+        quantity: 200,
+        unitPrice: 35000,
+        taxAmount: 14000,
+        amount: 70000,
+        discountPercent: 500,
+        taxRate: { name: "VAT", rate: 2000 },
+      },
+    ],
+    subtotal: 70000,
+    taxTotal: 14000,
+    taxLabel: "VAT",
+    total: 84000,
+    currencyCode: "GBP",
+  };
+
+  const orgWithLogo = {
+    name: "Luxury Joinery Ltd",
+    address: "10 Craft Way, Manchester, M1 1AA",
+    logoUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  };
+
+  const pdfBuffer = await renderInvoicePdf(
+    quoteWithMultiLine,
+    orgWithLogo,
+    { name: "John Doe", email: "john@example.com" },
+    {}, // empty template without explicit logoUrl, should fall back to org logoUrl
+    {
+      title: "Quote",
+      numberLabel: "Quote number",
+      partyLabel: "Quote for",
+      amountLabel: "Total",
+      dateLabel: "Valid until",
+      summaryNoun: "valid until",
+    }
+  );
+
+  assert.ok(pdfBuffer instanceof ArrayBuffer, "Should return an ArrayBuffer");
+  assert.ok(pdfBuffer.byteLength > 1000, "PDF buffer should contain valid bytes");
+});
