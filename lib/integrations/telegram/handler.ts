@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { telegramMessageLog } from "@/lib/db/schema";
 import { eq, and, ne, desc } from "drizzle-orm";
+import { getPublicAppUrl } from "@/lib/public-url";
 import {
   getTelegramConfig,
   sendTelegramMessage,
@@ -885,7 +886,7 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
         return "📭 No quotes found in this organization.";
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+      const appUrl = getPublicAppUrl();
       let reply = `📑 <b>Recent Quotes (${quotes.length})</b>\n\n`;
       for (const q of quotes) {
         const contactName = q.contact?.name || "Unknown Customer";
@@ -1135,7 +1136,7 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       });
 
       const totalFormatted = (invoice.total / 100).toFixed(2);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+      const appUrl = getPublicAppUrl();
       let reply =
         `✅ <b>Invoice Created Successfully!</b>\n\n` +
         `• <b>Invoice #:</b> ${invoice.invoiceNumber}\n` +
@@ -1198,7 +1199,7 @@ export async function handleTelegramCommand(ctx: AuthContext, text: string): Pro
       });
 
       const totalFormatted = (createdBill.total / 100).toFixed(2);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+      const appUrl = getPublicAppUrl();
       return (
         `✅ <b>Bill Created Successfully!</b>\n\n` +
         `• <b>Bill #:</b> ${createdBill.billNumber}\n` +
@@ -1783,7 +1784,7 @@ export async function processIncomingTelegramUpdate(
   }
 
   const trimmed = message.text.trim();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const appUrl = getPublicAppUrl();
 
   // 3. Handle Link Command (/link <code> or /start link_<code> or /start FB-<code>)
   const isLinkCommand =

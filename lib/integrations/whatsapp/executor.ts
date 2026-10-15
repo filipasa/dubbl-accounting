@@ -37,6 +37,7 @@ import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
 import { resolveOrCreateProductItem, isRealProductLine } from "@/lib/inventory/product-storage";
+import { getPublicAppUrl } from "@/lib/public-url";
 
 function sanitizeNotes(notes?: string | null): string | undefined {
   if (!notes) return undefined;
@@ -609,7 +610,7 @@ export async function createQuoteAction(
     lines: formattedLines,
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const baseUrl = getPublicAppUrl();
   const token = await getOrCreatePortalToken(ctx.organizationId, contact.id);
   const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
   const viewUrl = `${baseUrl}/sales/quotes/${res.quote.id}`;
@@ -975,7 +976,7 @@ export async function getQuoteLinkAction(ctx: AuthContext, quoteNumberOrId: stri
     return { error: `Quote "${quoteNumberOrId}" not found.` };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const baseUrl = getPublicAppUrl();
   const token = await getOrCreatePortalToken(ctx.organizationId, q.contactId);
   const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
   const viewUrl = `${baseUrl}/sales/quotes/${q.id}`;
@@ -1527,7 +1528,7 @@ export async function sendInvoiceEmailAction(
       .where(eq(invoice.id, inv.id));
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const baseUrl = getPublicAppUrl();
   const paymentUrl = `${baseUrl}/pay/${paymentLinkToken}`;
 
   const org = await db.query.organization.findFirst({
@@ -1730,7 +1731,7 @@ export async function sendQuoteEmailAction(
     where: eq(organization.id, ctx.organizationId),
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const baseUrl = getPublicAppUrl();
   const portalUrl = token ? `${baseUrl}/portal/${token.token}/quotes` : undefined;
   const totalFormatted = formatMoney(q.total, q.currencyCode);
 

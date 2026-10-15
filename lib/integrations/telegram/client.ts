@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getPublicAppUrl } from "@/lib/public-url";
 import type {
   TelegramConfig,
   TelegramSendMessageResult,
@@ -14,20 +15,7 @@ export function getTelegramConfig(): TelegramConfig {
     .map((u) => u.trim().replace(/^@/, "").toLowerCase())
     .filter(Boolean);
 
-  let appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.NODE_ENV === "production" || process.env.VERCEL
-      ? "https://www.fixbooks.io"
-      : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000");
-
-  if (
-    appUrl.includes("fixbooks.io") ||
-    appUrl.includes("dubbl-accounting.vercel.app")
-  ) {
-    appUrl = "https://www.fixbooks.io";
-  }
+  const appUrl = getPublicAppUrl();
 
   return {
     botToken: (process.env.TELEGRAM_BOT_TOKEN || "").trim(),

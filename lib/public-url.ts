@@ -14,8 +14,11 @@ export function getPublicAppUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (envUrl) {
     const trimmed = trimTrailingSlash(envUrl);
-    // Ignore internal vercel.app domains (e.g. dubbl-accounting.vercel.app)
-    if (!trimmed.includes("vercel.app")) {
+    // Ignore internal vercel.app domains (e.g. dubbl-accounting.vercel.app) and old dubbl domains
+    if (!trimmed.includes("vercel.app") && !trimmed.includes("dubbl")) {
+      if (trimmed === "https://www.fixbooks.io" || trimmed === "http://www.fixbooks.io") {
+        return DEFAULT_APP_URL;
+      }
       return trimmed;
     }
   }
@@ -25,7 +28,10 @@ export function getPublicAppUrl(): string {
 export function getPublicSiteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     const trimmed = trimTrailingSlash(process.env.NEXT_PUBLIC_SITE_URL);
-    if (!trimmed.includes("vercel.app")) {
+    if (!trimmed.includes("vercel.app") && !trimmed.includes("dubbl")) {
+      if (trimmed === "https://www.fixbooks.io" || trimmed === "http://www.fixbooks.io") {
+        return DEFAULT_SITE_URL;
+      }
       return trimmed;
     }
   }

@@ -28,11 +28,18 @@ test("getTelegramConfig parses and normalizes environment variables", () => {
   process.env.TELEGRAM_BOT_TOKEN = "123456789:ABCdefGHIjklMNO";
   process.env.TELEGRAM_SECRET_TOKEN = "secret_12345";
   process.env.TELEGRAM_ALLOWED_USERS = " @JohnDoe, 987654321, @Alice ";
+  process.env.NEXT_PUBLIC_APP_URL = "https://dubbl-accounting.vercel.app";
 
   const cfg = getTelegramConfig();
   assert.equal(cfg.botToken, "123456789:ABCdefGHIjklMNO");
   assert.equal(cfg.secretToken, "secret_12345");
   assert.deepEqual(cfg.allowedUsers, ["johndoe", "987654321", "alice"]);
+  assert.equal(cfg.appUrl, "https://fixbooks.io");
+
+  // Also verify www.fixbooks.io normalizes to https://fixbooks.io
+  process.env.NEXT_PUBLIC_APP_URL = "https://www.fixbooks.io";
+  const cfg2 = getTelegramConfig();
+  assert.equal(cfg2.appUrl, "https://fixbooks.io");
 });
 
 test("Webhook POST handler rejects unauthorized request without matching secret token", async () => {

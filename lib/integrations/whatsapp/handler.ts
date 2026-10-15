@@ -6,6 +6,7 @@ import {
   sendWhatsAppTextMessage,
   markWhatsAppMessageRead,
 } from "./client";
+import { getPublicAppUrl } from "@/lib/public-url";
 import {
   resolveWhatsAppAuthContext,
   getOrganizationDetails,
@@ -739,7 +740,7 @@ export async function handleShortcutCommand(ctx: AuthContext, text: string): Pro
       });
 
       const totalFormatted = (invoice.total / 100).toFixed(2);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const appUrl = getPublicAppUrl();
       return (
         `✅ *Invoice Created Successfully!*\n\n` +
         `• *Invoice #:* ${invoice.invoiceNumber}\n` +
@@ -1133,7 +1134,7 @@ export async function processIncomingWhatsAppMessage({
   }
 
   const trimmed = (text || "").trim();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+  const appUrl = getPublicAppUrl();
 
   // 4. Handle Link Command (!link <code> or /link <code> or link <code>)
   const isLinkCommand =
