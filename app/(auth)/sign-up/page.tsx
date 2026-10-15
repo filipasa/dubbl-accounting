@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -51,13 +51,29 @@ interface ProvidersConfig {
 }
 
 export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpContent />
+    </Suspense>
+  );
+}
+
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+  const emailParam = searchParams.get("email");
+
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<ProvidersConfig | null>(null);
+
+  useEffect(() => {
+    if (emailParam) setEmail(emailParam);
+  }, [emailParam]);
 
   useEffect(() => {
     fetch("/api/auth/providers-config")
@@ -65,11 +81,11 @@ export default function SignUpPage() {
       .then((data) => {
         setProviders(data);
         if (data.registrationMode === "disabled") {
-          router.replace("/sign-in");
+          router.replace(callbackUrl ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-in");
         }
       })
       .catch(() => setProviders({ google: false, apple: false, registrationMode: "open", allowedDomains: "" }));
-  }, [router]);
+  }, [router, callbackUrl]);
 
   const hasOAuth = providers?.google || providers?.apple;
 
@@ -100,7 +116,7 @@ export default function SignUpPage() {
         throw new Error("Failed to sign in after registration");
       }
 
-      router.push("/onboarding");
+      router.push(callbackUrl || "/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
@@ -159,7 +175,7 @@ export default function SignUpPage() {
                 type="button"
                 variant="outline"
                 className="h-11 rounded-lg text-sm font-medium"
-                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("google", { callbackUrl: callbackUrl || "/dashboard" })}
               >
                 <GoogleIcon className="size-4" />
                 Google
@@ -170,7 +186,7 @@ export default function SignUpPage() {
                 type="button"
                 variant="outline"
                 className="h-11 rounded-lg text-sm font-medium"
-                onClick={() => signIn("apple", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("apple", { callbackUrl: callbackUrl || "/dashboard" })}
               >
                 <AppleIcon className="size-4" />
                 Apple
@@ -196,7 +212,7 @@ export default function SignUpPage() {
         transition={{ duration: 0.4, delay: 0.1 }}
       >
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-400">
             {error}
           </div>
         )}
@@ -207,11 +223,11 @@ export default function SignUpPage() {
           </Label>
           <Input
             id="name"
+            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
+            placeholder="Jane Doe"
             required
-            autoFocus
             className="h-11 rounded-lg"
           />
         </div>
@@ -271,7 +287,11 @@ export default function SignUpPage() {
       >
         Already have an account?{" "}
         <Link
-          href="/sign-in"
+          href={
+            callbackUrl
+              ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}${email ? `&email=${encodeURIComponent(email)}` : ""}`
+              : "/sign-in"
+          }
           className="font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           Sign in

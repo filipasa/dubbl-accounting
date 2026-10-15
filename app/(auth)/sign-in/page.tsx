@@ -64,12 +64,17 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-  const [email, setEmail] = useState("");
+  const emailParam = searchParams.get("email");
+  const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [devLoading, setDevLoading] = useState(false);
   const [providers, setProviders] = useState<ProvidersConfig | null>(null);
+
+  useEffect(() => {
+    if (emailParam) setEmail(emailParam);
+  }, [emailParam]);
   // Two-factor: once the server asks for a code we reveal the input and keep it
   // across retries.
   const [needsTotp, setNeedsTotp] = useState(false);
@@ -315,7 +320,11 @@ function SignInContent() {
         >
           Don&apos;t have an account?{" "}
           <Link
-            href="/sign-up"
+            href={
+              callbackUrl && callbackUrl !== "/dashboard"
+                ? `/sign-up?callbackUrl=${encodeURIComponent(callbackUrl)}${email ? `&email=${encodeURIComponent(email)}` : ""}`
+                : "/sign-up"
+            }
             className="font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
           >
             Sign up

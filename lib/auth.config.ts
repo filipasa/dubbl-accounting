@@ -28,12 +28,19 @@ export const authConfig: NextAuthConfig = {
 
       // Redirect logged-in users away from auth pages
       if (isLoggedIn && (pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up"))) {
+        const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
+        if (callbackUrl && (callbackUrl.startsWith("/") || callbackUrl.startsWith(request.nextUrl.origin))) {
+          return Response.redirect(new URL(callbackUrl, request.nextUrl.origin));
+        }
         return Response.redirect(new URL("/dashboard", request.nextUrl.origin));
       }
 
       // Public routes
       if (
         pathname === "/" ||
+        pathname.startsWith("/invite") ||
+        pathname.startsWith("/api/v1/invitations/info") ||
+        pathname.startsWith("/api/v1/invite-links/info") ||
         pathname.startsWith("/pay") ||
         pathname.startsWith("/api/pay") ||
         pathname.startsWith("/portal") ||
