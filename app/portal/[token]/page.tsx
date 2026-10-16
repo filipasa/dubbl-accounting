@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { FileText, ScrollText, MessageSquare, CreditCard, ExternalLink } from "lucide-react";
 
 interface PortalInfo {
@@ -11,7 +12,6 @@ interface PortalInfo {
 
 export default function PortalOverviewPage() {
   const { token } = useParams<{ token: string }>();
-  const router = useRouter();
   const [info, setInfo] = useState<PortalInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +74,7 @@ export default function PortalOverviewPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Welcome, {info.contact.name}</h2>
         <p className="mt-1 text-sm text-gray-600">
@@ -82,22 +82,22 @@ export default function PortalOverviewPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 w-full">
         {sections.map((sec) => (
-          <button
+          <Link
             key={sec.title}
-            onClick={() => router.push(sec.href)}
-            className="flex items-center gap-3.5 rounded-lg border bg-white p-4 text-left transition-colors hover:bg-gray-50 hover:border-gray-300"
+            href={sec.href}
+            className="flex w-full min-w-0 items-center gap-3.5 rounded-lg border bg-white p-4 text-left transition-colors hover:bg-gray-50 hover:border-gray-300"
           >
             <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${sec.color}`}>
               <sec.icon className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-900">{sec.title}</p>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{sec.description}</p>
+              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{sec.description}</p>
             </div>
             <ExternalLink className="size-4 shrink-0 text-gray-400" />
-          </button>
+          </Link>
         ))}
       </div>
     </div>
