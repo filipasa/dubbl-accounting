@@ -279,6 +279,21 @@ export function normalizeDateInput(dateStr?: string | null): string | undefined 
 }
 
 /**
+ * Adds a specific number of days to an ISO YYYY-MM-DD date string.
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().split("T")[0];
+  }
+  const fallback = new Date();
+  fallback.setDate(fallback.getDate() + days);
+  return fallback.toISOString().split("T")[0];
+}
+
+/**
  * Intelligently cleans customer name when both individual and company are provided.
  */
 export function cleanCustomerName(name: string): string {
@@ -597,7 +612,7 @@ export async function createQuoteAction(
     new Date().toISOString().split("T")[0];
   const calculatedExpiry =
     normalizeDateInput(params.expiryDate) ||
-    new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+    addDaysToDateString(issueDate, 15);
 
   const res = await executeMcpTool(ctx, "create_quote", {
     contactId: contact.id,

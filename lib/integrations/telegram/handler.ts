@@ -117,7 +117,8 @@ const TOOL_DEFINITIONS = [
         },
         expiryDate: {
           type: "STRING",
-          description: "Quote expiry date (e.g. 09/09/2026 or 2026-09-09)",
+          description:
+            "Quote expiry date (e.g. 09/09/2026 or 2026-09-09). Defaults to 15 days after issueDate if not provided.",
         },
         reference: {
           type: "STRING",
@@ -1379,9 +1380,10 @@ CRITICAL INSTRUCTIONS:
 5. CUSTOMER DETAILS & TAX:
    - If the customer details include both a person name and a business/company name (e.g. "ILIE Sula" and "Zamos Construction LTD"), use the business name for customerName (e.g. "Zamos Construction LTD" or "Zamos Construction LTD (ILIE Sula)").
    - If the user provides an address, email, phone, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, customerPhone, and taxRatePercent.
-6. INVOICE NUMBERS & DATES:
+6. INVOICE & QUOTE NUMBERS & DATES:
    - If user provides an explicit invoice number (e.g. "Invoice Number: 146233"), ALWAYS pass it into the "invoiceNumber" argument.
    - If user provides dates (e.g. "Date of issue: 09/08/2026", "Date due: 09/08/2026"), pass them into "issueDate" and "dueDate". Note that dates in the UK are DD/MM/YYYY.
+   - For quotes, quotations are valid for 15 days from issue date. If the user does not specify an expiry date, expiryDate defaults to 15 days after issueDate.
 7. NOTES:
    - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.

@@ -244,7 +244,7 @@ export async function createQuote({
   const today = new Date().toISOString().split("T")[0];
   const calculatedExpiry =
     expiryDate ||
-    new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+    new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0];
 
   const res = await callMcpTool("create_quote", {
     contactId: contact.id,
