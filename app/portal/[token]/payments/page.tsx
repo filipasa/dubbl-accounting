@@ -44,15 +44,15 @@ export default function PortalPaymentsPage() {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Payment History</h2>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-hidden bg-white">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead className="text-right">Invoice Total</TableHead>
-              <TableHead className="text-right">Amount Paid</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="whitespace-nowrap">Invoice</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Invoice Total</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Amount Paid</TableHead>
+              <TableHead className="whitespace-nowrap">Date</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -65,11 +65,11 @@ export default function PortalPaymentsPage() {
             ) : (
               payments.map(p => (
                 <TableRow key={p.invoiceId}>
-                  <TableCell className="text-sm font-medium">{p.invoiceNumber}</TableCell>
-                  <TableCell className="text-sm text-right">{formatMoney(p.total, p.currencyCode)}</TableCell>
-                  <TableCell className="text-sm text-right font-medium">{formatMoney(p.amountPaid, p.currencyCode)}</TableCell>
-                  <TableCell className="text-sm">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "-"}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm font-medium whitespace-nowrap">{p.invoiceNumber}</TableCell>
+                  <TableCell className="text-sm text-right whitespace-nowrap">{formatMoney(p.total, p.currencyCode)}</TableCell>
+                  <TableCell className="text-sm text-right font-medium whitespace-nowrap">{formatMoney(p.amountPaid, p.currencyCode)}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "-"}</TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <Badge variant={p.status === "paid" ? "default" : "secondary"} className="text-xs">
                       {p.status}
                     </Badge>

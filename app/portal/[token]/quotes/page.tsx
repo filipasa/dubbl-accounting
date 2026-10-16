@@ -60,16 +60,16 @@ export default function PortalQuotesPage() {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Quotes</h2>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-hidden bg-white">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Quote #</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
+              <TableHead className="whitespace-nowrap">Quote #</TableHead>
+              <TableHead className="whitespace-nowrap">Date</TableHead>
+              <TableHead className="whitespace-nowrap">Expiry</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Total</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -82,16 +82,16 @@ export default function PortalQuotesPage() {
             ) : (
               quotes.map(q => (
                 <TableRow key={q.id}>
-                  <TableCell className="text-sm font-medium">{q.quoteNumber}</TableCell>
-                  <TableCell className="text-sm">{formatDate(q.issueDate)}</TableCell>
-                  <TableCell className="text-sm">{formatDate(q.expiryDate)}</TableCell>
-                  <TableCell className="text-sm text-right">{formatMoney(q.total, q.currencyCode)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm font-medium whitespace-nowrap">{q.quoteNumber}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{formatDate(q.issueDate)}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{formatDate(q.expiryDate)}</TableCell>
+                  <TableCell className="text-sm text-right font-medium whitespace-nowrap">{formatMoney(q.total, q.currencyCode)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <Badge variant={q.status === "accepted" ? "default" : q.status === "declined" ? "destructive" : "secondary"} className="text-xs">
                       {q.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
                       <a
                         href={`/api/portal/${token}/quotes/${q.id}/pdf?format=pdf`}

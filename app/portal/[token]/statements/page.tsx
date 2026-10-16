@@ -50,9 +50,9 @@ export default function PortalStatementsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Statement of Account</h2>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4">
           <a
             href={`/api/portal/${token}/statements/pdf?format=pdf`}
             target="_blank"
@@ -64,22 +64,22 @@ export default function PortalStatementsPage() {
             </Button>
           </a>
           <div className="text-right">
-            <p className="text-sm text-gray-500">Total Outstanding</p>
-            <p className="text-xl font-bold">{formatMoney(totalOutstanding, currencyCode)}</p>
+            <p className="text-xs sm:text-sm text-gray-500">Total Outstanding</p>
+            <p className="text-lg sm:text-xl font-bold">{formatMoney(totalOutstanding, currencyCode)}</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-hidden bg-white">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Paid</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="whitespace-nowrap">Date</TableHead>
+              <TableHead className="whitespace-nowrap">Description</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Amount</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Paid</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Balance</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -92,18 +92,18 @@ export default function PortalStatementsPage() {
             ) : (
               lines.map((line, i) => (
                 <TableRow key={i}>
-                  <TableCell className="text-sm">{line.date}</TableCell>
-                  <TableCell className="text-sm">{line.description}</TableCell>
-                  <TableCell className="text-sm text-right">
+                  <TableCell className="text-sm whitespace-nowrap">{line.date}</TableCell>
+                  <TableCell className="text-sm min-w-[140px]">{line.description}</TableCell>
+                  <TableCell className="text-sm text-right whitespace-nowrap">
                     {formatMoney(line.amount, line.currencyCode || currencyCode)}
                   </TableCell>
-                  <TableCell className="text-sm text-right">
+                  <TableCell className="text-sm text-right whitespace-nowrap">
                     {formatMoney(line.paid, line.currencyCode || currencyCode)}
                   </TableCell>
-                  <TableCell className="text-sm text-right font-medium">
+                  <TableCell className="text-sm text-right font-medium whitespace-nowrap">
                     {formatMoney(line.balance, line.currencyCode || currencyCode)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <Badge variant={line.status === "paid" ? "default" : "secondary"} className="text-xs">
                       {line.status}
                     </Badge>

@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FileText, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileText, ScrollText, MessageSquare, CreditCard, ExternalLink } from "lucide-react";
 
 interface PortalInfo {
   contact: { id: string; name: string; email: string | null };
   organization: { name: string };
 }
 
-export default function PortalPage() {
+export default function PortalOverviewPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
   const [info, setInfo] = useState<PortalInfo | null>(null);
@@ -28,57 +27,79 @@ export default function PortalPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900">Portal Unavailable</h1>
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
-        </div>
+      <div className="text-center py-12">
+        <h2 className="text-lg font-semibold text-gray-900">Portal Unavailable</h2>
+        <p className="mt-2 text-sm text-gray-600">{error}</p>
       </div>
     );
   }
 
   if (!info) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-sm text-gray-500">Loading...</div>
+      <div className="flex min-h-[300px] items-center justify-center">
+        <p className="text-sm text-gray-500">Loading...</p>
       </div>
     );
   }
 
+  const sections = [
+    {
+      title: "Invoices",
+      description: "View and pay outstanding or past invoices",
+      href: `/portal/${token}/invoices`,
+      icon: FileText,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      title: "Statements",
+      description: "Check your running balance and download PDF statements",
+      href: `/portal/${token}/statements`,
+      icon: ScrollText,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      title: "Quotes",
+      description: "Review, accept, or download price estimates",
+      href: `/portal/${token}/quotes`,
+      icon: MessageSquare,
+      color: "bg-amber-50 text-amber-600",
+    },
+    {
+      title: "Payments",
+      description: "See your payment transaction history",
+      href: `/portal/${token}/payments`,
+      icon: CreditCard,
+      color: "bg-purple-50 text-purple-600",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white px-6 py-4">
-        <div className="mx-auto max-w-3xl flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">{info.organization.name}</h1>
-            <p className="text-sm text-gray-500">Customer Portal</p>
-          </div>
-          <p className="text-sm text-gray-600">{info.contact.name}</p>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-3xl px-6 py-8">
-        <h2 className="text-base font-medium text-gray-900">Welcome, {info.contact.name}</h2>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Welcome, {info.contact.name}</h2>
         <p className="mt-1 text-sm text-gray-600">
-          View your invoices and documents from {info.organization.name}.
+          Manage your account with {info.organization.name}. Select a section below or use the tabs above.
         </p>
+      </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {sections.map((sec) => (
           <button
-            onClick={() => router.push(`/portal/${token}/invoices`)}
-            className="flex items-center gap-3 rounded-lg border bg-white p-4 text-left transition-colors hover:bg-gray-50"
+            key={sec.title}
+            onClick={() => router.push(sec.href)}
+            className="flex items-center gap-3.5 rounded-lg border bg-white p-4 text-left transition-colors hover:bg-gray-50 hover:border-gray-300"
           >
-            <div className="flex size-10 items-center justify-center rounded-lg bg-blue-50">
-              <FileText className="size-5 text-blue-600" />
+            <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${sec.color}`}>
+              <sec.icon className="size-5" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Invoices</p>
-              <p className="text-xs text-gray-500">View and download your invoices</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900">{sec.title}</p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{sec.description}</p>
             </div>
-            <ExternalLink className="ml-auto size-4 text-gray-400" />
+            <ExternalLink className="size-4 shrink-0 text-gray-400" />
           </button>
-        </div>
-      </main>
+        ))}
+      </div>
     </div>
   );
 }
