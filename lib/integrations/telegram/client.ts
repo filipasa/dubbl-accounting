@@ -112,7 +112,7 @@ export async function sendTelegramMessage({
   text,
   parseMode = "HTML",
   replyToMessageId,
-  disableWebPagePreview,
+  disableWebPagePreview = true,
 }: {
   chatId: string | number;
   text: string;
@@ -154,12 +154,9 @@ export async function sendTelegramMessage({
     const body: Record<string, unknown> = {
       chat_id: chatId,
       text: chunk,
+      disable_web_page_preview: disableWebPagePreview,
+      link_preview_options: { is_disabled: disableWebPagePreview },
     };
-
-    if (disableWebPagePreview !== undefined) {
-      body.disable_web_page_preview = disableWebPagePreview;
-      body.link_preview_options = { is_disabled: disableWebPagePreview };
-    }
 
     if (parseMode) {
       body.parse_mode = parseMode;
