@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/shared/theme-provider";
+import { getPublicSiteUrl } from "@/lib/public-url";
 import "fumadocs-ui/style.css";
 import "./globals.css";
 
@@ -22,7 +23,7 @@ const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+const APP_URL = getPublicSiteUrl();
 
 export const metadata: Metadata = {
   title: {
@@ -61,10 +62,10 @@ export const metadata: Metadata = {
       "Double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
-        url: "/og.jpg",
+        url: "/og-fixbooks.jpg?v=20261016",
         width: 1200,
         height: 630,
-        alt: "fixbooks - Accounting for modern teams",
+        alt: "fixbooks - Business Management for Modern Teams",
       },
     ],
   },
@@ -75,10 +76,10 @@ export const metadata: Metadata = {
       "Double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Cloud Hosted.",
     images: [
       {
-        url: "/og.jpg",
+        url: "/og-fixbooks.jpg?v=20261016",
         width: 1200,
         height: 630,
-        alt: "fixbooks - Accounting for modern teams",
+        alt: "fixbooks - Business Management for Modern Teams",
       },
     ],
   },

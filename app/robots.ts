@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getPublicSiteUrl } from "@/lib/public-url";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+const APP_URL = getPublicSiteUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return {
