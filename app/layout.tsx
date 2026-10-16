@@ -23,7 +23,7 @@ const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
 });
 
-const APP_URL = getPublicSiteUrl();
+const APP_URL = "https://www.fixbooks.io";
 
 export const metadata: Metadata = {
   title: {
