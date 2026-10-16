@@ -391,7 +391,7 @@ const html = `<!DOCTYPE html>
     <img src="${logoDataUri}" class="logo-mark" />
     <div class="wordmark">fixbooks</div>
     <div class="tagline">Business management for modern teams</div>
-    <div class="url-badge">fixbooks.dev</div>
+    <div class="url-badge">fixbooks.io</div>
   </div>
 
   <!-- Bottom pills -->
