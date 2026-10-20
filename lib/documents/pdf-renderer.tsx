@@ -121,6 +121,9 @@ export function resolvePdfImage(url?: string | null): string | null {
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
     return url;
   }
+  if (fs.existsSync(url)) {
+    return url;
+  }
   if (url.startsWith("/")) {
     const localPath = path.join(process.cwd(), "public", url);
     if (!fs.existsSync(localPath)) return null;
@@ -153,9 +156,38 @@ export function resolvePdfImage(url?: string | null): string | null {
 async function fetchImageAsDataUri(url: string, timeoutMs = 3500): Promise<string | null> {
   if (!url) return null;
   if (url.startsWith("data:")) return url;
-  if (url.startsWith("/")) {
-    return resolvePdfImage(url);
+
+  let localPath: string | null = null;
+  if (fs.existsSync(url)) {
+    localPath = url;
+  } else if (url.startsWith("/")) {
+    const p = path.join(process.cwd(), "public", url);
+    if (fs.existsSync(p)) {
+      localPath = p;
+    }
   }
+
+  if (localPath) {
+    try {
+      const ext = path.extname(localPath).toLowerCase();
+      const mime = ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : ext === ".svg" ? "image/svg+xml" : "image/png";
+      const buf = fs.readFileSync(localPath);
+      return `data:${mime};base64,${buf.toString("base64")}`;
+    } catch {
+      return resolvePdfImage(url);
+    }
+  }
+
+  if (url.startsWith("/")) {
+    try {
+      const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://www.fixbooks.io";
+      const fullUrl = `${appUrl.replace(/\/$/, "")}${url}`;
+      return await fetchImageAsDataUri(fullUrl, timeoutMs);
+    } catch {
+      return null;
+    }
+  }
+
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     return null;
   }
@@ -565,13 +597,24 @@ export async function renderInvoicePdf(
   template: PdfTemplateSettings,
   labels?: PdfDocumentLabels
 ): Promise<ArrayBuffer> {
-  let rawLogo = template.logoUrl || (org as any).logoUrl || (org as any).logo || null;
-  let resolvedLogoUrl = rawLogo;
-  if (rawLogo) {
+  let resolvedLogoUrl: string | null = null;
+  if (template.logoUrl) {
     try {
-      resolvedLogoUrl = await fetchImageAsDataUri(rawLogo);
+      resolvedLogoUrl = await fetchImageAsDataUri(template.logoUrl);
     } catch {
       resolvedLogoUrl = null;
+    }
+  }
+
+  // Fall back to organisation logo if template logo is missing or failed to resolve
+  if (!resolvedLogoUrl) {
+    const orgLogo = (org as any).logoUrl || (org as any).logo || null;
+    if (orgLogo) {
+      try {
+        resolvedLogoUrl = await fetchImageAsDataUri(orgLogo);
+      } catch {
+        resolvedLogoUrl = null;
+      }
     }
   }
 
@@ -613,7 +656,9 @@ export async function renderInvoicePdf(
 
   const isQuotation =
     template.layout === "quotation" ||
-    (labels?.title === "Quotation" && template.layout !== "standard");
+    labels?.title === "Quotation" ||
+    labels?.title === "Quote" ||
+    (labels?.numberLabel && labels.numberLabel.toLowerCase().includes("quote"));
 
   const DocComponent = isQuotation ? QuotationDocument : InvoiceDocument;
 

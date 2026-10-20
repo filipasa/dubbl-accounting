@@ -225,9 +225,10 @@ export function generateDocumentHtml(
     logoUrl: template.logoUrl || "",
   };
 
-  const logoHtml = template.logoUrl
+  const effectiveLogoUrl = template.logoUrl || (org as any).logoUrl || (org as any).logo || null;
+  const logoHtml = effectiveLogoUrl
     ? `<div style="max-width:180px;max-height:60px;display:flex;justify-content:flex-end;">
-      <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;" />
+      <img src="${escapeHtml(effectiveLogoUrl)}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;" />
     </div>`
     : "";
 
@@ -489,9 +490,10 @@ export function generateQuotationHtml(doc: DocumentData, org: OrgInfo, template:
     companyAddressLines.push(...org.address.split(",").map((s) => s.trim()));
   }
 
-  const logoHtml = template.logoUrl
+  const effectiveLogoUrl = template.logoUrl || (org as any).logoUrl || (org as any).logo || null;
+  const logoHtml = effectiveLogoUrl
     ? `<div style="max-width:180px;max-height:65px;display:flex;justify-content:flex-end;">
-      <img src="${escapeHtml(template.logoUrl)}" alt="Logo" style="max-height:65px;max-width:180px;object-fit:contain;" />
+      <img src="${escapeHtml(effectiveLogoUrl)}" alt="Logo" style="max-height:65px;max-width:180px;object-fit:contain;" />
     </div>`
     : "";
 
