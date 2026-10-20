@@ -483,116 +483,113 @@ export function QuotationDocument({
           </View>
         </View>
 
-        {/* Line Items Table */}
-        <View style={s.table}>
-          {/* Header Row */}
-          <View style={[s.tableHeader, { backgroundColor: accent }]}>
-            <Text style={[s.th, s.colItem]}>Item</Text>
-            <Text style={[s.th, s.colVatRate]}>VAT Rate</Text>
-            <Text style={[s.th, s.colQty]}>Quantity</Text>
-            <Text style={[s.th, s.colRate]}>Rate</Text>
-            <Text style={[s.th, s.colAmount]}>Amount</Text>
-            <Text style={[s.th, s.colVat]}>VAT</Text>
-            <Text style={[s.th, s.colTotal]}>Total</Text>
-          </View>
-
-          {/* Item Rows */}
-          {itemLines.map((line, idx) => {
-            // Split multi-line descriptions into title + attributes
-            const descParts = (line.description || "")
-              .split("\n")
-              .map((p) => p.trim())
-              .filter(Boolean);
-            const mainTitle = descParts[0] || line.description;
-            const extraLines = descParts.slice(1);
-            const shortDescParts = line.shortDescription
-              ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
-              : [];
-            const attrLines = [...extraLines, ...shortDescParts];
-            const resolvedLineThumb = resolvePdfImage(line.imageUrl);
-
-            // VAT Rate string (e.g. "20%")
-            const vatRateStr = line.taxRate?.rate
-              ? `${(line.taxRate.rate / 100).toFixed(0)}%`
-              : line.amount > 0 && line.taxAmount > 0
-              ? `${Math.round((line.taxAmount / line.amount) * 100)}%`
-              : "-";
-
-            // Quantity formatted
-            const qtyNum = line.quantity / 100;
-            const qtyStr = Number.isInteger(qtyNum) ? `${qtyNum}` : qtyNum.toFixed(2);
-
-            const rowGrossTotal = line.amount + line.taxAmount;
-
-            return (
-              <View key={`row-${idx}`} style={s.tableRow}>
-                {/* Top Row: Item Index & Title + 6 Columns */}
-                <View style={s.tableRowTop}>
-                  <View style={[s.colItem, { flexDirection: "row", alignItems: "flex-start" }]}>
-                    <Text style={s.itemIndex}>{idx + 1}.</Text>
-                    <Text style={[s.itemDesc, { flex: 1, marginBottom: 0 }]}>{mainTitle}</Text>
-                  </View>
-
-                  {/* VAT Rate */}
-                  <Text style={[s.colVatRate, { fontSize: 8, color: "#1c1c1c" }]}>
-                    {vatRateStr}
-                  </Text>
-
-                  {/* Quantity */}
-                  <Text style={[s.colQty, { fontSize: 8, color: "#1c1c1c" }]}>
-                    {qtyStr}
-                  </Text>
-
-                  {/* Unit Price Rate */}
-                  <Text style={[s.colRate, { fontSize: 8, color: "#1c1c1c" }]}>
-                    {fmtMoney(line.unitPrice, inv.currencyCode)}
-                  </Text>
-
-                  {/* Net Amount */}
-                  <Text style={[s.colAmount, { fontSize: 8, color: "#1c1c1c" }]}>
-                    {fmtMoney(line.amount, inv.currencyCode)}
-                  </Text>
-
-                  {/* VAT Amount */}
-                  <Text style={[s.colVat, { fontSize: 8, color: "#1c1c1c" }]}>
-                    {fmtMoney(line.taxAmount, inv.currencyCode)}
-                  </Text>
-
-                  {/* Line Total */}
-                  <Text
-                    style={[
-                      s.colTotal,
-                      { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#1c1c1c" },
-                    ]}
-                  >
-                    {fmtMoney(rowGrossTotal, inv.currencyCode)}
-                  </Text>
-                </View>
-
-                {/* Bottom Row: Attributes on left, Product thumbnail aligned right under Total */}
-                {(attrLines.length > 0 || resolvedLineThumb) && (
-                  <View style={s.tableRowBottom}>
-                    <View style={{ flex: 1, paddingLeft: 12, paddingRight: 8 }}>
-                      {attrLines.map((attr, aIdx) => (
-                        <Text key={`attr-${aIdx}`} style={s.itemAttr}>
-                          {attr}
-                        </Text>
-                      ))}
-                    </View>
-                    {resolvedLineThumb ? (
-                      <View style={{ width: 50, alignItems: "flex-end" }}>
-                        <Image src={resolvedLineThumb} style={s.itemThumb} />
-                      </View>
-                    ) : null}
-                  </View>
-                )}
-              </View>
-            );
-          })}
+        {/* Line Items Table Header */}
+        <View style={[s.tableHeader, { backgroundColor: accent }]}>
+          <Text style={[s.th, s.colItem]}>Item</Text>
+          <Text style={[s.th, s.colVatRate]}>VAT Rate</Text>
+          <Text style={[s.th, s.colQty]}>Quantity</Text>
+          <Text style={[s.th, s.colRate]}>Rate</Text>
+          <Text style={[s.th, s.colAmount]}>Amount</Text>
+          <Text style={[s.th, s.colVat]}>VAT</Text>
+          <Text style={[s.th, s.colTotal]}>Total</Text>
         </View>
 
+        {/* Item Rows */}
+        {itemLines.map((line, idx) => {
+          // Split multi-line descriptions into title + attributes
+          const descParts = (line.description || "")
+            .split("\n")
+            .map((p) => p.trim())
+            .filter(Boolean);
+          const mainTitle = descParts[0] || line.description;
+          const extraLines = descParts.slice(1);
+          const shortDescParts = line.shortDescription
+            ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
+            : [];
+          const attrLines = [...extraLines, ...shortDescParts];
+          const resolvedLineThumb = resolvePdfImage(line.imageUrl);
+
+          // VAT Rate string (e.g. "20%")
+          const vatRateStr = line.taxRate?.rate
+            ? `${(line.taxRate.rate / 100).toFixed(0)}%`
+            : line.amount > 0 && line.taxAmount > 0
+            ? `${Math.round((line.taxAmount / line.amount) * 100)}%`
+            : "-";
+
+          // Quantity formatted
+          const qtyNum = line.quantity / 100;
+          const qtyStr = Number.isInteger(qtyNum) ? `${qtyNum}` : qtyNum.toFixed(2);
+
+          const rowGrossTotal = line.amount + line.taxAmount;
+
+          return (
+            <View key={`row-${idx}`} style={s.tableRow} wrap={false}>
+              {/* Top Row: Item Index & Title + 6 Columns */}
+              <View style={s.tableRowTop}>
+                <View style={[s.colItem, { flexDirection: "row", alignItems: "flex-start" }]}>
+                  <Text style={s.itemIndex}>{idx + 1}.</Text>
+                  <Text style={[s.itemDesc, { flex: 1, marginBottom: 0 }]}>{mainTitle}</Text>
+                </View>
+
+                {/* VAT Rate */}
+                <Text style={[s.colVatRate, { fontSize: 8, color: "#1c1c1c" }]}>
+                  {vatRateStr}
+                </Text>
+
+                {/* Quantity */}
+                <Text style={[s.colQty, { fontSize: 8, color: "#1c1c1c" }]}>
+                  {qtyStr}
+                </Text>
+
+                {/* Unit Price Rate */}
+                <Text style={[s.colRate, { fontSize: 8, color: "#1c1c1c" }]}>
+                  {fmtMoney(line.unitPrice, inv.currencyCode)}
+                </Text>
+
+                {/* Net Amount */}
+                <Text style={[s.colAmount, { fontSize: 8, color: "#1c1c1c" }]}>
+                  {fmtMoney(line.amount, inv.currencyCode)}
+                </Text>
+
+                {/* VAT Amount */}
+                <Text style={[s.colVat, { fontSize: 8, color: "#1c1c1c" }]}>
+                  {fmtMoney(line.taxAmount, inv.currencyCode)}
+                </Text>
+
+                {/* Line Total */}
+                <Text
+                  style={[
+                    s.colTotal,
+                    { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#1c1c1c" },
+                  ]}
+                >
+                  {fmtMoney(rowGrossTotal, inv.currencyCode)}
+                </Text>
+              </View>
+
+              {/* Bottom Row: Attributes on left, Product thumbnail aligned right under Total */}
+              {(attrLines.length > 0 || resolvedLineThumb) && (
+                <View style={s.tableRowBottom}>
+                  <View style={{ flex: 1, paddingLeft: 12, paddingRight: 8 }}>
+                    {attrLines.map((attr, aIdx) => (
+                      <Text key={`attr-${aIdx}`} style={s.itemAttr}>
+                        {attr}
+                      </Text>
+                    ))}
+                  </View>
+                  {resolvedLineThumb ? (
+                    <View style={{ width: 50, alignItems: "flex-end" }}>
+                      <Image src={resolvedLineThumb} style={s.itemThumb} />
+                    </View>
+                  ) : null}
+                </View>
+              )}
+            </View>
+          );
+        })}
+
         {/* Bottom Section: Bank Details on Left, Totals on Right */}
-        <View style={s.bottomRow}>
+        <View style={s.bottomRow} wrap={false}>
           {/* Bank Details Card */}
           {parsedBankRows.length > 0 ? (
             <View style={s.bankCard}>

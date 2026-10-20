@@ -393,61 +393,59 @@ function stripBotMentions(text: string | null | undefined): string | null {
         <Text style={s.dueSummary}>{summaryText}</Text>
 
         {/* Line Items */}
-        <View style={s.table}>
-          <View style={s.tableHeader}>
-            <Text style={[s.th, s.cellDesc]}>Description</Text>
-            <Text style={[s.th, s.cellQty]}>Qty</Text>
-            <Text style={[s.th, s.cellPrice]}>Unit price</Text>
-            {hasDiscount && <Text style={[s.th, s.cellDiscount, { color: "#737373" }]}>Discount</Text>}
-            <Text style={[s.th, s.cellAmount]}>Amount</Text>
-          </View>
-          {itemLines.map((line, i) => {
-            const resolvedImg = resolvePdfImage(line.imageUrl);
-            const descLines = (line.description || "")
-              .split("\n")
-              .map((p) => p.trim())
-              .filter(Boolean);
-            const mainTitle = descLines[0] || line.description;
-            const extraDescLines = descLines.slice(1);
-            const shortDescLines = line.shortDescription
-              ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
-              : [];
-            const allExtraLines = [...extraDescLines, ...shortDescLines];
-
-            return (
-              <View key={i} style={s.tableRow}>
-                <View style={[s.cellDesc, { flexDirection: "row", alignItems: "flex-start" }]}>
-                  {resolvedImg ? (
-                    <View style={s.lineImageWrapper}>
-                      <Image src={resolvedImg} style={s.lineImage} />
-                    </View>
-                  ) : hasAnyLineImage ? (
-                    <View style={s.lineImageSpacer} />
-                  ) : null}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9.5, color: dark, fontFamily: "Helvetica-Bold" }}>{mainTitle}</Text>
-                    {allExtraLines.map((descLine, dIdx) => (
-                      <Text key={dIdx} style={{ fontSize: 8, color: gray, marginTop: 1.5, lineHeight: 1.3 }}>
-                        {descLine}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-                <Text style={[s.cellQty, { color: dark, paddingTop: 1 }]}>{(line.quantity / 100).toFixed(2)}</Text>
-                <Text style={[s.cellPrice, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
-                {hasDiscount && (
-                  <Text style={[s.cellDiscount, { color: dark, paddingTop: 1 }]}>
-                    {line.discountPercent ? `${(line.discountPercent / 100).toFixed(2)}%` : "-"}
-                  </Text>
-                )}
-                <Text style={[s.cellAmount, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
-              </View>
-            );
-          })}
+        <View style={s.tableHeader}>
+          <Text style={[s.th, s.cellDesc]}>Description</Text>
+          <Text style={[s.th, s.cellQty]}>Qty</Text>
+          <Text style={[s.th, s.cellPrice]}>Unit price</Text>
+          {hasDiscount && <Text style={[s.th, s.cellDiscount, { color: "#737373" }]}>Discount</Text>}
+          <Text style={[s.th, s.cellAmount]}>Amount</Text>
         </View>
+        {itemLines.map((line, i) => {
+          const resolvedImg = resolvePdfImage(line.imageUrl);
+          const descLines = (line.description || "")
+            .split("\n")
+            .map((p) => p.trim())
+            .filter(Boolean);
+          const mainTitle = descLines[0] || line.description;
+          const extraDescLines = descLines.slice(1);
+          const shortDescLines = line.shortDescription
+            ? line.shortDescription.split("\n").map((p) => p.trim()).filter(Boolean)
+            : [];
+          const allExtraLines = [...extraDescLines, ...shortDescLines];
+
+          return (
+            <View key={i} style={s.tableRow} wrap={false}>
+              <View style={[s.cellDesc, { flexDirection: "row", alignItems: "flex-start" }]}>
+                {resolvedImg ? (
+                  <View style={s.lineImageWrapper}>
+                    <Image src={resolvedImg} style={s.lineImage} />
+                  </View>
+                ) : hasAnyLineImage ? (
+                  <View style={s.lineImageSpacer} />
+                ) : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 9.5, color: dark, fontFamily: "Helvetica-Bold" }}>{mainTitle}</Text>
+                  {allExtraLines.map((descLine, dIdx) => (
+                    <Text key={dIdx} style={{ fontSize: 8, color: gray, marginTop: 1.5, lineHeight: 1.3 }}>
+                      {descLine}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+              <Text style={[s.cellQty, { color: dark, paddingTop: 1 }]}>{(line.quantity / 100).toFixed(2)}</Text>
+              <Text style={[s.cellPrice, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.unitPrice, inv.currencyCode)}</Text>
+              {hasDiscount && (
+                <Text style={[s.cellDiscount, { color: dark, paddingTop: 1 }]}>
+                  {line.discountPercent ? `${(line.discountPercent / 100).toFixed(2)}%` : "-"}
+                </Text>
+              )}
+              <Text style={[s.cellAmount, { color: dark, paddingTop: 1 }]}>{fmtMoney(line.amount, inv.currencyCode)}</Text>
+            </View>
+          );
+        })}
 
         {/* Totals */}
-        <View style={s.totalsContainer}>
+        <View style={s.totalsContainer} wrap={false}>
           <View style={s.totalsBlock}>
             <View style={s.totalRow}>
               <Text style={s.totalLabel}>Subtotal</Text>

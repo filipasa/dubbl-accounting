@@ -586,6 +586,14 @@ export function generateQuotationHtml(doc: DocumentData, org: OrgInfo, template:
 <head>
   <meta charset="utf-8">
   <title>Quotation ${doc.documentNumber}</title>
+  <style>
+    @media print {
+      body { margin: 0; padding: 0; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+    }
+  </style>
 </head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;margin:0;padding:0;color:#1c1c1c;background:#ffffff;">
   <div style="max-width:800px;margin:0 auto;padding:40px 48px;">
