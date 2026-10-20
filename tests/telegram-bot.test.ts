@@ -181,5 +181,61 @@ test("findInvoiceByNumber, findQuoteByNumber, and findBillByNumber safely handle
   assert.strictEqual(billResult, null, "Should safely return null when bill not found in dummy org without throwing UUID error");
 });
 
+test("sanitizePortalUrls strips hallucinated /api and /api/v1 prefix from customer portal URLs while keeping PDF links intact", async () => {
+  const { sanitizePortalUrls } = await import(
+    "../lib/integrations/whatsapp/executor"
+  );
+
+  const quotePortal = "https://fixbooks.io/api/v1/portal/207b05089bc83c7ad3ba0986bf8eea4d28f0943f46ebf84070ce563d4620cb5b/quotes";
+  assert.strictEqual(
+    sanitizePortalUrls(quotePortal),
+    "https://fixbooks.io/portal/207b05089bc83c7ad3ba0986bf8eea4d28f0943f46ebf84070ce563d4620cb5b/quotes"
+  );
+
+  const quotePortalOldApi = "https://fixbooks.io/api/portal/token-abc-123/quotes";
+  assert.strictEqual(
+    sanitizePortalUrls(quotePortalOldApi),
+    "https://fixbooks.io/portal/token-abc-123/quotes"
+  );
+
+  const invoicePortal = "https://fixbooks.io/api/v1/portal/token-abc-123/invoices";
+  assert.strictEqual(
+    sanitizePortalUrls(invoicePortal),
+    "https://fixbooks.io/portal/token-abc-123/invoices"
+  );
+
+  const rootPortal = "https://fixbooks.io/api/v1/portal/token-abc-123";
+  assert.strictEqual(
+    sanitizePortalUrls(rootPortal),
+    "https://fixbooks.io/portal/token-abc-123"
+  );
+
+  const htmlMsg = `<a href="https://fixbooks.io/api/v1/portal/token123/quotes">Customer Portal Link</a>`;
+  assert.strictEqual(
+    sanitizePortalUrls(htmlMsg),
+    `<a href="https://fixbooks.io/portal/token123/quotes">Customer Portal Link</a>`
+  );
+
+  // PDF download links should NOT be modified
+  const quotePdf = "https://fixbooks.io/api/v1/portal/207b05089bc83c7ad3ba0986bf8eea4d28f0943f46ebf84070ce563d4620cb5b/quotes/c8144081-ce03-4f1a-b337-ad1e905d45d9/pdf";
+  assert.strictEqual(
+    sanitizePortalUrls(quotePdf),
+    quotePdf
+  );
+
+  const invoicePdf = "https://fixbooks.io/api/portal/token-abc-123/invoices/inv-123/pdf";
+  assert.strictEqual(
+    sanitizePortalUrls(invoicePdf),
+    invoicePdf
+  );
+
+  const statementPdf = "https://fixbooks.io/api/portal/token-abc-123/statements/pdf";
+  assert.strictEqual(
+    sanitizePortalUrls(statementPdf),
+    statementPdf
+  );
+});
+
+
 
 

@@ -30,6 +30,7 @@ import {
   reconcileBankTransactionAction,
   getReconciliationReportAction,
   executeMcpTool,
+  sanitizePortalUrls,
 } from "@/lib/integrations/whatsapp/executor";
 import {
   resolveBotUserContext,
@@ -88,10 +89,10 @@ const TOOL_DEFINITIONS = [
               unitPrice: {
                 type: "NUMBER",
                 description:
-                  "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50). Optional if product already exists in inventory items with a saved price.",
+                  "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
             },
-            required: ["description"],
+            required: ["description", "unitPrice"],
           },
         },
         shipping: {
@@ -178,10 +179,10 @@ const TOOL_DEFINITIONS = [
               unitPrice: {
                 type: "NUMBER",
                 description:
-                  "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). Optional if product already exists in inventory items with a saved price.",
+                  "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
             },
-            required: ["description"],
+            required: ["description", "unitPrice"],
           },
         },
         shipping: {
@@ -1358,10 +1359,20 @@ function buildTelegramSystemPrompt(orgName: string): string {
 All company transactions and amounts are in British Pounds (£ / GBP). Always display figures with the £ symbol (e.g. £250.00).
 
 CRITICAL INSTRUCTIONS:
-1. QUOTES vs INVOICES vs BILLS:
-   - When the user asks to create a "Quote", "Estimate", or "Pricing proposal", you MUST execute the \`create_quote\` tool. NEVER call \`create_invoice\` or \`create_bill\` when a quote was requested!
+1. QUOTES vs INVOICES vs BILLS & MANDATORY PRICES:
+   - When the user asks to create a "Quote", "Estimate", or "Pricing proposal", you execute the \`create_quote\` tool. NEVER call \`create_invoice\` or \`create_bill\` when a quote was requested!
    - When the user asks for a sales "Invoice" to a customer, execute the \`create_invoice\` tool.
-   - When the user asks to create, add, or record a "Bill", vendor/supplier bill, or purchase bill (e.g. from a supplier/store like Screwfix, Travis Perkins, Toolstation, or paying for materials, tools, or supplies), you MUST execute the \`create_bill\` tool.
+   - When the user asks to create, add, or record a "Bill", vendor/supplier bill, or purchase bill (e.g. from a supplier/store like Screwfix, Travis Perkins, Toolstation, or paying for materials, tools, or supplies), you execute the \`create_bill\` tool.
+   - MANDATORY PRICES & ASKING FOR MISSING INFORMATION (CRITICAL):
+     * Every quote and invoice line item requires a unit price.
+     * If the user sends a request to create a quote or invoice with items, schedules (e.g. door schedules), or materials WITHOUT providing unit prices:
+       -> DO NOT call \`create_quote\` or \`create_invoice\` with £0.00!
+       -> You MUST pause and reply to the user asking for the missing unit prices.
+       -> Summarize the extracted items clearly (with quantities, references, dimensions, and finishes) and ask:
+          "I have extracted the items for <b>[Customer Name]</b>:\n• [item 1]\n• [item 2]\n\nCould you please provide the unit prices for these items, or would you like me to create this draft at £0.00 so you can fill them in later?"
+       -> When the user replies with the prices (or confirms to create it as a £0 draft / leave prices blank), merge with the prior conversation details and execute \`create_quote\` or \`create_invoice\`.
+     * If only some items have prices and others are missing, ask for the prices of the missing items before executing the tool.
+     * If the customer name is missing, ask for the customer name before creating the document.
 2. PRODUCT NAME vs SHORT DESCRIPTION (CRITICAL):
    - In Fixbooks, line items have two distinct fields:
      * \`description\`: The product title or service name ONLY (e.g. "Pocket Door Kit").
@@ -1395,6 +1406,7 @@ CRITICAL INSTRUCTIONS:
        🔗 Customer Link: <portalUrl> (View & Accept)
        📄 Download PDF: <pdfUrl>
        🔗 View in Fixbooks: <viewUrl>
+     * CRITICAL: Use the exact portalUrl returned by the tool (e.g. https://fixbooks.io/portal/<token>/quotes). NEVER modify or prefix portalUrl with "/api" or "/api/v1"! The customer portal is a web UI page at /portal/..., NOT an API endpoint.
    - For invoices (e.g. "give me link for INV-00017", "link for invoice", "invoice pdf"):
      * Call \`get_invoice_pdf\` with invoiceNumber (e.g. "INV-00017").
      * Provide the PDF download link (Download PDF: <downloadUrl>).
@@ -1993,6 +2005,9 @@ export async function processIncomingTelegramUpdate(
   // 8. Send reply via Telegram Bot API
   let sendError: string | undefined;
   let sentResult: any = null;
+
+  // Sanitize any hallucinated /api/ or /api/v1/ prefix in customer portal UI links
+  replyText = sanitizePortalUrls(replyText);
 
   try {
     sentResult = await sendTelegramMessage({

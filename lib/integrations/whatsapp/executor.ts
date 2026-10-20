@@ -2749,3 +2749,22 @@ export async function getReconciliationReportAction(
   };
 }
 
+/**
+ * Sanitizes customer portal URLs in outbound bot messages.
+ * Prevents LLMs from hallucinating an /api or /api/v1 prefix onto customer portal web pages
+ * (e.g., https://fixbooks.io/api/v1/portal/.../quotes -> https://fixbooks.io/portal/.../quotes),
+ * while preserving API PDF endpoints (e.g. /api/v1/portal/.../quotes/.../pdf).
+ */
+export function sanitizePortalUrls(text: string): string {
+  if (!text) return text;
+  return text.replace(
+    /((?:https?:\/\/[^\s"'<>]+)?)\/api(?:\/v1)?\/portal\/([a-zA-Z0-9_-]+)(?:\/(quotes|invoices|statements|payments))?(?![\/\w-]*\/pdf)/gi,
+    (match, origin, token, section) => {
+      const base = origin || "";
+      const path = section ? `/portal/${token}/${section}` : `/portal/${token}`;
+      return `${base}${path}`;
+    }
+  );
+}
+
+

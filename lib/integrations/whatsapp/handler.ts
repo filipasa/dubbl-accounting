@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { whatsappMessageLog } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 import {
   getWhatsAppConfig,
   sendWhatsAppTextMessage,
@@ -26,6 +26,7 @@ import {
   reconcileBankTransactionAction,
   getReconciliationReportAction,
   executeMcpTool,
+  sanitizePortalUrls,
 } from "./executor";
 import {
   resolveBotUserContext,
@@ -78,7 +79,8 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 580 for £580, 90 for £90)",
+                description:
+                  "Unit price in pounds (e.g. 580 for £580, 90 for £90). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
             },
             required: ["description", "unitPrice"],
@@ -156,7 +158,8 @@ const TOOL_DEFINITIONS = [
               },
               unitPrice: {
                 type: "NUMBER",
-                description: "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50)",
+                description:
+                  "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
             },
             required: ["description", "unitPrice"],
@@ -838,21 +841,66 @@ export async function handleShortcutCommand(ctx: AuthContext, text: string): Pro
 }
 
 /**
- * Handles natural language via Gemini REST API with multi-turn function calling
+ * Loads recent WhatsApp conversation history for multi-turn context
  */
-async function handleGeminiNaturalLanguage(
-  ctx: AuthContext,
-  userMessage: string,
-  apiKey: string
-): Promise<string> {
-  const org = await getOrganizationDetails(ctx);
-  const systemPrompt = `You are a friendly, professional accounting assistant on WhatsApp for "${org.name}", a UK company.
+async function getRecentWhatsAppConversationHistory(
+  senderPhone: string,
+  excludeLogId?: string | null,
+  limit = 8
+): Promise<Array<{ role: "user" | "model"; text: string }>> {
+  try {
+    const logs = await db.query.whatsappMessageLog.findMany({
+      where: and(
+        eq(whatsappMessageLog.senderPhone, senderPhone),
+        excludeLogId ? ne(whatsappMessageLog.id, excludeLogId) : undefined
+      ),
+      orderBy: desc(whatsappMessageLog.createdAt),
+      limit: limit + 6,
+    });
+
+    if (!logs || logs.length === 0) return [];
+
+    const valid = logs
+      .filter((l) => {
+        const body = (l.messageBody || "").trim();
+        if (!body) return false;
+        if (body.startsWith("!") || body.toLowerCase() === "help") return false;
+        if (body.includes("AI service is momentarily busy")) return false;
+        if (body.includes("Fixbooks Access Restricted")) return false;
+        if (body.includes("This WhatsApp number is not connected")) return false;
+        return true;
+      })
+      .slice(0, limit)
+      .reverse();
+
+    return valid.map((l) => ({
+      role: l.direction === "outbound" ? ("model" as const) : ("user" as const),
+      text: l.messageBody || "",
+    }));
+  } catch (err) {
+    console.warn("[WhatsApp] Failed to fetch conversation history:", err);
+    return [];
+  }
+}
+
+function buildWhatsAppSystemPrompt(orgName: string): string {
+  return `You are a friendly, professional accounting assistant on WhatsApp for "${orgName}", a UK company.
 All company transactions and amounts are in British Pounds (£ / GBP). Always display figures with the £ symbol (e.g. £250.00).
 
 CRITICAL INSTRUCTIONS:
-1. QUOTES vs INVOICES:
-   - When the user asks to create a "Quote", "Estimate", or "Pricing proposal", you MUST execute the \`create_quote\` tool. NEVER call \`create_invoice\` when a quote was requested!
+1. QUOTES vs INVOICES & MANDATORY PRICES:
+   - When the user asks to create a "Quote", "Estimate", or "Pricing proposal", execute the \`create_quote\` tool. NEVER call \`create_invoice\` when a quote was requested!
    - When the user asks for an "Invoice" or "Bill", execute the \`create_invoice\` tool.
+   - MANDATORY PRICES & ASKING FOR MISSING INFORMATION (CRITICAL):
+     * Every quote and invoice line item requires a unit price.
+     * If the user sends a request to create a quote or invoice with items, schedules (e.g. door schedules), or materials WITHOUT providing unit prices:
+       -> DO NOT call \`create_quote\` or \`create_invoice\` with £0.00!
+       -> You MUST pause and reply to the user asking for the missing unit prices.
+       -> Summarize the extracted items clearly (with quantities, references, dimensions, and finishes) and ask:
+          "I have extracted the items for *[Customer Name]*:\n• [item 1]\n• [item 2]\n\nCould you please provide the unit prices for these items, or would you like me to create this draft at £0.00 so you can fill them in later?"
+       -> When the user replies with the prices (or confirms to create it as a £0 draft / leave prices blank), merge with the prior conversation details and execute \`create_quote\` or \`create_invoice\`.
+     * If only some items have prices and others are missing, ask for the prices of the missing items before executing the tool.
+     * If the customer name is missing, ask for the customer name before creating the document.
 2. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
    - NEVER create multiple separate quotes or invoices for a single transaction.
    - When the user provides multiple items, materials, or fees (such as products, delivery fees, installation, shipping), put ALL items into the \`lines\` array of ONE single quote or invoice.
@@ -871,8 +919,10 @@ CRITICAL INSTRUCTIONS:
 5. NOTES:
    - NEVER put "Created via WhatsApp Bot", "Created via Telegram Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
-6. INVOICE LINKS & PDF DOWNLOADS:
+6. INVOICE & QUOTE LINKS & PDF DOWNLOADS:
    - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), ONLY provide the PDF download link (Download PDF: <downloadUrl>).
+   - For quotes, provide the customer view/accept link (portalUrl) and the PDF download link (pdfUrl).
+   - CRITICAL: When outputting customer portal links, use the EXACT portalUrl returned by the tool (e.g. https://fixbooks.io/portal/<token>/quotes). NEVER prefix it with "/api" or "/api/v1"! The customer portal is a web UI page at /portal/..., NOT an API endpoint.
    - NEVER output internal web app dashboard links like "View Online" or "/sales/" URLs.
 7. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
@@ -893,6 +943,20 @@ WHATSAPP FORMATTING RULES:
 - Use WhatsApp markdown ONLY: *bold*, _italic_, ~strikethrough~, \`code\`.
 - For section titles or totals, use emojis and bold text, e.g. *Total: £685.00*.
 When confirming actions, display clean breakdowns with emojis.`;
+}
+
+/**
+ * Handles natural language via Gemini REST API with multi-turn function calling
+ */
+async function handleGeminiNaturalLanguage(
+  ctx: AuthContext,
+  senderPhone: string,
+  userMessage: string,
+  apiKey: string,
+  currentInboundId?: string | null
+): Promise<string> {
+  const org = await getOrganizationDetails(ctx);
+  const systemPrompt = buildWhatsAppSystemPrompt(org.name);
 
   const candidateModels = [
     "gemini-flash-latest",
@@ -903,15 +967,21 @@ When confirming actions, display clean breakdowns with emojis.`;
 
   let lastError: any = null;
 
+  // Load prior conversation history for multi-turn context
+  const history = await getRecentWhatsAppConversationHistory(senderPhone, currentInboundId);
+  const initialContents: any[] = history.map((h) => ({
+    role: h.role,
+    parts: [{ text: h.text }],
+  }));
+  initialContents.push({
+    role: "user",
+    parts: [{ text: userMessage }],
+  });
+
   for (const model of candidateModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const contents: any[] = [
-        {
-          role: "user",
-          parts: [{ text: userMessage }],
-        },
-      ];
+      const contents: any[] = JSON.parse(JSON.stringify(initialContents));
 
       // Up to 5 function-calling turns
       for (let turn = 0; turn < 5; turn++) {
@@ -1004,11 +1074,14 @@ When confirming actions, display clean breakdowns with emojis.`;
  */
 async function handleOpenAiNaturalLanguage(
   ctx: AuthContext,
+  senderPhone: string,
   userMessage: string,
-  apiKey: string
+  apiKey: string,
+  currentInboundId?: string | null
 ): Promise<string> {
   try {
     const org = await getOrganizationDetails(ctx);
+    const systemPrompt = buildWhatsAppSystemPrompt(org.name);
     const openAiTools = TOOL_DEFINITIONS.map((t) => ({
       type: "function",
       function: {
@@ -1027,11 +1100,17 @@ async function handleOpenAiNaturalLanguage(
       },
     }));
 
+    const history = await getRecentWhatsAppConversationHistory(senderPhone, currentInboundId);
+
     const messages: any[] = [
       {
         role: "system",
-        content: `You are a friendly accounting assistant for "${org.name}" on WhatsApp. Currency: ${org.defaultCurrency || "GBP"}. Format response cleanly for WhatsApp with emojis.`,
+        content: systemPrompt,
       },
+      ...history.map((h) => ({
+        role: h.role === "model" ? ("assistant" as const) : ("user" as const),
+        content: h.text,
+      })),
       { role: "user", content: userMessage },
     ];
 
@@ -1286,9 +1365,13 @@ export async function processIncomingWhatsAppMessage({
     if (trimmed.startsWith("!") || trimmed.toLowerCase() === "help") {
       replyText = await handleShortcutCommand(ctx, trimmed);
     } else if (config.geminiApiKey) {
-      replyText = await handleGeminiNaturalLanguage(ctx, trimmed, config.geminiApiKey);
+      replyText = await handleGeminiNaturalLanguage(ctx, cleanedFrom, trimmed, config.geminiApiKey, inboundLogId);
+      if (replyText.includes("AI service is momentarily busy") && config.openaiApiKey) {
+        console.log("[WhatsApp] Gemini busy, falling back to OpenAI...");
+        replyText = await handleOpenAiNaturalLanguage(ctx, cleanedFrom, trimmed, config.openaiApiKey, inboundLogId);
+      }
     } else if (config.openaiApiKey) {
-      replyText = await handleOpenAiNaturalLanguage(ctx, trimmed, config.openaiApiKey);
+      replyText = await handleOpenAiNaturalLanguage(ctx, cleanedFrom, trimmed, config.openaiApiKey, inboundLogId);
     } else {
       replyText =
         `👋 *Fixbooks WhatsApp Bot*\n\n` +
@@ -1311,6 +1394,9 @@ export async function processIncomingWhatsAppMessage({
   // 9. Send reply via Meta WhatsApp Cloud API
   let sendResult: any = null;
   let sendError: string | undefined;
+
+  // Sanitize any hallucinated /api/ or /api/v1/ prefix in customer portal UI links
+  replyText = sanitizePortalUrls(replyText);
 
   try {
     sendResult = await sendWhatsAppTextMessage({
