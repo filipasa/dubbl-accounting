@@ -71,7 +71,12 @@ const TOOL_DEFINITIONS = [
               description: {
                 type: "STRING",
                 description:
-                  "Description of the good, service, or fee (e.g. 'frameless door with concealed design' or 'Delivery Fee')",
+                  "Product name or main service title ONLY (e.g. 'Pocket Door Kit'). Do NOT include size, dimensions, or specifications here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762'). NEVER merge into description.",
               },
               quantity: {
                 type: "NUMBER",
@@ -82,9 +87,23 @@ const TOOL_DEFINITIONS = [
                 description:
                   "Unit price in pounds (e.g. 580 for £580, 90 for £90). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description:
+            "Shipping, delivery, or carriage fee in pounds (e.g. 15 for £15). This populates the dedicated shipping field below subtotal, NOT an ordinary line item.",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the quote (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -150,7 +169,12 @@ const TOOL_DEFINITIONS = [
             properties: {
               description: {
                 type: "STRING",
-                description: "Description of the good or service",
+                description: "Product name or main service title ONLY (e.g. 'Pocket Door Kit'). Do NOT include size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762'). NEVER merge into description.",
               },
               quantity: {
                 type: "NUMBER",
@@ -161,9 +185,22 @@ const TOOL_DEFINITIONS = [
                 description:
                   "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15). Adds shipping under the dedicated shipping field below subtotal.",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the invoice (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -282,7 +319,12 @@ const TOOL_DEFINITIONS = [
             properties: {
               description: {
                 type: "STRING",
-                description: "Line item description",
+                description: "Product name or service title ONLY (e.g. 'Pocket Door Kit'). Do NOT put size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762').",
               },
               quantity: {
                 type: "NUMBER",
@@ -292,9 +334,22 @@ const TOOL_DEFINITIONS = [
                 type: "NUMBER",
                 description: "Unit price in pounds (e.g. 250 for £250)",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the invoice (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         description: {
           type: "STRING",
@@ -355,7 +410,12 @@ const TOOL_DEFINITIONS = [
             properties: {
               description: {
                 type: "STRING",
-                description: "Line item description",
+                description: "Product name or service title ONLY (e.g. 'Pocket Door Kit'). Do NOT put size or dimensions here.",
+              },
+              shortDescription: {
+                type: "STRING",
+                description:
+                  "Short secondary description, specifications, dimensions, attributes, or size (e.g. 'Size: 1981 x 762').",
               },
               quantity: {
                 type: "NUMBER",
@@ -365,9 +425,22 @@ const TOOL_DEFINITIONS = [
                 type: "NUMBER",
                 description: "Unit price in pounds (e.g. 450 for £450)",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
+        },
+        shipping: {
+          type: "NUMBER",
+          description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the quote (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         description: {
           type: "STRING",
@@ -901,38 +974,51 @@ CRITICAL INSTRUCTIONS:
        -> When the user replies with the prices (or confirms to create it as a £0 draft / leave prices blank), merge with the prior conversation details and execute \`create_quote\` or \`create_invoice\`.
      * If only some items have prices and others are missing, ask for the prices of the missing items before executing the tool.
      * If the customer name is missing, ask for the customer name before creating the document.
-2. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
+2. PRODUCT NAME vs SHORT DESCRIPTION (CRITICAL):
+   - In Fixbooks, line items have two distinct fields:
+     * \`description\`: The product title or service name ONLY (e.g. "Pocket Door Kit").
+     * \`shortDescription\`: The specifications, dimensions, attributes, or size (e.g. "Size: 1981 x 762").
+   - If the user provides a product description/size (e.g. "Product Name: Pocket Door Kit Description: Size: 1981 x 762", or "Pocket Door Kit, Size: 1981 x 762"):
+     * \`description\` MUST be ONLY "Pocket Door Kit".
+     * \`shortDescription\` MUST be "Size: 1981 x 762".
+     * NEVER concatenate the size or specifications into the description field!
+3. SHIPPING & DELIVERY FEES (CRITICAL):
+   - When the user specifies shipping, delivery, or carriage (e.g. "Shipping: 15£", "Delivery: £20", "Shipping fee: £15"):
+     * Pass this amount in the top-level \`shipping\` argument of \`create_quote\` or \`create_invoice\` (e.g. \`shipping: 15\`).
+     * Do NOT add shipping as a regular product line inside the \`lines\` array! The top-level \`shipping\` argument places it in the dedicated Shipping field below subtotal in Fixbooks.
+4. DISCOUNTS & PROMOTIONS (CRITICAL):
+   - When the user specifies a discount (e.g. "Discount: 5%", "apply 5% discount", "Discount: £25", "10% off", "5% discount"):
+     * NEVER manually reduce or alter the product unitPrice!
+     * Always pass the EXACT original unit price in lines (e.g. £568.33).
+     * Pass the discount in the dedicated top-level \`discount\` parameter of \`create_quote\`, \`create_invoice\`, \`edit_quote\`, or \`edit_invoice\` (e.g. \`discount: "5%"\` or \`discount: "25"\`).
+     * Fixbooks will automatically keep the full unit price on the product and create the dedicated Discount line below subtotal.
+5. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
    - NEVER create multiple separate quotes or invoices for a single transaction.
-   - When the user provides multiple items, materials, or fees (such as products, delivery fees, installation, shipping), put ALL items into the \`lines\` array of ONE single quote or invoice.
-   - Example \`lines\` array:
-     [
-       { "description": "1x frameless door with concealed design", "quantity": 1, "unitPrice": 580 },
-       { "description": "Delivery Fee", "quantity": 1, "unitPrice": 90 }
-     ]
-3. CUSTOMER DETAILS & TAX:
+   - When the user provides multiple items, put ALL items into the \`lines\` array of ONE single quote or invoice.
+6. CUSTOMER DETAILS & TAX:
    - If the customer details include both a person name and a business/company name (e.g. "ILIE Sula" and "Zamos Construction LTD"), use the business name for customerName (e.g. "Zamos Construction LTD" or "Zamos Construction LTD (ILIE Sula)").
    - If the user provides an address, email, phone, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, customerPhone, and taxRatePercent.
-4. INVOICE & QUOTE NUMBERS & DATES:
+7. INVOICE & QUOTE NUMBERS & DATES:
    - If user provides an explicit invoice number (e.g. "Invoice Number: 146233"), ALWAYS pass it into the "invoiceNumber" argument.
    - If user provides dates (e.g. "Date of issue: 09/08/2026", "Date due: 09/08/2026"), pass them into "issueDate" and "dueDate". Note that dates in the UK are DD/MM/YYYY.
    - For quotes, quotations are valid for 15 days from issue date. If the user does not specify an expiry date, expiryDate defaults to 15 days after issueDate.
-5. NOTES:
+8. NOTES:
    - NEVER put "Created via WhatsApp Bot", "Created via Telegram Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
-6. INVOICE & QUOTE LINKS & PDF DOWNLOADS:
+9. INVOICE & QUOTE LINKS & PDF DOWNLOADS:
    - When the user asks for a link to an invoice or PDF (e.g. "Give me link to the invoice INV-00017"), ONLY provide the PDF download link (Download PDF: <downloadUrl>).
    - For quotes, provide the customer view/accept link (portalUrl) and the PDF download link (pdfUrl).
    - CRITICAL: When outputting customer portal links, use the EXACT portalUrl returned by the tool (e.g. https://fixbooks.io/portal/<token>/quotes). NEVER prefix it with "/api" or "/api/v1"! The customer portal is a web UI page at /portal/..., NOT an API endpoint.
    - NEVER output internal web app dashboard links like "View Online" or "/sales/" URLs.
-7. EDITING INVOICES & QUOTES:
+10. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
    - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
    - Only DRAFT documents can be edited.
-8. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
+11. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
    - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"), execute the \`send_invoice_email\` tool.
    - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00007 to customer email", "Email quote QTE-00007 to client@example.com"), execute the \`send_quote_email\` tool.
    - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
-9. BANK RECONCILIATION & TRANSACTIONS:
+12. BANK RECONCILIATION & TRANSACTIONS:
    - When the user asks to see unreconciled transactions, review bank accounts, or asks what needs reconciling, call the \`list_unreconciled_transactions\` tool.
    - When the user asks for candidate matches or suggestions for a specific transaction (e.g. "What matches transaction 6ab9e4fc?"), call \`get_reconciliation_suggestions\`.
    - When the user asks to reconcile, match, or categorize a bank transaction (e.g. "Reconcile transaction 6ab9e4fc with invoice INV-00017", "Match 6ab9e4fc to INV-00017", "Categorize 93ce783a as Cost of Goods Sold", "Reconcile 93ce783a to 5000", "Match 9b4425d3 to bill BILL-00001"), call the \`reconcile_bank_transaction\` tool with transactionId and the corresponding invoiceNumber, billNumber, accountCodeOrName, or target.

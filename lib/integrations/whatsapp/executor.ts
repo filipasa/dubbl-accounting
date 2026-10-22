@@ -37,6 +37,7 @@ import { randomBytes } from "crypto";
 import type { AuthContext } from "@/lib/api/auth-context";
 import { getWhatsAppConfig } from "./client";
 import { resolveOrCreateProductItem, isRealProductLine } from "@/lib/inventory/product-storage";
+import { isDiscountLine, isShippingLine } from "@/lib/documents/line-adjustments";
 import { getPublicAppUrl } from "@/lib/public-url";
 
 function sanitizeNotes(notes?: string | null): string | undefined {
@@ -467,6 +468,58 @@ export interface LineItemInput {
   quantity?: number;
   unitPrice: number;
   imageUrl?: string | null;
+  discountPercent?: number | string;
+}
+
+/**
+ * Parses a discount parameter (e.g. "5%", 5, "£25", 25) against an items subtotal in cents.
+ */
+export function parseDiscountAdjustment(
+  discount: number | string | undefined | null,
+  itemsSubtotalCents: number
+): { description: string; amountCents: number; amountPounds: number } | null {
+  if (discount == null) return null;
+  const str = String(discount).trim();
+  if (!str) return null;
+
+  // Match e.g. "5%", "10 %", "5.5%"
+  const percentMatch = str.match(/^([0-9]+(?:\.[0-9]+)?)\s*%$/);
+  if (percentMatch) {
+    const pct = parseFloat(percentMatch[1]);
+    if (pct > 0 && itemsSubtotalCents > 0) {
+      const amountCents = Math.round((itemsSubtotalCents * pct) / 100);
+      return {
+        description: `Discount (${pct}%)`,
+        amountCents,
+        amountPounds: amountCents / 100,
+      };
+    }
+    return null;
+  }
+
+  // If string contains '%' anywhere e.g. "5 % discount"
+  if (str.includes("%")) {
+    const numeric = parseFloat(str.replace(/[^0-9.]/g, ""));
+    if (!isNaN(numeric) && numeric > 0 && itemsSubtotalCents > 0) {
+      const amountCents = Math.round((itemsSubtotalCents * numeric) / 100);
+      return {
+        description: `Discount (${numeric}%)`,
+        amountCents,
+        amountPounds: amountCents / 100,
+      };
+    }
+  }
+
+  // Pure number or fixed amount in pounds e.g. "25", "£25", 25
+  const numeric = parseFloat(str.replace(/[^0-9.]/g, ""));
+  if (isNaN(numeric) || numeric <= 0) return null;
+
+  const amountCents = Math.round(numeric * 100);
+  return {
+    description: "Discount",
+    amountCents,
+    amountPounds: numeric,
+  };
 }
 
 /**
@@ -492,6 +545,7 @@ export async function createQuoteAction(
     reference?: string;
     notes?: string;
     shipping?: number | string;
+    discount?: number | string;
     imageUrl?: string | null;
   }
 ) {
@@ -579,16 +633,46 @@ export async function createQuoteAction(
     }
 
     const centsPrice = Math.round(unitPricePounds * 100);
+    const lineDiscountPct =
+      l.discountPercent != null
+        ? Math.round(parseFloat(String(l.discountPercent).replace("%", "")) * 100)
+        : undefined;
+
     formattedLines.push({
       description: l.description,
       ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
       ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: centsPrice,
+      ...(lineDiscountPct != null && lineDiscountPct > 0 ? { discountPercent: lineDiscountPct } : {}),
       ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     });
+  }
+
+  if (params.discount != null) {
+    const itemsSubtotalCents = formattedLines.reduce((sum, l) => {
+      if (isRealProductLine(l.description)) {
+        return sum + Math.round(Number(l.unitPrice || 0) * Number(l.quantity || 1));
+      }
+      return sum;
+    }, 0);
+    const disc = parseDiscountAdjustment(params.discount, itemsSubtotalCents);
+    if (disc && disc.amountCents > 0) {
+      const hasDiscountLine = formattedLines.some((l) =>
+        l.description.toLowerCase().startsWith("discount")
+      );
+      if (!hasDiscountLine) {
+        formattedLines.push({
+          description: disc.description,
+          quantity: 1,
+          unitPrice: -disc.amountCents,
+          ...(account?.id ? { accountId: account.id } : {}),
+          ...(taxRateId ? { taxRateId } : {}),
+        });
+      }
+    }
   }
 
   if (params.shipping != null && Number(params.shipping) > 0) {
@@ -691,6 +775,7 @@ export async function createInvoiceAction(
     reference?: string;
     notes?: string;
     shipping?: number | string;
+    discount?: number | string;
     imageUrl?: string | null;
   }
 ) {
@@ -777,16 +862,46 @@ export async function createInvoiceAction(
       }
     }
 
+    const lineDiscountPct =
+      l.discountPercent != null
+        ? Math.round(parseFloat(String(l.discountPercent).replace("%", "")) * 100)
+        : undefined;
+
     formattedLines.push({
       description: l.description,
       ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
       ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
       quantity: Number(l.quantity || 1),
       unitPrice: unitPricePounds,
+      ...(lineDiscountPct != null && lineDiscountPct > 0 ? { discountPercent: lineDiscountPct } : {}),
       ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
       ...(account?.id ? { accountId: account.id } : {}),
       ...(taxRateId ? { taxRateId } : {}),
     });
+  }
+
+  if (params.discount != null) {
+    const itemsSubtotalCents = formattedLines.reduce((sum, l) => {
+      if (isRealProductLine(l.description)) {
+        return sum + Math.round(Number(l.unitPrice || 0) * 100 * Number(l.quantity || 1));
+      }
+      return sum;
+    }, 0);
+    const disc = parseDiscountAdjustment(params.discount, itemsSubtotalCents);
+    if (disc && disc.amountPounds > 0) {
+      const hasDiscountLine = formattedLines.some((l) =>
+        l.description.toLowerCase().startsWith("discount")
+      );
+      if (!hasDiscountLine) {
+        formattedLines.push({
+          description: disc.description,
+          quantity: 1,
+          unitPrice: -disc.amountPounds,
+          ...(account?.id ? { accountId: account.id } : {}),
+          ...(taxRateId ? { taxRateId } : {}),
+        });
+      }
+    }
   }
 
   if (params.shipping != null && Number(params.shipping) > 0) {
@@ -1183,6 +1298,7 @@ export async function updateInvoiceAction(
     reference?: string;
     notes?: string;
     shipping?: number | string;
+    discount?: number | string;
     shortDescription?: string | null;
     imageUrl?: string | null;
   }
@@ -1220,6 +1336,23 @@ export async function updateInvoiceAction(
         imageUrl: params.imageUrl || null,
       },
     ];
+  } else if (!rawLines && (params.discount != null || params.shipping != null) && inv.lines && inv.lines.length > 0) {
+    const existingProductLines = inv.lines.filter(
+      (l) => !isDiscountLine(l) && !isShippingLine(l)
+    );
+    rawLines = existingProductLines.map((l) => ({
+      description: l.description,
+      quantity: (l.quantity || 100) / 100,
+      unitPrice: (l.unitPrice || 0) / 100,
+      shortDescription: l.shortDescription,
+      imageUrl: l.imageUrl,
+    }));
+    if (params.shipping == null) {
+      const existingShipping = inv.lines.find((l) => isShippingLine(l));
+      if (existingShipping) {
+        params.shipping = (existingShipping.unitPrice || 0) / 100;
+      }
+    }
   }
 
   let formattedLines: any[] | undefined;
@@ -1264,16 +1397,46 @@ export async function updateInvoiceAction(
         }
       }
 
+      const lineDiscountPct =
+        l.discountPercent != null
+          ? Math.round(parseFloat(String(l.discountPercent).replace("%", "")) * 100)
+          : undefined;
+
       formattedLines.push({
         description: l.description,
         ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
         ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
         quantity: Number(l.quantity || 1),
         unitPrice: unitPricePounds,
+        ...(lineDiscountPct != null && lineDiscountPct > 0 ? { discountPercent: lineDiscountPct } : {}),
         ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
         ...(account?.id ? { accountId: account.id } : {}),
         ...(taxRateId ? { taxRateId } : {}),
       });
+    }
+
+    if (params.discount != null) {
+      const itemsSubtotalCents = formattedLines.reduce((sum, l) => {
+        if (isRealProductLine(l.description)) {
+          return sum + Math.round(Number(l.unitPrice || 0) * 100 * Number(l.quantity || 1));
+        }
+        return sum;
+      }, 0);
+      const disc = parseDiscountAdjustment(params.discount, itemsSubtotalCents);
+      if (disc && disc.amountPounds > 0) {
+        const hasDiscountLine = formattedLines.some((l) =>
+          l.description.toLowerCase().startsWith("discount")
+        );
+        if (!hasDiscountLine) {
+          formattedLines.push({
+            description: disc.description,
+            quantity: 1,
+            unitPrice: -disc.amountPounds,
+            ...(account?.id ? { accountId: account.id } : {}),
+            ...(taxRateId ? { taxRateId } : {}),
+          });
+        }
+      }
     }
 
     if (params.shipping != null && Number(params.shipping) > 0) {
@@ -1351,6 +1514,7 @@ export async function updateQuoteAction(
     reference?: string;
     notes?: string;
     shipping?: number | string;
+    discount?: number | string;
     shortDescription?: string | null;
     imageUrl?: string | null;
   }
@@ -1388,6 +1552,23 @@ export async function updateQuoteAction(
         imageUrl: params.imageUrl || null,
       },
     ];
+  } else if (!rawLines && (params.discount != null || params.shipping != null) && q.lines && q.lines.length > 0) {
+    const existingProductLines = q.lines.filter(
+      (l) => !isDiscountLine(l) && !isShippingLine(l)
+    );
+    rawLines = existingProductLines.map((l) => ({
+      description: l.description,
+      quantity: (l.quantity || 100) / 100,
+      unitPrice: (l.unitPrice || 0) / 100,
+      shortDescription: l.shortDescription,
+      imageUrl: l.imageUrl,
+    }));
+    if (params.shipping == null) {
+      const existingShipping = q.lines.find((l) => isShippingLine(l));
+      if (existingShipping) {
+        params.shipping = (existingShipping.unitPrice || 0) / 100;
+      }
+    }
   }
 
   let formattedLines: any[] | undefined;
@@ -1432,16 +1613,46 @@ export async function updateQuoteAction(
         }
       }
 
+      const lineDiscountPct =
+        l.discountPercent != null
+          ? Math.round(parseFloat(String(l.discountPercent).replace("%", "")) * 100)
+          : undefined;
+
       formattedLines.push({
         description: l.description,
         ...(resolvedShortDesc ? { shortDescription: resolvedShortDesc } : {}),
         ...(resolvedImageUrl ? { imageUrl: resolvedImageUrl } : {}),
         quantity: Number(l.quantity || 1),
         unitPrice: unitPricePounds,
+        ...(lineDiscountPct != null && lineDiscountPct > 0 ? { discountPercent: lineDiscountPct } : {}),
         ...(resolvedItemId ? { inventoryItemId: resolvedItemId } : {}),
         ...(account?.id ? { accountId: account.id } : {}),
         ...(taxRateId ? { taxRateId } : {}),
       });
+    }
+
+    if (params.discount != null) {
+      const itemsSubtotalCents = formattedLines.reduce((sum, l) => {
+        if (isRealProductLine(l.description)) {
+          return sum + Math.round(Number(l.unitPrice || 0) * 100 * Number(l.quantity || 1));
+        }
+        return sum;
+      }, 0);
+      const disc = parseDiscountAdjustment(params.discount, itemsSubtotalCents);
+      if (disc && disc.amountPounds > 0) {
+        const hasDiscountLine = formattedLines.some((l) =>
+          l.description.toLowerCase().startsWith("discount")
+        );
+        if (!hasDiscountLine) {
+          formattedLines.push({
+            description: disc.description,
+            quantity: 1,
+            unitPrice: -disc.amountPounds,
+            ...(account?.id ? { accountId: account.id } : {}),
+            ...(taxRateId ? { taxRateId } : {}),
+          });
+        }
+      }
     }
 
     if (params.shipping != null && Number(params.shipping) > 0) {

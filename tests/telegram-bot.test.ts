@@ -236,6 +236,53 @@ test("sanitizePortalUrls strips hallucinated /api and /api/v1 prefix from custom
   );
 });
 
+test("parseDiscountAdjustment parses percentage and fixed discounts correctly", async () => {
+  const { parseDiscountAdjustment } = await import(
+    "../lib/integrations/whatsapp/executor"
+  );
+
+  // 5% of £568.33 (56833 cents)
+  const d1 = parseDiscountAdjustment("5%", 56833);
+  assert.notStrictEqual(d1, null);
+  assert.strictEqual(d1?.description, "Discount (5%)");
+  assert.strictEqual(d1?.amountCents, 2842);
+  assert.strictEqual(d1?.amountPounds, 28.42);
+
+  // 10% of 10000 cents (£100.00)
+  const d2 = parseDiscountAdjustment("10%", 10000);
+  assert.notStrictEqual(d2, null);
+  assert.strictEqual(d2?.description, "Discount (10%)");
+  assert.strictEqual(d2?.amountCents, 1000);
+  assert.strictEqual(d2?.amountPounds, 10);
+
+  // String with words like "5% discount"
+  const d3 = parseDiscountAdjustment("5% discount", 56833);
+  assert.notStrictEqual(d3, null);
+  assert.strictEqual(d3?.description, "Discount (5%)");
+  assert.strictEqual(d3?.amountCents, 2842);
+
+  // Fixed amount "£25"
+  const d4 = parseDiscountAdjustment("£25", 56833);
+  assert.notStrictEqual(d4, null);
+  assert.strictEqual(d4?.description, "Discount");
+  assert.strictEqual(d4?.amountCents, 2500);
+  assert.strictEqual(d4?.amountPounds, 25);
+
+  // Fixed amount number
+  const d5 = parseDiscountAdjustment(50, 56833);
+  assert.notStrictEqual(d5, null);
+  assert.strictEqual(d5?.description, "Discount");
+  assert.strictEqual(d5?.amountCents, 5000);
+  assert.strictEqual(d5?.amountPounds, 50);
+
+  // Invalid or zero
+  assert.strictEqual(parseDiscountAdjustment(null, 56833), null);
+  assert.strictEqual(parseDiscountAdjustment(undefined, 56833), null);
+  assert.strictEqual(parseDiscountAdjustment("0%", 56833), null);
+  assert.strictEqual(parseDiscountAdjustment(0, 56833), null);
+});
+
+
 
 
 

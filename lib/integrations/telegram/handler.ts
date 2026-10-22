@@ -91,6 +91,10 @@ const TOOL_DEFINITIONS = [
                 description:
                   "Unit price in pounds (e.g. 189 for £189, 45.50 for £45.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
@@ -99,6 +103,11 @@ const TOOL_DEFINITIONS = [
           type: "NUMBER",
           description:
             "Shipping, delivery, or carriage fee in pounds (e.g. 15 for £15). This populates the dedicated shipping field below subtotal, NOT an ordinary line item.",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the quote (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -181,6 +190,10 @@ const TOOL_DEFINITIONS = [
                 description:
                   "Unit price in pounds (e.g. 250 for £250, 487.50 for £487.50). MUST be provided for every item. If the user did not specify prices in their message, DO NOT call this tool; ask the user for the unit prices first (unless they explicitly instructed to create a draft at £0 / no prices).",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
@@ -188,6 +201,11 @@ const TOOL_DEFINITIONS = [
         shipping: {
           type: "NUMBER",
           description: "Shipping or delivery fee in pounds (e.g. 15 for £15). Adds shipping under the dedicated shipping field below subtotal.",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the invoice (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         taxRatePercent: {
           type: "NUMBER",
@@ -454,6 +472,10 @@ const TOOL_DEFINITIONS = [
                 type: "NUMBER",
                 description: "Unit price in pounds (e.g. 250 for £250)",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
@@ -461,6 +483,11 @@ const TOOL_DEFINITIONS = [
         shipping: {
           type: "NUMBER",
           description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the invoice (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         description: {
           type: "STRING",
@@ -536,6 +563,10 @@ const TOOL_DEFINITIONS = [
                 type: "NUMBER",
                 description: "Unit price in pounds (e.g. 450 for £450)",
               },
+              discountPercent: {
+                type: "NUMBER",
+                description: "Optional line-level discount percentage (e.g. 5 for 5%, 10 for 10%)",
+              },
             },
             required: ["description", "unitPrice"],
           },
@@ -543,6 +574,11 @@ const TOOL_DEFINITIONS = [
         shipping: {
           type: "NUMBER",
           description: "Shipping or delivery fee in pounds (e.g. 15 for £15)",
+        },
+        discount: {
+          type: "STRING",
+          description:
+            "Discount to apply to the quote (e.g. '5%' for 5% off items subtotal, or fixed amount in pounds like '25' or '£25'). Fixbooks automatically creates a dedicated Discount line below subtotal. NEVER manually deduct discounts from product unit prices!",
         },
         description: {
           type: "STRING",
@@ -1385,20 +1421,26 @@ CRITICAL INSTRUCTIONS:
    - When the user specifies shipping, delivery, or carriage (e.g. "Shipping: 15£", "Delivery: £20", "Shipping fee: £15"):
      * Pass this amount in the top-level \`shipping\` argument of \`create_quote\` or \`create_invoice\` (e.g. \`shipping: 15\`).
      * Do NOT add shipping as a regular product line inside the \`lines\` array! The top-level \`shipping\` argument places it in the dedicated Shipping field below subtotal in Fixbooks.
-4. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
+4. DISCOUNTS & PROMOTIONS (CRITICAL):
+   - When the user specifies a discount (e.g. "Discount: 5%", "apply 5% discount", "Discount: £25", "10% off", "5% discount"):
+     * NEVER manually reduce or alter the product unitPrice!
+     * Always pass the EXACT original unit price in lines (e.g. £568.33).
+     * Pass the discount in the dedicated top-level \`discount\` parameter of \`create_quote\`, \`create_invoice\`, \`edit_quote\`, or \`edit_invoice\` (e.g. \`discount: "5%"\` or \`discount: "25"\`).
+     * Fixbooks will automatically keep the full unit price on the product and create the dedicated Discount line below subtotal.
+5. MULTI-LINE ITEMS IN A SINGLE DOCUMENT:
    - NEVER create multiple separate quotes, invoices, or bills for a single request.
    - Put all product/material/service items into the \`lines\` array of ONE single quote, invoice, or bill.
-5. CUSTOMER DETAILS & TAX:
+6. CUSTOMER DETAILS & TAX:
    - If the customer details include both a person name and a business/company name (e.g. "ILIE Sula" and "Zamos Construction LTD"), use the business name for customerName (e.g. "Zamos Construction LTD" or "Zamos Construction LTD (ILIE Sula)").
    - If the user provides an address, email, phone, or tax rate (e.g. 20%), pass them into customerEmail, customerAddress, customerPhone, and taxRatePercent.
-6. INVOICE & QUOTE NUMBERS & DATES:
+7. INVOICE & QUOTE NUMBERS & DATES:
    - If user provides an explicit invoice number (e.g. "Invoice Number: 146233"), ALWAYS pass it into the "invoiceNumber" argument.
    - If user provides dates (e.g. "Date of issue: 09/08/2026", "Date due: 09/08/2026"), pass them into "issueDate" and "dueDate". Note that dates in the UK are DD/MM/YYYY.
    - For quotes, quotations are valid for 15 days from issue date. If the user does not specify an expiry date, expiryDate defaults to 15 days after issueDate.
-7. NOTES:
+8. NOTES:
    - NEVER put "Created via Telegram Bot", "Created via WhatsApp Bot", or any bot/integration branding into the notes field.
    - Do NOT put the customer address in the notes. Leave notes empty unless the user specifically provides customer/order notes.
-8. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
+9. QUOTE & INVOICE LINKS & PDF DOWNLOADS:
    - When the user asks for a link, download link, or PDF for ANY document (quote or invoice), you MUST provide it!
    - For quotes (e.g. "give me link for QTE-00008", "send link for quote 8", "link for quote", "quote pdf", "quote link"):
      * Call \`get_quote_link\` with quoteNumber (e.g. "QTE-00008").
@@ -1414,24 +1456,24 @@ CRITICAL INSTRUCTIONS:
      * If the number starts with "QTE" or contains "quote", call \`get_quote_link\`.
      * If the number starts with "INV" or contains "invoice", call \`get_invoice_pdf\`.
      * NEVER say "I can only provide download links for invoices, not quotes"! You CAN provide links for BOTH quotes and invoices!
-9. EDITING INVOICES & QUOTES:
+10. EDITING INVOICES & QUOTES:
    - When the user asks to edit, update, modify, or change an existing invoice (e.g. "Edit invoice INV-00017...", "Update lines on INV-00017..."), call the \`edit_invoice\` tool with invoiceNumber and updated lines/fields.
    - When the user asks to edit, update, modify, or change an existing quote (e.g. "Edit quote QTE-00007...", "Change quote QTE-00007 price to..."), call the \`edit_quote\` tool with quoteNumber and updated lines/fields.
    - Only DRAFT documents can be edited.
-10. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
+11. SENDING INVOICES & QUOTES TO CUSTOMER EMAIL:
    - When the user asks to send or email an invoice to a customer (e.g. "Send invoice INV-00017 to customer email", "Email invoice INV-00017 to client@example.com"):
      * Execute the \`send_invoice_email\` tool.
-   - When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00008 to customers email", "Email quote QTE-00008 to client@example.com", "Send quote QTE-00008 to customer email"):
+     * When the user asks to send or email a quote to a customer (e.g. "Send quote QTE-00008 to customers email", "Email quote QTE-00008 to client@example.com", "Send quote QTE-00008 to customer email"):
      * Execute the \`send_quote_email\` tool with quoteNumber (e.g. "QTE-00008").
    - If the user provides a recipient email in their message, pass it into \`recipientEmail\`. If not provided, leave \`recipientEmail\` empty and the tool will automatically use the customer's email on file.
-11. BANK RECONCILIATION & TRANSACTIONS:
+12. BANK RECONCILIATION & TRANSACTIONS:
    - When the user asks to see unreconciled transactions, review bank accounts, or asks what needs reconciling, call the \`list_unreconciled_transactions\` tool.
    - When the user asks for candidate matches or suggestions for a specific transaction (e.g. "What matches transaction 6ab9e4fc?"), call \`get_reconciliation_suggestions\`.
    - When the user asks to reconcile, match, or categorize a bank transaction (e.g. "Reconcile transaction 6ab9e4fc with invoice INV-00017", "Match 6ab9e4fc to INV-00017", "Categorize 93ce783a as Cost of Goods Sold", "Reconcile 93ce783a to 5000", "Match 9b4425d3 to bill BILL-00001"), call the \`reconcile_bank_transaction\` tool with transactionId and the corresponding invoiceNumber, billNumber, accountCodeOrName, or target.
    - When the user asks for a bank reconciliation report or proof of balances, call \`get_reconciliation_report\`.
    - The tool outputs will already contain formatted HTML messages. Present them clearly and directly to the user.
 
-12. CONVERSATION CONTEXT & MULTI-TURN MEMORY:
+13. CONVERSATION CONTEXT & MULTI-TURN MEMORY:
    - Always retain and remember the context of prior messages in the conversation.
    - When the user provides follow-up information (such as customer name, email, price, specifications, size, or answers to questions you asked earlier):
      * Merge this new information with the details provided in earlier conversation turns.
@@ -1440,7 +1482,7 @@ CRITICAL INSTRUCTIONS:
      * Immediately proceed to execute that action (e.g. call \`list_quotes\`).
    - NEVER treat follow-up details as an isolated new inquiry or forget what was discussed previously!
 
-13. INVENTORY PRODUCT MATCHING & CATALOG CREATION:
+14. INVENTORY PRODUCT MATCHING & CATALOG CREATION:
    - When the user asks to create a quote or an invoice and specifies a product:
      * The system automatically searches the inventory items catalog to see if a match already exists (by name, item code, or SKU).
      * If a matching product exists, it uses the existing catalog product (and if the user did not specify a price, it defaults to the item's saved catalog sale price).
